@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+@theme {
+	--font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+	font-family: var(--font-family-sans);
+	@apply p-8;
+}
+
+@layer components {
+	.styled-table {
+		@apply w-full border-collapse border border-gray-300 shadow-md rounded-lg overflow-hidden;
+	}
+
+	.styled-table th {
+		@apply border border-gray-300 px-6 py-4 text-left font-semibold text-gray-900;
+	}
+
+	.styled-table td {
+		@apply border border-gray-300 px-6 py-4 text-gray-700;
+	}
+}

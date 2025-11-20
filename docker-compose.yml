@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres-acc:
+    image: postgres:16-alpine
+    container_name: postgres-acc
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_ACC:-reflectie_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_ACC}
+      POSTGRES_DB: ${POSTGRES_DB_ACC:-reflectie_acc}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT_ACC:-5433}:5432"  # Use 5433 to avoid conflict with prod
+    volumes:
+      - ./data/acc:/var/lib/postgresql/data
+    networks:
+      - postgres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_ACC:-reflectie_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres-prod:
+    image: postgres:16-alpine
+    container_name: postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_PROD:-reflectie_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_PROD}
+      POSTGRES_DB: ${POSTGRES_DB_PROD:-reflectie_prod}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT_PROD:-5432}:5432"  # Standard PostgreSQL port
+    volumes:
+      - ./data/prod:/var/lib/postgresql/data
+    networks:
+      - postgres-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_PROD:-reflectie_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  postgres-network:
+    driver: bridge
+
