@@ -1,5 +1,5 @@
 {
-	"buildCommand": "prisma migrate deploy && npm run build",
+	"buildCommand": "npx svelte-kit sync && prisma migrate deploy && npm run build",
 	"installCommand": "npm install",
 	"framework": "sveltekit"
 }
