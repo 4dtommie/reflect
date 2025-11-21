@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --open",
-		"build": "prisma generate && vite build",
+		"build": "prisma generate && npx vite build",
 		"preview": "vite preview",
 		"prepare": "echo ''",
 		"postinstall": "prisma generate",
