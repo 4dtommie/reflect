@@ -4,6 +4,10 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
+<div class="mb-6">
+	<a href="/" class="text-blue-600 hover:text-blue-800 underline">← Back to Home</a>
+</div>
+
 <div class="mb-6 flex justify-between items-center">
 	<h1 class="text-4xl font-bold text-gray-900">People Database</h1>
 	<a
