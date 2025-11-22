@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 
 	let username = $state('');
 	let password = $state('');
@@ -24,6 +24,7 @@
 				throw new Error(data.error || 'Signup failed');
 			}
 
+			await invalidateAll();
 			// Redirect to persons page
 			goto('/persons');
 		} catch (err) {
@@ -42,7 +43,9 @@
 	{/if}
 
 	<form onsubmit={handleSubmit} class="space-y-6">
-		<div class="form-control">
+		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+			<legend class="fieldset-legend">Account Details</legend>
+
 			<label for="username" class="label">
 				<span class="label-text">Username</span>
 			</label>
@@ -55,9 +58,7 @@
 				class="input input-bordered"
 				placeholder="Choose a username"
 			/>
-		</div>
 
-		<div class="form-control">
 			<label for="password" class="label">
 				<span class="label-text">Password</span>
 			</label>
@@ -70,7 +71,7 @@
 				class="input input-bordered"
 				placeholder="Choose a password"
 			/>
-		</div>
+		</fieldset>
 
 		<button type="submit" disabled={submitting} class="btn btn-primary w-full">
 			{submitting ? 'Signing up...' : 'Sign Up'}

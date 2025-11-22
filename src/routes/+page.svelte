@@ -1,30 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
 
-	// Check if user is logged in
-	let user = $state<{ id: number; username: string } | null>(null);
-	let loading = $state(true);
-
-	onMount(async () => {
-		try {
-			const response = await fetch('/api/auth/me');
-			if (response.ok) {
-				const data = await response.json();
-				user = data.user;
-			}
-		} catch {
-			// Not authenticated
-		} finally {
-			loading = false;
-		}
-	});
+	let { data }: { data: PageData } = $props();
+	
+	const user = $derived(data.user);
 </script>
 
 <h1 class="text-4xl font-bold mb-6">Welcome to Reflectie AI</h1>
 
-{#if loading}
-	<p class="text-lg mb-8">Loading...</p>
-{:else if user}
+{#if user}
 	<p class="text-lg mb-4">Welcome back, {user.username}!</p>
 	<div class="flex gap-4">
 		<a href="/persons" class="btn btn-primary"> View People Database </a>

@@ -46,7 +46,9 @@
 	{/if}
 
 	<form onsubmit={handleSubmit} class="space-y-6">
-		<div class="form-control">
+		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+			<legend class="fieldset-legend">Person Details</legend>
+
 			<label for="name" class="label">
 				<span class="label-text">Name</span>
 			</label>
@@ -58,9 +60,7 @@
 				class="input input-bordered"
 				placeholder="Enter name"
 			/>
-		</div>
 
-		<div class="form-control">
 			<label for="age" class="label">
 				<span class="label-text">Age</span>
 			</label>
@@ -74,9 +74,7 @@
 				class="input input-bordered"
 				placeholder="Enter age"
 			/>
-		</div>
 
-		<div class="form-control">
 			<label for="city" class="label">
 				<span class="label-text">City</span>
 			</label>
@@ -88,7 +86,7 @@
 				class="input input-bordered"
 				placeholder="Enter city"
 			/>
-		</div>
+		</fieldset>
 
 		<div class="flex gap-4">
 			<button type="submit" disabled={submitting} class="btn btn-primary">

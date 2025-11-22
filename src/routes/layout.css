@@ -1,5 +1,7 @@
 @import 'tailwindcss';
-@plugin 'daisyui';
+ @plugin "daisyui" {
+   themes: nord --default, night --prefersdark;
+ }
 
 @theme {
 	--font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
