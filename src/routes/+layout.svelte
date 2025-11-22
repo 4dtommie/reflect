@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -37,6 +38,46 @@
 			}
 		}, 0);
 	}
+
+	function closeDropdownOnLinkClick(event: MouseEvent) {
+		const link = event.currentTarget as HTMLElement;
+		const details = link.closest('details') as HTMLDetailsElement;
+		if (details) {
+			details.open = false;
+		}
+	}
+
+	function handleClickOutside(event: MouseEvent) {
+		const target = event.target as HTMLElement;
+		// Check if click is inside any dropdown (details element)
+		// This includes clicks on summary and links inside the dropdown
+		const clickedInsideDropdown = target.closest('details');
+		
+		if (!clickedInsideDropdown) {
+			// Close all open dropdowns when clicking outside
+			dropdowns.forEach((dropdown) => {
+				if (dropdown.open) {
+					dropdown.open = false;
+				}
+			});
+		}
+	}
+
+	// Add click outside listener
+	let clickOutsideCleanup: (() => void) | null = null;
+	if (typeof document !== 'undefined') {
+		document.addEventListener('click', handleClickOutside);
+		clickOutsideCleanup = () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	}
+
+	// Cleanup on component destroy
+	onDestroy(() => {
+		if (clickOutsideCleanup) {
+			clickOutsideCleanup();
+		}
+	});
 </script>
 
 <svelte:head>
@@ -44,14 +85,14 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
 		rel="stylesheet"
 	/>
 </svelte:head>
 
 <div class="navbar bg-base-100 shadow-sm mb-4">
 	<div class="flex-1">
-		<a href="/" class="btn btn-ghost text-xl">Reflectie</a>
+		<a href="/" class="btn btn-ghost text-xl"><span class="mirror-r">R</span>eflectie</a>
 	</div>
 	<div class="flex-none">
 		<ul class="menu menu-horizontal px-1">
@@ -60,7 +101,7 @@
 				<details use:registerDropdown ontoggle={handleDetailsToggle}>
 					<summary>Enrich data</summary>
 					<ul class="bg-base-100 rounded-t-none p-2 w-52">
-						<li><a href="/enrich/categorize">Categorize transactions</a></li>
+						<li><a href="/enrich/categorize" onclick={closeDropdownOnLinkClick}>Categorize transactions</a></li>
 					</ul>
 				</details>
 			</li>
@@ -68,8 +109,8 @@
 				<details use:registerDropdown ontoggle={handleDetailsToggle}>
 					<summary>Analyze data</summary>
 					<ul class="bg-base-100 rounded-t-none p-2 w-52">
-						<li><a href="/analyze/salary">Find salary</a></li>
-						<li><a href="/analyze/subscriptions">Find subscriptions</a></li>
+						<li><a href="/analyze/salary" onclick={closeDropdownOnLinkClick}>Find salary</a></li>
+						<li><a href="/analyze/subscriptions" onclick={closeDropdownOnLinkClick}>Find subscriptions</a></li>
 					</ul>
 				</details>
 			</li>
@@ -84,6 +125,6 @@
 	</div>
 </div>
 
-<div class="content-container">
+<div class="bg-base-100 rounded-box shadow-md p-8 max-w-7xl mx-auto">
 	{@render children()}
 </div>

@@ -4,14 +4,38 @@
  }
 
 @theme {
-	--font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+	--font-family-sans: 'Rubik', system-ui, -apple-system, sans-serif;
 }
 
 body {
 	font-family: var(--font-family-sans);
-	@apply bg-base-200 min-h-screen p-8;
+	@apply bg-base-300 min-h-screen p-8;
 }
 
-.content-container {
-	@apply bg-base-100 rounded-box shadow-lg p-8 max-w-7xl mx-auto;
+h1 {
+	font-size: 2rem;
+	font-weight: 700;
+	font-variation-settings: 'wght' 700, 'wdth' 125;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) {
+	h1 {
+		font-size: 3rem;
+		font-variation-settings: 'wght' 700, 'wdth' 150;
+	}
+}
+
+@media (min-width: 1024px) {
+	h1 {
+		font-size: 5rem;
+		font-variation-settings: 'wght' 700, 'wdth' 175;
+	}
+}
+
+.mirror-r {
+	display: inline-block;
+	transform: scaleX(-1);
+	margin-right: -0.3em;
 }
