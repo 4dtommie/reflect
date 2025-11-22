@@ -1,38 +1,29 @@
-# sv
+# Reflectie AI
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A SvelteKit application for managing people data with user authentication.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
+## Quick Start
 
 ```sh
-# create a new project in the current directory
-npx sv create
+# Install dependencies
+npm install
 
-# create a new project in my-app
-npx sv create my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+# Start development server
 npm run dev
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
+# Build for production
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Documentation
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+All guides and documentation are in the [`ai-guides/`](./ai-guides/) folder.
+
+**Quick Links:**
+- [Deployment Checklist](./ai-guides/DEPLOYMENT_CHECKLIST.md) - Quick deployment steps
+- [Vercel Deployment Plan](./ai-guides/VERCEL_DEPLOYMENT_PLAN.md) - Complete Vercel guide
+- [Docker Self-Hosting](./ai-guides/DOCKER_SELF_HOSTING.md) - Self-host with Docker
+- [Database Setup](./ai-guides/DATABASE_SETUP_PLAN.md) - Database configuration
+- [User Management](./ai-guides/USER_MANAGEMENT_PLAN.md) - Authentication setup
+
+See [`ai-guides/README.md`](./ai-guides/README.md) for a complete list of all guides.

@@ -39,33 +39,31 @@
 </script>
 
 <div class="max-w-2xl mx-auto">
-	<div class="mb-6">
-		<a href="/persons" class="text-blue-600 hover:text-blue-800 underline">← Back to People List</a>
-	</div>
-
-	<h1 class="text-4xl font-bold text-gray-900 mb-6">Add New Person</h1>
+	<h1 class="text-4xl font-bold mb-6">Add New Person</h1>
 
 	{#if error}
-		<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-			{error}
-		</div>
+		<div class="alert alert-error mb-4">{error}</div>
 	{/if}
 
 	<form onsubmit={handleSubmit} class="space-y-6">
-		<div>
-			<label for="name" class="block text-sm font-medium text-gray-700 mb-2"> Name </label>
+		<div class="form-control">
+			<label for="name" class="label">
+				<span class="label-text">Name</span>
+			</label>
 			<input
 				type="text"
 				id="name"
 				name="name"
 				required
-				class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+				class="input input-bordered"
 				placeholder="Enter name"
 			/>
 		</div>
 
-		<div>
-			<label for="age" class="block text-sm font-medium text-gray-700 mb-2"> Age </label>
+		<div class="form-control">
+			<label for="age" class="label">
+				<span class="label-text">Age</span>
+			</label>
 			<input
 				type="number"
 				id="age"
@@ -73,37 +71,30 @@
 				required
 				min="0"
 				max="150"
-				class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+				class="input input-bordered"
 				placeholder="Enter age"
 			/>
 		</div>
 
-		<div>
-			<label for="city" class="block text-sm font-medium text-gray-700 mb-2"> City </label>
+		<div class="form-control">
+			<label for="city" class="label">
+				<span class="label-text">City</span>
+			</label>
 			<input
 				type="text"
 				id="city"
 				name="city"
 				required
-				class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+				class="input input-bordered"
 				placeholder="Enter city"
 			/>
 		</div>
 
 		<div class="flex gap-4">
-			<button
-				type="submit"
-				disabled={submitting}
-				class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-			>
+			<button type="submit" disabled={submitting} class="btn btn-primary">
 				{submitting ? 'Adding...' : 'Add Person'}
 			</button>
-			<a
-				href="/persons"
-				class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-			>
-				Cancel
-			</a>
+			<a href="/persons" class="btn btn-ghost"> Cancel </a>
 		</div>
 	</form>
 </div>
