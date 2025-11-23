@@ -1,11 +1,38 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { Sun, Moon } from 'lucide-svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+
+	let currentTheme = $state<'nord' | 'night'>('nord');
+
+	// Initialize theme from localStorage or system preference
+	onMount(() => {
+		const storedTheme = localStorage.getItem('theme') as 'nord' | 'night' | null;
+		if (storedTheme) {
+			currentTheme = storedTheme;
+			document.documentElement.setAttribute('data-theme', storedTheme);
+		} else {
+			// Check system preference
+			if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+				currentTheme = 'night';
+				document.documentElement.setAttribute('data-theme', 'night');
+			} else {
+				currentTheme = 'nord';
+				document.documentElement.setAttribute('data-theme', 'nord');
+			}
+		}
+	});
+
+	function toggleTheme() {
+		currentTheme = currentTheme === 'nord' ? 'night' : 'nord';
+		document.documentElement.setAttribute('data-theme', currentTheme);
+		localStorage.setItem('theme', currentTheme);
+	}
 
 	async function signOut() {
 		await fetch('/api/auth/signout', { method: 'POST' });
@@ -90,11 +117,11 @@
 	/>
 </svelte:head>
 
-<div class="navbar bg-base-100 shadow-sm mb-4">
+<div class="navbar bg-base-100 shadow-sm mb-4 relative">
 	<div class="flex-1">
 		<a href="/" class="btn btn-ghost text-xl"><span class="mirror-r">R</span>eflectie</a>
 	</div>
-	<div class="flex-none">
+	<div class="absolute left-1/2 transform -translate-x-1/2">
 		<ul class="menu menu-horizontal px-1">
 			<li><a href="/upload-transactions">Upload transactions</a></li>
 			<li>
@@ -116,7 +143,17 @@
 			</li>
 		</ul>
 	</div>
-	<div class="flex-none">
+	<div class="flex-1 flex justify-end">
+		<label class="flex cursor-pointer gap-2 items-center mr-4">
+			<Sun size={20} />
+			<input
+				type="checkbox"
+				checked={currentTheme === 'night'}
+				onchange={toggleTheme}
+				class="toggle theme-controller"
+			/>
+			<Moon size={20} />
+		</label>
 		{#if data.user}
 			<button onclick={signOut} class="btn btn-ghost">Logout</button>
 		{:else}

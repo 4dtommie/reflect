@@ -25,7 +25,7 @@
 			}
 
 			await invalidateAll();
-			goto('/persons');
+			goto('/');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Sign in failed';
 		} finally {
@@ -34,7 +34,7 @@
 	}
 </script>
 
-<div class="max-w-md mx-auto mt-12">
+<div class="max-w-md">
 	<h1 class="text-4xl font-bold mb-6">Sign In</h1>
 
 	{#if error}
@@ -43,7 +43,7 @@
 
 	<form onsubmit={handleSubmit} class="space-y-6">
 		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-4">
-			<legend class="fieldset-legend">Sign In Details</legend>
+			<legend class="fieldset-legend">Login details</legend>
 
 			<label for="username" class="label">
 				<span class="label-text">Username</span>
@@ -71,7 +71,7 @@
 		</fieldset>
 
 		<button type="submit" disabled={submitting} class="btn btn-primary w-full">
-			{submitting ? 'Signing in...' : 'Sign In'}
+			{submitting ? 'Logging in...' : 'Log in'}
 		</button>
 	</form>
 

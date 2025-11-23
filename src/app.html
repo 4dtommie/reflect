@@ -5,17 +5,15 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		%sveltekit.head%
 		<script>
-			// Set theme based on system preference
-			if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+			// Set theme based on localStorage preference or system preference
+			const storedTheme = localStorage.getItem('theme');
+			if (storedTheme === 'nord' || storedTheme === 'night') {
+				document.documentElement.setAttribute('data-theme', storedTheme);
+			} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
 				document.documentElement.setAttribute('data-theme', 'night');
 			} else {
 				document.documentElement.setAttribute('data-theme', 'nord');
 			}
-			
-			// Listen for changes in system preference
-			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-				document.documentElement.setAttribute('data-theme', e.matches ? 'night' : 'nord');
-			});
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">

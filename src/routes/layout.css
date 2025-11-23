@@ -3,8 +3,43 @@
    themes: nord --default, night --prefersdark;
  }
 
+@plugin "daisyui/theme" {
+  name: "nord";
+  default: true;
+  --color-primary-content: var(--color-base-100);
+  --color-secondary-content: var(--color-base-100);
+  --color-secondary: var(--color-blue-700);
+  --color-info: var(--color-sky-200);
+}
+
+@plugin "daisyui/theme" {
+  name: "night";
+  default: false;
+  --base-300: var(--color-base-100);
+ --base-100: var(--color-base-300);
+
+}
+
+
 @theme {
 	--font-family-sans: 'Rubik', system-ui, -apple-system, sans-serif;
+	--gradient-color-1: #a855f7;
+	--gradient-color-2: #3b82f6;
+	--gradient-color-3: #9333ea;
+	--gradient-primary: linear-gradient(to bottom right, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3));
+	--gradient-primary-animated: linear-gradient(90deg, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3), var(--gradient-color-1));
+}
+
+@keyframes gradient-rotate {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 
 body {
@@ -13,23 +48,30 @@ body {
 }
 
 h1 {
-	font-size: 2rem;
+	font-size: 1rem;
 	font-weight: 700;
 	font-variation-settings: 'wght' 700, 'wdth' 125;
 	line-height: 1.1;
 	letter-spacing: -0.02em;
+	background: var(--gradient-primary-animated);
+	background-size: 200% 200%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+	animation: gradient-rotate 16s ease infinite;
 }
 
 @media (min-width: 768px) {
 	h1 {
-		font-size: 3rem;
+		font-size: 1.5rem;
 		font-variation-settings: 'wght' 700, 'wdth' 150;
 	}
 }
 
 @media (min-width: 1024px) {
 	h1 {
-		font-size: 5rem;
+		font-size: 3rem;
 		font-variation-settings: 'wght' 700, 'wdth' 175;
 	}
 }
@@ -38,4 +80,20 @@ h1 {
 	display: inline-block;
 	transform: scaleX(-1);
 	margin-right: -0.3em;
+}
+
+.gradient-text {
+	background: var(--gradient-primary);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+}
+
+.btn-primary {
+	background: var(--gradient-primary-animated);
+	background-size: 200% 200%;
+	color: white;
+	border: none;
+	animation: gradient-rotate 8s ease infinite;
 }

@@ -25,8 +25,8 @@
 			}
 
 			await invalidateAll();
-			// Redirect to persons page
-			goto('/persons');
+			// Redirect to home page
+			goto('/');
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Signup failed';
 		} finally {

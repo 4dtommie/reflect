@@ -10,14 +10,10 @@
 
 {#if user}
 	<p class="text-lg mb-4">Welcome back, {user.username}!</p>
-	<div class="flex gap-4">
-		<a href="/persons" class="btn btn-primary"> View People Database </a>
-		<a href="/persons/add" class="btn btn-success"> Add New Person </a>
-	</div>
 {:else}
-	<p class="text-lg mb-8">Sign in to manage your people database.</p>
+	<p class="text-lg mb-8">Log in to get started.</p>
 	<div class="flex gap-4">
-		<a href="/signin" class="btn btn-primary"> Sign In </a>
-		<a href="/signup" class="btn btn-success"> Sign Up </a>
+		<a href="/signin" class="btn btn-primary"> Log In </a>
+		<a href="/signup" class="btn btn-secondary"> Sign up </a>
 	</div>
 {/if}
