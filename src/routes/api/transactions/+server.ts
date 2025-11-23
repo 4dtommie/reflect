@@ -24,42 +24,6 @@ interface ImportResult {
 	duplicates: number;
 }
 
-/**
- * Check if a transaction is a duplicate
- * Duplicates: same userId, date (same day), amount, and merchantName
- */
-async function isDuplicate(
-	userId: number,
-	date: Date,
-	amount: number,
-	merchantName: string
-): Promise<boolean> {
-	// Normalize date to start of day for comparison
-	const dateStart = new Date(date);
-	dateStart.setHours(0, 0, 0, 0);
-	
-	const dateEnd = new Date(dateStart);
-	dateEnd.setDate(dateEnd.getDate() + 1);
-
-	// Normalize merchant name - handle empty strings consistently
-	const normalizedMerchantName = (merchantName || '').trim();
-
-	// Use transactions (plural) - matches runtime Prisma client
-	// Schema uses snake_case: user_id, but Prisma Client should handle conversion
-	const existing = await (db as any).transactions.findFirst({
-		where: {
-			user_id: userId, // Use snake_case to match schema exactly
-			date: {
-				gte: dateStart,
-				lt: dateEnd
-			},
-			amount: amount, // Prisma handles Decimal comparison
-			merchantName: normalizedMerchantName
-		}
-	});
-
-	return existing !== null;
-}
 
 /**
  * Import transactions from CSV data
@@ -77,8 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const validatedRequest = TransactionImportSchema.parse(body);
 
-		const { rows, headers, mapping, options } = validatedRequest;
-		const skipDuplicates = options?.skipDuplicates ?? true;
+		const { rows, headers, mapping } = validatedRequest;
 
 		// Convert mapping keys to numbers
 		const columnMapping: ColumnMapping = {};
@@ -149,33 +112,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Check for duplicates and filter them out
-		const transactionsToImport: TransactionInput[] = [];
-		let duplicateCount = 0;
-
-		// Note: Duplicate checking happens below
-
-		for (const transaction of validatedTransactions) {
-			try {
-				const isDup = await isDuplicate(userId, transaction.date, transaction.amount, transaction.merchantName);
-				
-				if (isDup) {
-					duplicateCount++;
-				} else {
-					transactionsToImport.push(transaction);
-				}
-			} catch (dupError: any) {
-				console.error('Error checking duplicate:', dupError);
-				// If duplicate check fails, assume not duplicate and try to insert
-				// This way we don't fail the whole import if duplicate check has issues
-				transactionsToImport.push(transaction);
-			}
-		}
-
-		// Skip duplicates if requested
-		const finalTransactions = skipDuplicates
-			? transactionsToImport
-			: validatedTransactions;
+		// Import all validated transactions (no duplicate checking)
+		const finalTransactions = validatedTransactions;
 
 		// Bulk insert transactions
 		let importedCount = 0;
@@ -224,9 +162,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const result: ImportResult = {
 			success: allErrors.length === 0 && importedCount > 0,
 			imported: importedCount,
-			skipped: duplicateCount,
+			skipped: 0,
 			errors: allErrors,
-			duplicates: duplicateCount
+			duplicates: 0
 		};
 
 		return json(result);
