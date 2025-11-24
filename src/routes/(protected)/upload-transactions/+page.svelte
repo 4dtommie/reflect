@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { Upload as UploadIcon, FileText, X } from 'lucide-svelte';
+	import { Upload as UploadIcon, FileText, X, LoaderCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
+	import { parseCSVFile, type ParseResult } from '$lib/utils/csvParser';
 
 	let selectedFile = $state<File | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>(undefined);
 	let dragActive = $state(false);
+	let parsing = $state(false);
 
 	function handleFileSelect(file: File) {
 		// Validate file type
@@ -61,16 +63,22 @@
 	async function handleUpload() {
 		if (!selectedFile) return;
 		
+		parsing = true;
 		try {
-			// Read file content and store in sessionStorage
+			// Parse CSV directly
+			const parseResult = await parseCSVFile(selectedFile);
+			
+			// Store file content and parse result for the map page
 			const fileContent = await selectedFile.text();
 			sessionStorage.setItem('csv_upload_file', fileContent);
 			sessionStorage.setItem('csv_upload_filename', selectedFile.name);
+			sessionStorage.setItem('csv_parse_result', JSON.stringify(parseResult));
 			
-			// Navigate to parse page
-			await goto('/upload-transactions/parse');
+			// Navigate directly to column mapping page
+			await goto('/upload-transactions/map');
 		} catch (error) {
-			alert('Failed to read file: ' + (error instanceof Error ? error.message : 'Unknown error'));
+			alert('Failed to parse file: ' + (error instanceof Error ? error.message : 'Unknown error'));
+			parsing = false;
 		}
 	}
 </script>
@@ -144,8 +152,18 @@
 				<button type="button" class="btn btn-ghost" onclick={removeFile}>
 					Cancel
 				</button>
-				<button type="button" class="btn btn-primary" onclick={handleUpload}>
-					Continue to parse
+				<button 
+					type="button" 
+					class="btn btn-primary" 
+					onclick={handleUpload}
+					disabled={parsing}
+				>
+					{#if parsing}
+						<LoaderCircle class="h-4 w-4 animate-spin" />
+						Parsing...
+					{:else}
+						Continue to column mapping
+					{/if}
 				</button>
 			</div>
 		</div>

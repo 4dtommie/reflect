@@ -10,6 +10,154 @@ import {
 	type TransactionInput
 } from '$lib/utils/transactionMapper';
 
+/**
+ * Get paginated transactions for the current user
+ */
+export const GET: RequestHandler = async ({ url, locals }) => {
+	// Check authentication
+	if (!locals.user) {
+		throw error(401, 'Not authenticated');
+	}
+
+	const userId = locals.user.id;
+
+	try {
+		// Get pagination parameters from URL
+		const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+		const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20')));
+		const skip = (page - 1) * pageSize;
+
+		// Get total count
+		const totalCount = await (db as any).transactions.count({
+			where: { user_id: userId }
+		});
+
+		// Fetch transactions
+		const transactionsRaw = await (db as any).transactions.findMany({
+			where: { user_id: userId },
+			take: pageSize,
+			orderBy: { date: 'desc' }
+		});
+
+		// Serialize to plain objects - convert Decimal to number, Date to string
+		const transactions = transactionsRaw.map((t: any) => ({
+			id: t.id,
+			date: t.date instanceof Date ? t.date.toISOString() : t.date,
+			merchantName: t.merchantName,
+			iban: t.iban,
+			counterparty_iban: t.counterparty_iban,
+			is_debit: t.is_debit,
+			amount: typeof t.amount === 'object' && t.amount?.toNumber ? t.amount.toNumber() : Number(t.amount),
+			type: t.type,
+			description: t.description,
+			category_id: t.category_id
+		}));
+
+		// Calculate monthly statistics from ALL transactions (not just current page)
+		const allTransactionsForStats = await (db as any).transactions.findMany({
+			where: { user_id: userId },
+			select: {
+				date: true,
+				amount: true,
+				is_debit: true
+			}
+		});
+
+		// Helper function to get week number (Week 1 = days 1-7, Week 2 = days 8-14, etc.)
+		function getWeekOfMonth(date: Date): number {
+			return Math.ceil(date.getDate() / 7);
+		}
+
+		// Group by month and calculate totals (both spending and income)
+		const monthSpendingGroups = new Map<string, number>();
+		const monthIncomeGroups = new Map<string, number>();
+		
+		// Group transactions by actual week (year-month-weekNumber) and sum
+		const actualWeeks = new Map<string, number>();
+		
+		for (const transaction of allTransactionsForStats) {
+			const d = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
+			const amount = typeof transaction.amount === 'object' && transaction.amount?.toNumber 
+				? transaction.amount.toNumber() 
+				: Number(transaction.amount);
+			const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+			
+			// is_debit = true means expense (spending), is_debit = false means income
+			if (transaction.is_debit) {
+				// Monthly spending totals (debit transactions)
+				monthSpendingGroups.set(monthKey, (monthSpendingGroups.get(monthKey) || 0) + amount);
+				
+				// Weekly totals by actual week (year-month-weekNumber) - only for spending
+				const weekNumber = getWeekOfMonth(d);
+				const weekKey = `${d.getFullYear()}-${d.getMonth()}-${weekNumber}`;
+				actualWeeks.set(weekKey, (actualWeeks.get(weekKey) || 0) + amount);
+			} else {
+				// Monthly income totals (credit transactions where is_debit = false)
+				monthIncomeGroups.set(monthKey, (monthIncomeGroups.get(monthKey) || 0) + amount);
+			}
+		}
+		
+		// Now group by week number (1-4) and calculate averages across all months
+		const weeklyAveragesByNumber = new Map<number, { total: number; count: number }>();
+		for (const [weekKey, total] of actualWeeks.entries()) {
+			const parts = weekKey.split('-');
+			const weekNum = Number(parts[2]); // weekNumber is the third part
+			if (!weeklyAveragesByNumber.has(weekNum)) {
+				weeklyAveragesByNumber.set(weekNum, { total: 0, count: 0 });
+			}
+			const weekData = weeklyAveragesByNumber.get(weekNum)!;
+			weekData.total += total;
+			weekData.count += 1;
+		}
+
+		const weeklyAverages = new Map<number, number>();
+		for (const [weekNum, data] of weeklyAveragesByNumber.entries()) {
+			weeklyAverages.set(weekNum, data.count > 0 ? data.total / data.count : 0);
+		}
+
+		// Combine spending and income by month
+		const allMonthKeys = new Set([...monthSpendingGroups.keys(), ...monthIncomeGroups.keys()]);
+		const monthlyTotals = Array.from(allMonthKeys).map((key) => {
+			const [year, month] = key.split('-').map(Number);
+			const spending = monthSpendingGroups.get(key) || 0;
+			const income = monthIncomeGroups.get(key) || 0;
+			
+			return { 
+				year, 
+				month, 
+				total: spending, // Keep 'total' for backward compatibility (spending)
+				spending: Number(spending),
+				income: Number(income),
+				date: new Date(year, month, 1).toISOString() 
+			};
+		});
+
+		const totalMonthlySpending = monthlyTotals.reduce((sum, m) => sum + m.total, 0);
+		const averageMonthlySpending = monthlyTotals.length > 0 ? totalMonthlySpending / monthlyTotals.length : 0;
+
+		return json({
+			transactions,
+			pagination: {
+				page,
+				pageSize,
+				totalCount: Number(totalCount),
+				totalPages: Math.ceil(Number(totalCount) / pageSize),
+				hasNextPage: page * pageSize < totalCount,
+				hasPreviousPage: page > 1
+			},
+			stats: {
+				monthlyTotals: monthlyTotals.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+				totalMonthlySpending,
+				averageMonthlySpending,
+				weeklyAverages: Object.fromEntries(weeklyAverages)
+			}
+		});
+	} catch (err: any) {
+		console.error('Error fetching transactions:', err);
+		throw error(500, 'Failed to fetch transactions');
+	}
+};
+
 interface ImportError {
 	row: number;
 	field?: string;

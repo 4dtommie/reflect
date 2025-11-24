@@ -4,6 +4,13 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Sun, Moon } from 'lucide-svelte';
+	import TaskSidebar from '$lib/components/TaskSidebar.svelte';
+	
+	let sidebarExpanded = $state(false);
+	
+	function handleSidebarExpandedChange(expanded: boolean) {
+		sidebarExpanded = expanded;
+	}
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
@@ -119,11 +126,19 @@
 
 <div class="navbar bg-base-100 shadow-sm mb-4 relative">
 	<div class="flex-1">
-		<a href="/" class="btn btn-ghost text-xl"><span class="mirror-r">R</span>eflectie</a>
+		<a href="/" class="btn btn-ghost text-xl"><span class="mirror-r">R</span>eflect</a>
 	</div>
 	<div class="absolute left-1/2 transform -translate-x-1/2">
 		<ul class="menu menu-horizontal px-1">
-			<li><a href="/upload-transactions">Upload transactions</a></li>
+			<li>
+				<details use:registerDropdown ontoggle={handleDetailsToggle}>
+					<summary>Transactions</summary>
+					<ul class="bg-base-100 rounded-t-none p-2 w-52">
+						<li><a href="/upload-transactions" onclick={closeDropdownOnLinkClick}>Upload transactions</a></li>
+						<li><a href="/transactions" onclick={closeDropdownOnLinkClick}>View transactions</a></li>
+					</ul>
+				</details>
+			</li>
 			<li>
 				<details use:registerDropdown ontoggle={handleDetailsToggle}>
 					<summary>Enrich data</summary>
@@ -162,6 +177,28 @@
 	</div>
 </div>
 
-<div class="bg-base-100 rounded-box shadow-md p-8 max-w-7xl mx-auto">
-	{@render children()}
-</div>
+{#if data.user}
+	<!-- Sidebar and content wrapper -->
+	<div class="flex items-stretch min-w-0">
+		<!-- Sidebar - always visible, collapses on mobile -->
+		<div class="pt-2 pr-2 lg:pr-4 flex-shrink-0">
+			<div class="h-full">
+				<TaskSidebar onExpandedChange={handleSidebarExpandedChange} />
+			</div>
+		</div>
+		
+		<!-- Main content -->
+		<div class="flex-1 pt-2 pl-2 lg:pl-4 transition-all duration-300 min-w-0">
+			<div class="bg-base-200 rounded shadow-sm p-8 min-h-full min-w-0" style="overflow-x: hidden; max-width: 100%; box-sizing: border-box;">
+				<div class="lg:contents {sidebarExpanded ? 'invisible' : ''}">
+					{@render children()}
+				</div>
+			</div>
+		</div>
+	</div>
+{:else}
+	<!-- No drawer for unauthenticated users -->
+	<div class="bg-base-100 rounded-box shadow-md p-8 max-w-7xl mx-auto">
+		{@render children()}
+	</div>
+{/if}

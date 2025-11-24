@@ -29,7 +29,7 @@
 	let mapping: ColumnMapping = $state({});
 	let mappedTransactions: (TransactionInput | null)[] = $state([]);
 	let mappingErrors: MappingError[][] = $state([]);
-	let previewRowCount = $state(10);
+	let previewRowCount = $state(5);
 
 	onMount(() => {
 		// Retrieve parsed CSV data from sessionStorage
@@ -146,48 +146,46 @@
 	</div>
 {:else}
 	<div class="space-y-6">
-		<!-- Instructions -->
-		<div class="alert alert-info w-1/2">
-			<ul class="text-sm list-disc list-inside space-y-1">
-				<li>Columns have been automatically assigned. Check if they are correct and adjust where necessary.</li>
-				<li>Required fields must be mapped for the import to work.</li>
-				<li>Columns can be skipped by selecting "(Skip column)".</li>
-			</ul>
-		</div>
-
 		<!-- Mapping Summary -->
 		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Mapping status</legend>
 			
-			<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+			<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
 				<div>
 					<p class="text-sm text-base-content/70">Total rows</p>
 					<p class="font-semibold">{totalRows}</p>
 				</div>
 				<div>
-					<p class="text-sm text-base-content/70">Preview (valid)</p>
+					<p class="text-sm text-base-content/70">Valid</p>
 					<p class="font-semibold text-success">{validCount} / {previewRows}</p>
 				</div>
 				<div>
-					<p class="text-sm text-base-content/70">Preview errors</p>
+					<p class="text-sm text-base-content/70">Errors</p>
 					<p class="font-semibold text-error">{errorCount}</p>
 				</div>
 				<div>
-					<p class="text-sm text-base-content/70">Columns mapped</p>
+					<p class="text-sm text-base-content/70">Mapped</p>
 					<p class="font-semibold">
 						{Object.values(mapping).filter((f) => f !== 'skip').length} / {parseResult ? parseResult.headers.length : 0}
 					</p>
 				</div>
 				<div>
-					<p class="text-sm text-base-content/70">Missing required</p>
+					<p class="text-sm text-base-content/70">Missing</p>
 					<p class="font-semibold text-warning">{missingRequired.length}</p>
 				</div>
 			</div>
-			{#if totalRows > previewRows}
-				<p class="text-xs text-base-content/70 mt-2">
-					Note: Showing preview of first {previewRows} rows. Full mapping and validation will be done on the server during import.
-				</p>
-			{/if}
+			
+			<div class="flex justify-end mt-4">
+				<button
+					class="btn btn-primary"
+					disabled={validCount === 0 || missingRequired.length > 0}
+					onclick={handleContinue}
+				>
+					<Check class="h-4 w-4" />
+					Continue to import {totalRows} transactions
+				</button>
+			</div>
+			
 		</fieldset>
 
 		<!-- Missing Required Fields Warning -->
@@ -211,7 +209,7 @@
 					<thead>
 						<tr>
 							<th>CSV column</th>
-							<th>Sample value</th>
+							<th class="w-20">Sample value</th>
 							<th>Map to field</th>
 							<th>Status</th>
 						</tr>
@@ -223,10 +221,9 @@
 							{@const isRequired = TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
 							<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
 								<td>
-									<span class="badge badge-outline">Column {index + 1}</span>
-									<p class="font-medium mt-1">{header || '(empty header)'}</p>
+									<p class="font-medium">{header || '(empty header)'}</p>
 								</td>
-								<td class="max-w-xs">
+								<td class="w-20 max-w-20">
 									<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
 								</td>
 								<td>

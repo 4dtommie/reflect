@@ -6,7 +6,7 @@
 	const user = $derived(data.user);
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Welcome to Reflectie AI</h1>
+<h1 class="text-4xl font-bold mb-6">Reflect on your personal finances</h1>
 
 {#if user}
 	<p class="text-lg mb-4">Welcome back, {user.username}!</p>

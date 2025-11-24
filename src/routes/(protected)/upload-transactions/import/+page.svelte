@@ -202,11 +202,13 @@
 		<!-- Actions -->
 		<div class="flex gap-4">
 			{#if importResult.success}
-				<button class="btn btn-primary" onclick={startOver}>
+				<a href="/transactions" class="btn btn-primary">
+					View Transactions
+				</a>
+				<button class="btn btn-ghost" onclick={startOver}>
 					<RefreshCw class="h-4 w-4" />
 					Upload Another File
 				</button>
-				<a href="/" class="btn btn-ghost">Go to Dashboard</a>
 			{:else}
 				<button class="btn btn-ghost" onclick={goBack}>
 					<ArrowLeft class="h-4 w-4" />
