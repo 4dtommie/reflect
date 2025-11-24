@@ -5,6 +5,8 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { Sun, Moon } from 'lucide-svelte';
 	import TaskSidebar from '$lib/components/TaskSidebar.svelte';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	
 	let sidebarExpanded = $state(false);
 	
@@ -33,6 +35,10 @@
 				document.documentElement.setAttribute('data-theme', 'nord');
 			}
 		}
+
+		// Initialize Vercel Analytics and Speed Insights
+		injectAnalytics();
+		injectSpeedInsights();
 	});
 
 	function toggleTheme() {

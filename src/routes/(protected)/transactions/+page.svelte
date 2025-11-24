@@ -737,6 +737,11 @@
 {:else}
 	<div class="overflow-x-auto" style="width: 100%; max-width: 100%;">
 		<table class="table table-zebra" style="width: 100%; min-width: 0; table-layout: fixed; max-width: 100%;">
+			<colgroup>
+				<col style="width: 70px;">
+				<col>
+				<col style="width: 100px;">
+			</colgroup>
 			<tbody>
 				<!-- Group by month -->
 				{#each transactionsByMonth() as monthGroup}
@@ -753,19 +758,19 @@
 								</span>
 								{#if monthGroup.monthTotal > 0}
 									<div class="text-right">
-										<div class="flex justify-end gap-2">
+										<div class="flex justify-end">
 											<span class="text-right">Spent</span>
-											<span class="text-right min-w-[100px]">{formatAmountNoDecimals(monthGroup.monthTotal)}</span>
+											<span class="text-right ml-1">{formatAmountNoDecimals(monthGroup.monthTotal)}</span>
 										</div>
 										{#if previousYearData && previousYearDate}
-											<div class="flex justify-end gap-2 text-base-content/70 font-normal text-sm">
+											<div class="flex justify-end text-base-content/70 font-normal text-sm">
 												<span class="text-right">Last {previousYearDate.toLocaleDateString('en-US', { month: 'long' })}</span>
-												<span class="text-right min-w-[100px]">{formatAmountNoDecimals(previousYearData.total)}</span>
+												<span class="text-right ml-1">{formatAmountNoDecimals(previousYearData.total)}</span>
 											</div>
 										{:else}
-											<div class="flex justify-end gap-2 text-base-content/70 font-normal text-sm">
+											<div class="flex justify-end text-base-content/70 font-normal text-sm">
 												<span class="text-right">Avg</span>
-												<span class="text-right min-w-[100px]">{formatAmountNoDecimals(monthlyStats().averageMonthlySpending)}</span>
+												<span class="text-right ml-1">{formatAmountNoDecimals(monthlyStats().averageMonthlySpending)}</span>
 											</div>
 										{/if}
 									</div>
@@ -784,13 +789,13 @@
 									<span>Week {weekGroup.weekNumber}</span>
 									{#if avgForWeekNumber > 0}
 										<div class="text-right">
-											<div class="flex justify-end gap-2">
+											<div class="flex justify-end">
 												<span class="text-right">Spent</span>
-												<span class="text-right min-w-[100px]">{formatAmountNoDecimals(weekGroup.totalSpending)}</span>
+												<span class="text-right ml-1">{formatAmountNoDecimals(weekGroup.totalSpending)}</span>
 											</div>
-											<div class="flex justify-end gap-2 text-base-content/70 font-normal text-sm">
+											<div class="flex justify-end text-base-content/70 font-normal text-sm">
 												<span class="text-right">Avg</span>
-												<span class="text-right min-w-[100px]">{formatAmountNoDecimals(avgForWeekNumber)}</span>
+												<span class="text-right ml-1">{formatAmountNoDecimals(avgForWeekNumber)}</span>
 											</div>
 										</div>
 									{:else}
@@ -806,7 +811,7 @@
 								<tr>
 									{#if index === 0}
 										<td rowspan={transactions.length} class="align-top">
-											{formatDate(transaction.date)}
+											<span class="text-sm">{formatDate(transaction.date)}</span>
 										</td>
 									{/if}
 									<td>
@@ -821,12 +826,12 @@
 											</span>
 										</div>
 									</td>
-									<td class="text-right whitespace-nowrap">
+									<td class="text-right">
 										<div class="flex flex-col items-end">
-											<span class="text-lg font-medium {transaction.is_debit ? 'text-error' : 'text-success'}">
+											<span class="font-medium {transaction.is_debit ? 'text-error' : 'text-success'}">
 												{transaction.is_debit ? '-' : '+'}{formatAmount(transaction.amount)}
 											</span>
-											<span class="text-sm text-base-content/70">{transaction.type || 'Transfer'}</span>
+											<span class="text-xs text-base-content/70">{transaction.type || 'Transfer'}</span>
 										</div>
 									</td>
 								</tr>
