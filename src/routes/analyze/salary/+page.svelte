@@ -4,7 +4,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Find Salary</h1>
+<h1 class="text-4xl font-bold mb-6">Find salary</h1>
 
 <p class="text-lg mb-8">Analyze your transactions to identify salary payments.</p>
 

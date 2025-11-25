@@ -15,6 +15,9 @@
 		Filler
 	} from 'chart.js';
 	import { browser } from '$app/environment';
+	import { HelpCircle, Trash2 } from 'lucide-svelte';
+	import * as Icons from 'lucide-svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	// Register Chart.js components
 	Chart.register(
@@ -45,6 +48,9 @@
 	let chartContainer: HTMLDivElement | null = $state(null);
 	let showHint = $state(true);
 	let isDragging = $state(false);
+	let showDeleteConfirm = $state(false);
+	let deleting = $state(false);
+	let deleteError = $state<string | null>(null);
 
 	function formatDate(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
@@ -85,6 +91,39 @@
 		const d = typeof date === 'string' ? new Date(date) : date;
 		const weekNum = getWeekOfMonth(d);
 		return `${d.getFullYear()}-${d.getMonth()}-week${weekNum}`;
+	}
+
+	function getCategoryIcon(iconName: string | null | undefined) {
+		if (!iconName) return null;
+		return (Icons as any)[iconName] || null;
+	}
+
+	async function deleteAllTransactions() {
+		deleting = true;
+		deleteError = null;
+
+		try {
+			const response = await fetch('/api/transactions', {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || data.message || 'Failed to delete transactions');
+			}
+
+			const result = await response.json();
+			console.log(`✅ Deleted ${result.deletedCount} transactions`);
+
+			// Refresh the page
+			await invalidateAll();
+			showDeleteConfirm = false;
+		} catch (err) {
+			deleteError = err instanceof Error ? err.message : 'Failed to delete transactions';
+			console.error('❌ Error deleting transactions:', err);
+		} finally {
+			deleting = false;
+		}
 	}
 
 	// Group transactions by week, then by day
@@ -397,6 +436,53 @@
 				}
 			};
 
+			// Define gradient fill plugin for both spending and income lines
+			const gradientFillPlugin = {
+				id: 'gradientFill',
+				beforeDatasetsDraw: (chart: any) => {
+					const ctx = chart.ctx;
+					const chartArea = chart.chartArea;
+					
+					if (!chartArea) return;
+					
+					// Handle spending dataset (purple-blue gradient)
+					const spendingDataset = chart.data.datasets[0];
+					if (spendingDataset && spendingDataset.fill) {
+						const spendingGradient = ctx.createLinearGradient(
+							chartArea.left,   // x0 - same x
+							chartArea.top,    // y0 - top (purple)
+							chartArea.left,   // x1 - same x
+							chartArea.bottom  // y1 - bottom (blue)
+						);
+						
+						// Purple to blue gradient
+						spendingGradient.addColorStop(0, 'rgba(147, 51, 234, 0.3)');   // Purple at top
+						spendingGradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.25)'); // Indigo in middle
+						spendingGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');  // Blue at bottom
+						
+						spendingDataset.backgroundColor = spendingGradient;
+					}
+					
+					// Handle income dataset (green-blue gradient)
+					const incomeDataset = chart.data.datasets[1];
+					if (incomeDataset && incomeDataset.fill) {
+						const incomeGradient = ctx.createLinearGradient(
+							chartArea.left,   // x0 - same x
+							chartArea.top,    // y0 - top (green)
+							chartArea.left,   // x1 - same x
+							chartArea.bottom  // y1 - bottom (blue)
+						);
+						
+						// Green to blue gradient
+						incomeGradient.addColorStop(0, 'rgba(5, 150, 105, 0.3)');   // Emerald-600 at top
+						incomeGradient.addColorStop(0.5, 'rgba(14, 165, 233, 0.25)'); // Sky-500 in middle
+						incomeGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');  // Blue-500 at bottom
+						
+						incomeDataset.backgroundColor = incomeGradient;
+					}
+				}
+			};
+
 			// Define edge fade gradients plugin - draws only in chart area
 			const edgeFadePlugin = {
 				id: 'edgeFade',
@@ -484,7 +570,7 @@
 				};
 				
 				// Register the plugins
-				Chart.register(yearDividerPlugin, edgeFadePlugin);
+				Chart.register(yearDividerPlugin, gradientFillPlugin, edgeFadePlugin);
 				
 				chartInstance = new Chart(canvas, {
 					type: 'line',
@@ -494,8 +580,8 @@
 							{
 								label: 'Monthly Spending',
 								data: chartDataValue.spending.map((value, index) => ({ x: index, y: value })),
-								borderColor: 'rgba(239, 68, 68, 1)',
-								backgroundColor: 'rgba(239, 68, 68, 0.05)',
+								borderColor: 'rgba(220, 38, 38, 1)', // red-600
+								backgroundColor: 'rgba(220, 38, 38, 0.05)', // Will be overridden by plugin
 								borderWidth: 1,
 								fill: true,
 								tension: 0.4,
@@ -505,8 +591,8 @@
 							{
 								label: 'Income',
 								data: chartDataValue.income.map((value, index) => ({ x: index, y: value })),
-								borderColor: 'rgba(34, 197, 94, 1)',
-								backgroundColor: 'rgba(34, 197, 94, 0.05)',
+								borderColor: 'rgba(5, 150, 105, 1)', // emerald-600
+								backgroundColor: 'rgba(5, 150, 105, 0.05)', // Will be overridden by plugin
 								borderWidth: 1,
 								fill: true,
 								tension: 0.4,
@@ -516,7 +602,7 @@
 							{
 								label: 'Avg Spending',
 								data: chartDataValue.spending.map((_, index) => ({ x: index, y: chartDataValue.avgSpending })),
-								borderColor: 'rgba(239, 68, 68, 1)',
+								borderColor: 'rgba(220, 38, 38, 1)', // red-600
 								borderWidth: 1,
 								borderDash: [5, 5],
 								fill: false,
@@ -526,7 +612,7 @@
 							{
 								label: 'Avg Income',
 								data: chartDataValue.income.map((_, index) => ({ x: index, y: chartDataValue.avgIncome })),
-								borderColor: 'rgba(34, 197, 94, 1)',
+								borderColor: 'rgba(5, 150, 105, 1)', // emerald-600
 								borderWidth: 1,
 								borderDash: [5, 5],
 								fill: false,
@@ -808,6 +894,7 @@
 						{#each weekGroup.days as [dayKey, transactions]}
 							<!-- Transaction rows for this day -->
 							{#each transactions as transaction, index}
+								{@const CategoryIcon = transaction.category ? getCategoryIcon(transaction.category.icon) : null}
 								<tr>
 									{#if index === 0}
 										<td rowspan={transactions.length} class="align-top">
@@ -815,15 +902,32 @@
 										</td>
 									{/if}
 									<td>
-										<div class="flex flex-col">
-											<span class="font-medium">{transaction.merchantName}</span>
-											<span 
-												class="text-sm text-base-content/70 truncate" 
-												style="max-width: 100%;"
-												title={transaction.description}
-											>
-												{transaction.description}
-											</span>
+										<div class="flex items-start gap-3">
+											<div class="flex-shrink-0 mt-0.5">
+												{#if CategoryIcon}
+													<CategoryIcon 
+														size={20} 
+														style="color: {transaction.category.color || '#94a3b8'};" 
+													/>
+												{:else}
+													<HelpCircle 
+														size={20} 
+														class="text-base-content/40" 
+													/>
+												{/if}
+											</div>
+											<div class="flex flex-col gap-1 min-w-0 flex-1">
+												<span class="font-medium" title={transaction.merchantName}>
+													{transaction.merchant?.name ?? transaction.merchantName}
+												</span>
+												<span 
+													class="text-sm text-base-content/70 truncate" 
+													style="max-width: 100%;"
+													title={transaction.description}
+												>
+													{transaction.description}
+												</span>
+											</div>
 										</div>
 									</td>
 									<td class="text-right">
@@ -841,6 +945,79 @@
 				{/each}
 			</tbody>
 		</table>
+	</div>
+{/if}
+
+<!-- Delete All Transactions Button -->
+<div class="mt-8 flex justify-end">
+	<button
+		class="btn btn-error btn-outline"
+		onclick={() => (showDeleteConfirm = true)}
+		disabled={deleting}
+	>
+		<Trash2 size={20} />
+		Delete all transactions
+	</button>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirm}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="text-2xl font-bold mb-4">Delete all transactions</h3>
+			<p class="mb-6">
+				Are you sure you want to delete <strong>all transactions</strong>? This action cannot be undone.
+			</p>
+
+			{#if deleteError}
+				<div class="alert alert-error mb-4">
+					<span>{deleteError}</span>
+				</div>
+			{/if}
+
+			<div class="modal-action">
+				<button
+					class="btn btn-ghost"
+					onclick={() => {
+						showDeleteConfirm = false;
+						deleteError = null;
+					}}
+					disabled={deleting}
+				>
+					Cancel
+				</button>
+				<button
+					class="btn btn-error"
+					onclick={deleteAllTransactions}
+					disabled={deleting}
+				>
+					{#if deleting}
+						<span class="loading loading-spinner loading-sm"></span>
+						Deleting...
+					{:else}
+						<Trash2 size={20} />
+						Delete all
+					{/if}
+				</button>
+			</div>
+		</div>
+		<div 
+			class="modal-backdrop" 
+			role="button"
+			tabindex="0"
+			onclick={() => {
+				if (!deleting) {
+					showDeleteConfirm = false;
+					deleteError = null;
+				}
+			}}
+			onkeydown={(e) => {
+				if ((e.key === 'Enter' || e.key === ' ') && !deleting) {
+					showDeleteConfirm = false;
+					deleteError = null;
+				}
+			}}
+		></div>
 	</div>
 {/if}
 </div>

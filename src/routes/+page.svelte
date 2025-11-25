@@ -13,7 +13,7 @@
 {:else}
 	<p class="text-lg mb-8">Log in to get started.</p>
 	<div class="flex gap-4">
-		<a href="/signin" class="btn btn-primary"> Log In </a>
+		<a href="/signin" class="btn btn-primary"> Log in </a>
 		<a href="/signup" class="btn btn-secondary"> Sign up </a>
 	</div>
 {/if}

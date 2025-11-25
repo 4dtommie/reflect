@@ -36,7 +36,7 @@
 </script>
 
 <div class="max-w-md mx-auto mt-12">
-	<h1 class="text-4xl font-bold mb-6">Sign Up</h1>
+	<h1 class="text-4xl font-bold mb-6">Sign up</h1>
 
 	{#if error}
 		<div class="alert alert-error mb-4">{error}</div>
@@ -74,7 +74,7 @@
 		</fieldset>
 
 		<button type="submit" disabled={submitting} class="btn btn-primary w-full">
-			{submitting ? 'Signing up...' : 'Sign Up'}
+			{submitting ? 'Signing up...' : 'Sign up'}
 		</button>
 	</form>
 

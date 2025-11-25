@@ -149,6 +149,7 @@
 				<details use:registerDropdown ontoggle={handleDetailsToggle}>
 					<summary>Enrich data</summary>
 					<ul class="bg-base-100 rounded-t-none p-2 w-52">
+						<li><a href="/categories" onclick={closeDropdownOnLinkClick}>Category Management</a></li>
 						<li><a href="/enrich/categorize" onclick={closeDropdownOnLinkClick}>Categorize transactions</a></li>
 					</ul>
 				</details>

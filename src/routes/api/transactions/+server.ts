@@ -32,25 +32,52 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			where: { user_id: userId }
 		});
 
-		// Fetch transactions
+		// Fetch transactions with category and merchant relations
 		const transactionsRaw = await (db as any).transactions.findMany({
 			where: { user_id: userId },
 			take: pageSize,
-			orderBy: { date: 'desc' }
+			orderBy: { date: 'desc' },
+			include: {
+				categories: {
+					select: {
+						id: true,
+						name: true,
+						color: true,
+						icon: true
+					}
+				},
+				merchants: {
+					select: {
+						id: true,
+						name: true
+					}
+				}
+			}
 		});
 
 		// Serialize to plain objects - convert Decimal to number, Date to string
 		const transactions = transactionsRaw.map((t: any) => ({
 			id: t.id,
 			date: t.date instanceof Date ? t.date.toISOString() : t.date,
-			merchantName: t.merchantName,
+			merchantName: t.merchantName, // Raw merchant name
+			merchant_id: t.merchant_id,
 			iban: t.iban,
 			counterparty_iban: t.counterparty_iban,
 			is_debit: t.is_debit,
 			amount: typeof t.amount === 'object' && t.amount?.toNumber ? t.amount.toNumber() : Number(t.amount),
 			type: t.type,
 			description: t.description,
-			category_id: t.category_id
+			category_id: t.category_id,
+			category: t.categories ? {
+				id: t.categories.id,
+				name: t.categories.name,
+				color: t.categories.color,
+				icon: t.categories.icon
+			} : null,
+			merchant: t.merchants ? {
+				id: t.merchants.id,
+				name: t.merchants.name // Cleaned merchant name
+			} : null
 		}));
 
 		// Calculate monthly statistics from ALL transactions (not just current page)
@@ -351,6 +378,40 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			},
 			{ status: 500 }
 		);
+	}
+};
+
+/**
+ * Delete all transactions for the current user
+ */
+export const DELETE: RequestHandler = async ({ locals }) => {
+	// Check authentication
+	if (!locals.user) {
+		throw error(401, 'Not authenticated');
+	}
+
+	const userId = locals.user.id;
+
+	try {
+		console.log(`🗑️  Deleting all transactions for user ${userId}...`);
+
+		// Delete all transactions for this user
+		const result = await (db as any).transactions.deleteMany({
+			where: {
+				user_id: userId
+			}
+		});
+
+		console.log(`✅ Deleted ${result.count} transactions for user ${userId}`);
+
+		return json({
+			success: true,
+			deletedCount: result.count,
+			message: `Successfully deleted ${result.count} transactions`
+		});
+	} catch (err: any) {
+		console.error('Error deleting transactions:', err);
+		throw error(500, err.message || 'Failed to delete transactions');
 	}
 };
 

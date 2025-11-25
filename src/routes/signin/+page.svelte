@@ -35,7 +35,7 @@
 </script>
 
 <div class="max-w-md">
-	<h1 class="text-4xl font-bold mb-6">Sign In</h1>
+	<h1 class="text-4xl font-bold mb-6">Sign in</h1>
 
 	{#if error}
 		<div class="alert alert-error mb-4">{error}</div>

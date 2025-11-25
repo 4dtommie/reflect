@@ -4,7 +4,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Find Subscriptions</h1>
+<h1 class="text-4xl font-bold mb-6">Find subscriptions</h1>
 
 <p class="text-lg mb-8">Identify recurring subscription payments in your transactions.</p>
 

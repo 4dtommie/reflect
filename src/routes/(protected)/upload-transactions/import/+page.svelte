@@ -95,7 +95,7 @@
 	}
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Import Transactions</h1>
+<h1 class="text-4xl font-bold mb-6">Import transactions</h1>
 
 {#if error}
 	<div class="alert alert-error mb-6">

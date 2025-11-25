@@ -26,18 +26,19 @@ model categories {
   description      String?
   color            String?
   icon             String?
-  keywords         String[]
   created_at       DateTime          @default(now())
   updated_at       DateTime
   parent_id        Int?
   created_by       Int?
   is_default       Boolean           @default(false)
+  group            String?            // "income", "essential", "lifestyle", "financial", "other"
   users            User?             @relation(fields: [created_by], references: [id])
   categories       categories?       @relation("categoriesTocategories", fields: [parent_id], references: [id])
   other_categories categories[]      @relation("categoriesTocategories")
   merchants        merchants[]
   transactions     transactions[]
   user_categories  user_categories[]
+  category_keywords category_keywords[]
 }
 
 model merchants {
@@ -66,6 +67,7 @@ model transactions {
   description        String
   category_id        Int?
   is_category_manual Boolean         @default(false)
+  category_confidence Float?
   is_recurring       Boolean?
   created_at         DateTime        @default(now())
   updated_at         DateTime
@@ -74,6 +76,7 @@ model transactions {
   categories         categories?     @relation(fields: [category_id], references: [id])
   merchants          merchants?      @relation(fields: [merchant_id], references: [id])
   users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category_keywords  category_keywords[]
 
   @@index([date])
   @@index([user_id, category_id])
@@ -94,6 +97,22 @@ model user_categories {
 
   @@unique([user_id, category_id])
   @@index([user_id, is_active])
+}
+
+model category_keywords {
+  id                  Int          @id @default(autoincrement())
+  category_id         Int
+  keyword             String
+  source              String       @default("manual") // "manual" | "ai"
+  source_transaction_id Int?
+  confidence          Float?
+  created_at          DateTime     @default(now())
+  categories          categories   @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  transactions        transactions? @relation(fields: [source_transaction_id], references: [id])
+
+  @@unique([category_id, keyword])
+  @@index([category_id])
+  @@index([keyword])
 }
 
 enum TransactionType {
