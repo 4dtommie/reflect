@@ -1,4 +1,4 @@
 {
-	"buildCommand": "prisma generate && prisma migrate deploy && vite build"
+	"buildCommand": "prisma generate && prisma migrate deploy && npm run db:seed && vite build"
 }
 

@@ -46,7 +46,7 @@ async function createCategoryWithKeywords(
 	return category;
 }
 
-async function main() {
+export async function seedDatabase() {
 	// Use console.error for seed logs - they're more reliably shown in terminal
 	const log = (...args: any[]) => {
 		console.error(...args);
@@ -2132,11 +2132,23 @@ async function main() {
 	}
 }
 
-main()
-	.catch((e) => {
-		console.error('❌ Fatal error seeding database:', e);
-		process.exit(1);
-	})
-	.finally(async () => {
-		await prisma.$disconnect();
-	});
+// CLI entry point
+async function main() {
+	await seedDatabase();
+}
+
+// Only run if called directly (not imported)
+// Check if this file is being run directly by checking if it's the main module
+const isMainModule = process.argv[1]?.endsWith('seed.ts') || 
+	(import.meta.url && import.meta.url === `file://${process.argv[1]}`);
+
+if (isMainModule) {
+	main()
+		.catch((e) => {
+			console.error('❌ Fatal error seeding database:', e);
+			process.exit(1);
+		})
+		.finally(async () => {
+			await prisma.$disconnect();
+		});
+}

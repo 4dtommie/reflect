@@ -18,6 +18,51 @@
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 	
+	// Reset environment state
+	let showResetModal = $state(false);
+	let resetting = $state(false);
+	let resetError = $state<string | null>(null);
+	let resetSuccess = $state(false);
+	
+	async function handleResetEnvironment() {
+		resetting = true;
+		resetError = null;
+		resetSuccess = false;
+		
+		try {
+			const response = await fetch('/api/reset-environment', {
+				method: 'POST'
+			});
+			
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to reset environment');
+			}
+			
+			resetSuccess = true;
+			// Refresh the page after a short delay to show updated data
+			setTimeout(() => {
+				window.location.reload();
+			}, 1500);
+		} catch (err) {
+			resetError = err instanceof Error ? err.message : 'Unknown error occurred';
+		} finally {
+			resetting = false;
+		}
+	}
+	
+	function openResetModal() {
+		showResetModal = true;
+		resetError = null;
+		resetSuccess = false;
+	}
+	
+	function closeResetModal() {
+		showResetModal = false;
+		resetError = null;
+		resetSuccess = false;
+	}
+	
 	// Hide sidebar on categorize-all page
 	const showSidebar = $derived(!$page.url.pathname.includes('/categorize-all'));
 
@@ -188,6 +233,21 @@
 						<div class="border-t border-base-300"></div>
 					</li>
 					<li>
+						<button 
+							onclick={(e) => { 
+								const details = (e.currentTarget as HTMLElement).closest('details') as HTMLDetailsElement;
+								if (details) details.open = false;
+								openResetModal(); 
+							}} 
+							class="w-full text-left text-error"
+						>
+							Reset environment
+						</button>
+					</li>
+					<li class="my-2">
+						<div class="border-t border-base-300"></div>
+					</li>
+					<li>
 						<label class="flex cursor-pointer gap-2 items-center">
 							<input
 								type="checkbox"
@@ -235,5 +295,63 @@
 	<!-- No drawer for unauthenticated users -->
 	<div class="bg-base-100 shadow-md p-8">
 		{@render children()}
+	</div>
+{/if}
+
+<!-- Reset Environment Confirmation Modal -->
+{#if showResetModal}
+	<div class="modal modal-open">
+		<div class="modal-box">
+			<h3 class="font-bold text-lg text-error mb-4">⚠️ Reset environment</h3>
+			<p class="py-2 font-semibold">This action will permanently delete:</p>
+			<ul class="list-disc list-inside mb-4 space-y-1">
+				<li>All transactions</li>
+				<li>All categories (including custom ones)</li>
+				<li>All category keywords</li>
+				<li>All merchants</li>
+				<li>All user category preferences</li>
+			</ul>
+			<p class="py-2 mb-4">Default categories will be recreated after deletion.</p>
+			<p class="py-2 text-error font-semibold">This action cannot be undone!</p>
+			
+			{#if resetError}
+				<div class="alert alert-error mt-4">
+					<span>{resetError}</span>
+				</div>
+			{/if}
+			
+			{#if resetSuccess}
+				<div class="alert alert-success mt-4">
+					<span>✅ Environment reset successfully! Page will refresh shortly...</span>
+				</div>
+			{/if}
+			
+			<div class="modal-action">
+				<button 
+					class="btn" 
+					onclick={closeResetModal}
+					disabled={resetting}
+				>
+					Cancel
+				</button>
+				<button 
+					class="btn btn-error" 
+					onclick={handleResetEnvironment}
+					disabled={resetting || resetSuccess}
+				>
+					{#if resetting}
+						<span class="loading loading-spinner loading-sm"></span>
+						Resetting...
+					{:else}
+						Confirm reset
+					{/if}
+				</button>
+			</div>
+		</div>
+		<button 
+			class="modal-backdrop" 
+			onclick={closeResetModal}
+			aria-label="Close modal"
+		></button>
 	</div>
 {/if}
