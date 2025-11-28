@@ -4,41 +4,35 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { Sun, Moon, User } from 'lucide-svelte';
-	import TaskSidebar from '$lib/components/TaskSidebar.svelte';
+	import { User, LayoutDashboard, Receipt, FileText, BarChart3 } from 'lucide-svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
-	
-	let sidebarExpanded = $state(false);
-	
-	function handleSidebarExpandedChange(expanded: boolean) {
-		sidebarExpanded = expanded;
-	}
+
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
-	
+
 	// Reset environment state
 	let showResetModal = $state(false);
 	let resetting = $state(false);
 	let resetError = $state<string | null>(null);
 	let resetSuccess = $state(false);
-	
+
 	async function handleResetEnvironment() {
 		resetting = true;
 		resetError = null;
 		resetSuccess = false;
-		
+
 		try {
 			const response = await fetch('/api/reset-environment', {
 				method: 'POST'
 			});
-			
+
 			if (!response.ok) {
 				const errorData = await response.json();
 				throw new Error(errorData.error || 'Failed to reset environment');
 			}
-			
+
 			resetSuccess = true;
 			// Refresh the page after a short delay to show updated data
 			setTimeout(() => {
@@ -50,21 +44,18 @@
 			resetting = false;
 		}
 	}
-	
+
 	function openResetModal() {
 		showResetModal = true;
 		resetError = null;
 		resetSuccess = false;
 	}
-	
+
 	function closeResetModal() {
 		showResetModal = false;
 		resetError = null;
 		resetSuccess = false;
 	}
-	
-	// Hide sidebar on categorize-all page
-	const showSidebar = $derived(!$page.url.pathname.includes('/categorize-all'));
 
 	let currentTheme = $state<'nord' | 'night'>('nord');
 
@@ -141,7 +132,7 @@
 		// Check if click is inside any dropdown (details element)
 		// This includes clicks on summary and links inside the dropdown
 		const clickedInsideDropdown = target.closest('details');
-		
+
 		if (!clickedInsideDropdown) {
 			// Close all open dropdowns when clicking outside
 			dropdowns.forEach((dropdown) => {
@@ -167,6 +158,17 @@
 			clickOutsideCleanup();
 		}
 	});
+
+	const navItems = [
+		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+		{ href: '/transactions', label: 'Transactions', icon: Receipt },
+		{ href: '/reports', label: 'Reports', icon: FileText },
+		{ href: '/statistics', label: 'Statistics', icon: BarChart3 }
+	];
+
+	const isActive = (href: string) => {
+		return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/');
+	};
 </script>
 
 <svelte:head>
@@ -179,66 +181,75 @@
 	/>
 </svelte:head>
 
-<div class="navbar bg-base-100 shadow-sm mb-4 relative">
-	<div class="flex-1">
-		<a href="/" class="btn btn-ghost text-xl"><span class="mirror-r">R</span>eflect</a>
+<div class="navbar mb-4">
+	<!-- Logo on left -->
+	<div class="navbar-start">
+		<a href="/" class="btn-white-swoosh btn rounded-full px-6 text-xl shadow-sm">
+			<span class="mirror-r">R</span>eflect
+		</a>
 	</div>
-	<div class="absolute left-1/2 transform -translate-x-1/2">
-		<ul class="menu menu-horizontal px-1">
-			<li>
-				<details use:registerDropdown ontoggle={handleDetailsToggle}>
-					<summary>Transactions</summary>
-					<ul class="bg-base-100 rounded-t-none p-2 w-52">
-						<li><a href="/upload-transactions" onclick={closeDropdownOnLinkClick}>Upload transactions</a></li>
-						<li><a href="/transactions" onclick={closeDropdownOnLinkClick}>View transactions</a></li>
-					</ul>
-				</details>
-			</li>
-			<li>
-				<details use:registerDropdown ontoggle={handleDetailsToggle}>
-					<summary>Enrich data</summary>
-					<ul class="bg-base-100 rounded-t-none p-2 w-52">
-						<li><a href="/categories" onclick={closeDropdownOnLinkClick}>Category Management</a></li>
-						<li><a href="/categorize-all" onclick={closeDropdownOnLinkClick}>Categorize all transactions</a></li>
-					</ul>
-				</details>
-			</li>
-			<li>
-				<details use:registerDropdown ontoggle={handleDetailsToggle}>
-					<summary>Analyze data</summary>
-					<ul class="bg-base-100 rounded-t-none p-2 w-52">
-						<li><a href="/analyze/salary" onclick={closeDropdownOnLinkClick}>Find salary</a></li>
-						<li><a href="/analyze/subscriptions" onclick={closeDropdownOnLinkClick}>Find subscriptions</a></li>
-					</ul>
-				</details>
-			</li>
-		</ul>
+
+	<!-- Navigation links in center (only for authenticated users) -->
+	<div class="navbar-center">
+		{#if data.user}
+			<ul class="menu menu-horizontal gap-2 px-1">
+				{#each navItems as { href, label, icon: Icon }}
+					<li>
+						<a
+							{href}
+							class="btn {isActive(href)
+								? 'btn-active-grey'
+								: 'btn-white-swoosh'} gap-2 rounded-full px-6 shadow-sm"
+						>
+							<Icon size={20} />
+							<span class="hidden font-medium md:inline">{label}</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	</div>
-	<div class="flex-1 flex justify-end items-center gap-2">
+
+	<!-- User menu on right -->
+	<div class="navbar-end">
 		{#if data.user}
 			<details use:registerDropdown ontoggle={handleDetailsToggle} class="dropdown dropdown-end">
-				<summary class="btn btn-ghost gap-2">
+				<summary class="btn-white-swoosh btn gap-2 rounded-full px-6 shadow-sm">
 					<User size={20} />
-					<span>{data.user.username}</span>
+					<span class="hidden sm:inline">{data.user.username}</span>
 				</summary>
-				<ul class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg">
+				<ul class="dropdown-content menu z-[1] w-52 rounded-box bg-base-100 p-2 shadow-lg">
 					<li><a href="/merchants" onclick={closeDropdownOnLinkClick}>Merchant management</a></li>
 					<li class="my-2">
 						<div class="border-t border-base-300"></div>
 					</li>
-					<li><a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}>Test AI categorization</a></li>
-					<li><a href="/test-ai-categorize-v2" onclick={closeDropdownOnLinkClick}>Test AI categorization v2</a></li>
-					<li><a href="/categories/generate-embeddings" onclick={closeDropdownOnLinkClick}>Generate category embeddings</a></li>
+					<li>
+						<a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}
+							>Test AI categorization</a
+						>
+					</li>
+					<li>
+						<a href="/test-ai-categorize-v2" onclick={closeDropdownOnLinkClick}
+							>Test AI categorization v2</a
+						>
+					</li>
+					<li>
+						<a href="/categories/generate-embeddings" onclick={closeDropdownOnLinkClick}
+							>Generate category embeddings</a
+						>
+					</li>
 					<li class="my-2">
 						<div class="border-t border-base-300"></div>
 					</li>
 					<li>
-						<button 
-							onclick={(e) => { 
-								const details = (e.currentTarget as HTMLElement).closest('details') as HTMLDetailsElement;
+						<button
+							onclick={(e) => {
+								const details = (e.currentTarget as HTMLElement).closest(
+									'details'
+								) as HTMLDetailsElement;
 								if (details) details.open = false;
-								openResetModal(); 
-							}} 
+								openResetModal();
+							}}
 							class="w-full text-left text-error"
 						>
 							Reset environment
@@ -248,12 +259,12 @@
 						<div class="border-t border-base-300"></div>
 					</li>
 					<li>
-						<label class="flex cursor-pointer gap-2 items-center">
+						<label class="flex cursor-pointer items-center gap-2">
 							<input
 								type="checkbox"
 								checked={currentTheme === 'night'}
 								onchange={toggleTheme}
-								class="toggle theme-controller"
+								class="theme-controller toggle"
 							/>
 							<span>Dark mode</span>
 						</label>
@@ -271,76 +282,56 @@
 </div>
 
 {#if data.user}
-	<!-- Sidebar and content wrapper -->
-	<div class="flex items-stretch min-w-0">
-		{#if showSidebar}
-			<!-- Sidebar - always visible, collapses on mobile -->
-			<div class="pt-2 pr-2 lg:pr-4 flex-shrink-0">
-				<div class="h-full">
-					<TaskSidebar onExpandedChange={handleSidebarExpandedChange} />
-				</div>
-			</div>
-		{/if}
-		
-		<!-- Main content -->
-		<div class="flex-1 pt-2 {showSidebar ? 'pl-2 lg:pl-4' : 'px-2 lg:px-4'} transition-all duration-300 min-w-0">
-			<div class="bg-base-100 shadow-sm p-8 min-h-full min-w-0" style="overflow-x: hidden; max-width: 100%; box-sizing: border-box;">
-				<div class="lg:contents {sidebarExpanded ? 'invisible' : ''}">
-					{@render children()}
-				</div>
-			</div>
+	<!-- Main content wrapper -->
+	<div class="min-w-0 flex-1">
+		<div class="min-h-full min-w-0" style="box-sizing: border-box;">
+			{@render children()}
 		</div>
 	</div>
 {:else}
 	<!-- No drawer for unauthenticated users -->
-	<div class="bg-base-100 shadow-md p-8">
+	<div class="bg-base-100 p-8 shadow-md">
 		{@render children()}
 	</div>
 {/if}
 
 <!-- Reset Environment Confirmation Modal -->
 {#if showResetModal}
-	<div class="modal modal-open">
+	<div class="modal-open modal">
 		<div class="modal-box">
-			<h3 class="font-bold text-lg text-error mb-4">⚠️ Reset environment</h3>
+			<h3 class="mb-4 text-lg font-bold text-error">⚠️ Reset environment</h3>
 			<p class="py-2 font-semibold">This action will permanently delete:</p>
-			<ul class="list-disc list-inside mb-4 space-y-1">
+			<ul class="mb-4 list-inside list-disc space-y-1">
 				<li>All transactions</li>
 				<li>All categories (including custom ones)</li>
 				<li>All category keywords</li>
 				<li>All merchants</li>
 				<li>All user category preferences</li>
 			</ul>
-			<p class="py-2 mb-4">Default categories will be recreated after deletion.</p>
-			<p class="py-2 text-error font-semibold">This action cannot be undone!</p>
-			
+			<p class="mb-4 py-2">Default categories will be recreated after deletion.</p>
+			<p class="py-2 font-semibold text-error">This action cannot be undone!</p>
+
 			{#if resetError}
-				<div class="alert alert-error mt-4">
+				<div class="mt-4 alert alert-error">
 					<span>{resetError}</span>
 				</div>
 			{/if}
-			
+
 			{#if resetSuccess}
-				<div class="alert alert-success mt-4">
+				<div class="mt-4 alert alert-success">
 					<span>✅ Environment reset successfully! Page will refresh shortly...</span>
 				</div>
 			{/if}
-			
+
 			<div class="modal-action">
-				<button 
-					class="btn" 
-					onclick={closeResetModal}
-					disabled={resetting}
-				>
-					Cancel
-				</button>
-				<button 
-					class="btn btn-error" 
+				<button class="btn" onclick={closeResetModal} disabled={resetting}> Cancel </button>
+				<button
+					class="btn btn-error"
 					onclick={handleResetEnvironment}
 					disabled={resetting || resetSuccess}
 				>
 					{#if resetting}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						Resetting...
 					{:else}
 						Confirm reset
@@ -348,10 +339,6 @@
 				</button>
 			</div>
 		</div>
-		<button 
-			class="modal-backdrop" 
-			onclick={closeResetModal}
-			aria-label="Close modal"
-		></button>
+		<button class="modal-backdrop" onclick={closeResetModal} aria-label="Close modal"></button>
 	</div>
 {/if}

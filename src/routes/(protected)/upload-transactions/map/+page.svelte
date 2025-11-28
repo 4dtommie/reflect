@@ -49,7 +49,7 @@
 
 		try {
 			parseResult = JSON.parse(storedData);
-			
+
 			// Auto-detect column mapping
 			if (parseResult && parseResult.headers.length > 0) {
 				mapping = detectColumnMapping(parseResult.headers);
@@ -82,7 +82,7 @@
 		for (let i = 0; i < rowsToPreview.length; i++) {
 			const row = rowsToPreview[i];
 			const result = mapCSVRowToTransaction(row, parseResult.headers, mapping);
-			
+
 			// Add row number to errors
 			const errors = result.errors.map((err) => ({
 				...err,
@@ -91,7 +91,7 @@
 
 			mappedTransactions.push(result.transaction);
 			mappingErrors.push(errors);
-			
+
 			// Debug: log first row's mapping result
 			if (i === 0) {
 				console.log('First row mapping:', {
@@ -110,7 +110,7 @@
 
 	async function fetchPreviewData() {
 		const validTransactions = mappedTransactions.filter((t): t is TransactionInput => t !== null);
-		
+
 		if (validTransactions.length === 0) {
 			previewTransactions = [];
 			return;
@@ -144,7 +144,7 @@
 
 			const data = await response.json();
 			console.log('Preview data received:', data.transactions?.length, 'transactions');
-			
+
 			// Map preview transactions back to original array structure (including nulls)
 			// Since we send valid transactions in order, we can map by index
 			let previewIndex = 0;
@@ -158,23 +158,27 @@
 						different: preview.normalized_description !== t.description
 					});
 				}
-				return preview ? {
-					transaction: t,
-					cleaned_merchant_name: preview.cleaned_merchant_name,
-					normalized_description: preview.normalized_description,
-					amount_category: preview.amount_category
-				} : null;
+				return preview
+					? {
+							transaction: t,
+							cleaned_merchant_name: preview.cleaned_merchant_name,
+							normalized_description: preview.normalized_description,
+							amount_category: preview.amount_category
+						}
+					: null;
 			});
 		} catch (err) {
 			console.error('Failed to fetch preview data:', err);
 			// Fallback: use original data without cleaning
-			previewTransactions = mappedTransactions.map((t) => 
-				t ? {
-					transaction: t,
-					cleaned_merchant_name: t.merchantName,
-					normalized_description: t.description,
-					amount_category: 'medium' as const
-				} : null
+			previewTransactions = mappedTransactions.map((t) =>
+				t
+					? {
+							transaction: t,
+							cleaned_merchant_name: t.merchantName,
+							normalized_description: t.description,
+							amount_category: 'medium' as const
+						}
+					: null
 			);
 		} finally {
 			loadingPreview = false;
@@ -204,10 +208,10 @@
 		// Store the raw CSV data and mapping for server-side processing
 		// Don't send all mapped transactions - let server do the mapping for all rows
 		sessionStorage.setItem('csv_column_mapping', JSON.stringify(mapping));
-		
+
 		// The parseResult is already in sessionStorage with all rows
 		// Server will use the mapping to process all rows
-		
+
 		// Navigate to import/preview page (we'll create this next)
 		goto('/upload-transactions/import');
 	}
@@ -222,7 +226,7 @@
 	const previewRows = $derived(mappedTransactions.length);
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Assign columns</h1>
+<h1 class="mb-6 text-4xl font-bold">Assign columns</h1>
 
 {#if !parseResult}
 	<div class="alert alert-warning">
@@ -232,10 +236,10 @@
 {:else}
 	<div class="space-y-6">
 		<!-- Mapping Summary -->
-		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
 			<legend class="fieldset-legend">Mapping status</legend>
-			
-			<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+
+			<div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-5">
 				<div>
 					<p class="text-sm text-base-content/70">Total rows</p>
 					<p class="font-semibold">{totalRows}</p>
@@ -251,7 +255,9 @@
 				<div>
 					<p class="text-sm text-base-content/70">Mapped</p>
 					<p class="font-semibold">
-						{Object.values(mapping).filter((f) => f !== 'skip').length} / {parseResult ? parseResult.headers.length : 0}
+						{Object.values(mapping).filter((f) => f !== 'skip').length} / {parseResult
+							? parseResult.headers.length
+							: 0}
 					</p>
 				</div>
 				<div>
@@ -259,8 +265,8 @@
 					<p class="font-semibold text-warning">{missingRequired.length}</p>
 				</div>
 			</div>
-			
-			<div class="flex justify-end mt-4">
+
+			<div class="mt-4 flex justify-end">
 				<button
 					class="btn btn-primary"
 					disabled={validCount === 0 || missingRequired.length > 0}
@@ -270,14 +276,13 @@
 					Continue to import {totalRows} transactions
 				</button>
 			</div>
-			
 		</fieldset>
 
 		<!-- Missing Required Fields Warning -->
 		{#if missingRequired.length > 0}
 			<div class="alert alert-warning">
 				<p class="font-semibold">Missing required fields:</p>
-				<ul class="list-disc list-inside mt-2">
+				<ul class="mt-2 list-inside list-disc">
 					{#each missingRequired as field}
 						<li>{TRANSACTION_FIELDS.find((f) => f.value === field)?.label || field}</li>
 					{/each}
@@ -286,9 +291,9 @@
 		{/if}
 
 		<!-- Column Mapping Table -->
-		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
 			<legend class="fieldset-legend">Column mapping</legend>
-			
+
 			<div class="overflow-x-auto">
 				<table class="table w-full">
 					<thead>
@@ -303,7 +308,8 @@
 						{#each parseResult.headers as header, index}
 							{@const currentMapping = mapping[index] || 'skip'}
 							{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
-							{@const isRequired = TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
+							{@const isRequired =
+								TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
 							<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
 								<td>
 									<p class="font-medium">{header || '(empty header)'}</p>
@@ -313,19 +319,27 @@
 								</td>
 								<td>
 									<select
-										class="select select-bordered w-full"
+										class="select-bordered select w-full"
 										value={currentMapping}
-										onchange={(e) => updateMapping(index, (e.target as HTMLSelectElement).value as TransactionField)}
+										onchange={(e) =>
+											updateMapping(
+												index,
+												(e.target as HTMLSelectElement).value as TransactionField
+											)}
 									>
 										<option value="skip">-- (Skip column) --</option>
 										{#each TRANSACTION_FIELDS as field}
-											{@const alreadyMapped = getMappedColumn(field.value) !== null && getMappedColumn(field.value) !== index}
+											{@const alreadyMapped =
+												getMappedColumn(field.value) !== null &&
+												getMappedColumn(field.value) !== index}
 											<option
 												value={field.value}
 												disabled={alreadyMapped && field.value !== 'skip'}
 											>
-												{field.label} {field.required ? '*' : ''}
-												{#if alreadyMapped && field.value !== 'skip'} (already mapped){/if}
+												{field.label}
+												{field.required ? '*' : ''}
+												{#if alreadyMapped && field.value !== 'skip'}
+													(already mapped){/if}
 											</option>
 										{/each}
 									</select>
@@ -348,18 +362,19 @@
 
 		<!-- Error Details (if any) -->
 		{#if errorCount > 0}
-			<fieldset class="fieldset bg-error/10 border-error rounded-box border p-6">
+			<fieldset class="fieldset rounded-box border border-error bg-error/10 p-6">
 				<legend class="fieldset-legend text-error">Validation errors ({errorCount})</legend>
-				
+
 				<div class="max-h-64 overflow-y-auto">
 					{#each mappingErrors.slice(0, 50) as rowErrors, rowIndex}
 						{#if rowErrors.length > 0}
-							<div class="mb-3 p-3 bg-base-100 rounded">
-								<p class="font-semibold text-error mb-2">Row {rowIndex + 1}:</p>
-								<ul class="list-disc list-inside space-y-1 text-sm">
+							<div class="mb-3 rounded bg-base-100 p-3">
+								<p class="mb-2 font-semibold text-error">Row {rowIndex + 1}:</p>
+								<ul class="list-inside list-disc space-y-1 text-sm">
 									{#each rowErrors as err}
 										<li>
-											<span class="font-medium">{err.field}:</span> {err.message}
+											<span class="font-medium">{err.field}:</span>
+											{err.message}
 										</li>
 									{/each}
 								</ul>
@@ -377,29 +392,46 @@
 
 		<!-- Preview Mapped Transactions -->
 		{#if mappedTransactions.length > 0}
-			<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
+			<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
 				<legend class="fieldset-legend">
 					Preview (showing {previewRowCount} items from total of {totalRows} rows)
 				</legend>
-				
+
 				{#if validCount === 0}
 					<div class="alert alert-error">
-						<p class="font-semibold mb-2">No valid transactions found.</p>
-						<p class="text-sm mb-2">Please check the validation errors section above to see what needs to be fixed.</p>
+						<p class="mb-2 font-semibold">No valid transactions found.</p>
+						<p class="mb-2 text-sm">
+							Please check the validation errors section above to see what needs to be fixed.
+						</p>
 						<details class="mt-2">
 							<summary class="cursor-pointer text-sm font-medium">Common issues and fixes:</summary>
-							<ul class="list-disc list-inside mt-2 text-sm space-y-1">
-								<li><strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or YYYY-MM-DD</li>
-								<li><strong>Amount format:</strong> Ensure it's a number (can include decimal point or comma, currency symbols will be removed)</li>
-								<li><strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric characters (spaces allowed)</li>
-								<li><strong>Missing fields:</strong> Make sure all required fields (marked with *) are mapped to CSV columns</li>
-								<li><strong>Empty values:</strong> Check that your CSV doesn't have empty cells in required columns</li>
+							<ul class="mt-2 list-inside list-disc space-y-1 text-sm">
+								<li>
+									<strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY,
+									or YYYY-MM-DD
+								</li>
+								<li>
+									<strong>Amount format:</strong> Ensure it's a number (can include decimal point or
+									comma, currency symbols will be removed)
+								</li>
+								<li>
+									<strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric
+									characters (spaces allowed)
+								</li>
+								<li>
+									<strong>Missing fields:</strong> Make sure all required fields (marked with *) are
+									mapped to CSV columns
+								</li>
+								<li>
+									<strong>Empty values:</strong> Check that your CSV doesn't have empty cells in required
+									columns
+								</li>
 							</ul>
 						</details>
 					</div>
 				{:else}
 					<div class="overflow-x-auto">
-						<table class="table table-zebra w-full text-sm">
+						<table class="table w-full table-zebra text-sm">
 							<thead>
 								<tr>
 									<th>Row</th>
@@ -422,12 +454,12 @@
 											<td>{transaction.date.toLocaleDateString()}</td>
 											<td class="max-w-xs">
 												{#if preview && preview.cleaned_merchant_name !== transaction.merchantName}
-													<div 
-														class="truncate cursor-help" 
+													<div
+														class="cursor-help truncate"
 														title="Original: {transaction.merchantName}"
 													>
 														<span class="font-medium">{preview.cleaned_merchant_name}</span>
-														<span class="text-xs text-base-content/50 ml-1">(cleaned)</span>
+														<span class="ml-1 text-xs text-base-content/50">(cleaned)</span>
 													</div>
 												{:else}
 													<div class="truncate" title={transaction.merchantName}>
@@ -438,25 +470,34 @@
 											<td class="max-w-md">
 												{#if preview}
 													{#if preview.normalized_description !== transaction.description}
-														<div 
-															class="cursor-help whitespace-normal break-words" 
+														<div
+															class="cursor-help break-words whitespace-normal"
 															title="Original: {transaction.description}"
 														>
 															<span class="font-medium">{preview.normalized_description}</span>
-															<span class="text-xs text-base-content/50 ml-1">(normalized)</span>
+															<span class="ml-1 text-xs text-base-content/50">(normalized)</span>
 														</div>
 													{:else}
-														<div class="whitespace-normal break-words" title={transaction.description}>
+														<div
+															class="break-words whitespace-normal"
+															title={transaction.description}
+														>
 															{preview.normalized_description}
 														</div>
 													{/if}
 												{:else if loadingPreview}
-													<div class="whitespace-normal break-words" title={transaction.description}>
-														<span class="loading loading-spinner loading-xs"></span>
+													<div
+														class="break-words whitespace-normal"
+														title={transaction.description}
+													>
+														<span class="loading loading-xs loading-spinner"></span>
 														<span class="ml-2">{transaction.description}</span>
 													</div>
 												{:else}
-													<div class="whitespace-normal break-words" title={transaction.description}>
+													<div
+														class="break-words whitespace-normal"
+														title={transaction.description}
+													>
 														{transaction.description}
 													</div>
 												{/if}
@@ -467,11 +508,11 @@
 											</td>
 											<td>
 												{#if preview}
-													<span class="badge badge-sm badge-outline">
+													<span class="badge badge-outline badge-sm">
 														{preview.amount_category}
 													</span>
 												{:else if loadingPreview}
-													<span class="loading loading-spinner loading-xs"></span>
+													<span class="loading loading-xs loading-spinner"></span>
 												{:else}
 													<span class="text-base-content/50">—</span>
 												{/if}
@@ -481,9 +522,9 @@
 											</td>
 											<td>
 												{#if errors.length > 0}
-													<span class="badge badge-error badge-sm">{errors.length} error(s)</span>
+													<span class="badge badge-sm badge-error">{errors.length} error(s)</span>
 												{:else}
-													<span class="badge badge-success badge-sm">OK</span>
+													<span class="badge badge-sm badge-success">OK</span>
 												{/if}
 											</td>
 										{:else}
@@ -495,11 +536,11 @@
 								{/each}
 							</tbody>
 						</table>
-					{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
-						<p class="text-sm text-base-content/70 mt-2">
-							Showing {previewRowCount} items from total of {totalRows} rows
-						</p>
-					{/if}
+						{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
+							<p class="mt-2 text-sm text-base-content/70">
+								Showing {previewRowCount} items from total of {totalRows} rows
+							</p>
+						{/if}
 					</div>
 				{/if}
 			</fieldset>
@@ -522,4 +563,3 @@
 		</div>
 	</div>
 {/if}
-

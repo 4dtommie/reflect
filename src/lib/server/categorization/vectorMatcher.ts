@@ -6,12 +6,15 @@
  */
 
 import { db } from '$lib/server/db';
-import { 
-	generateTransactionEmbeddings, 
+import {
+	generateTransactionEmbeddings,
 	isEmbeddingAvailable,
 	prepareTransactionText,
-	type TransactionForEmbedding 
+	type TransactionForEmbedding
 } from './embeddingService';
+
+// Re-export TransactionForEmbedding for use by other modules
+export type { TransactionForEmbedding } from './embeddingService';
 
 // Vector search configuration
 // Note: Cosine similarity ranges from -1 (opposite) to 1 (identical)
@@ -60,10 +63,10 @@ interface CategorySimilarityResult {
  */
 export async function isVectorMatchingAvailable(): Promise<boolean> {
 	console.log(`   🔍 Checking vector matching availability...`);
-	
+
 	const embeddingAvailable = isEmbeddingAvailable();
 	console.log(`   📊 Embedding API available: ${embeddingAvailable}`);
-	
+
 	if (!embeddingAvailable) {
 		console.log(`   ⚠️  Vector matching disabled: OpenAI API not configured`);
 		return false;
@@ -74,14 +77,14 @@ export async function isVectorMatchingAvailable(): Promise<boolean> {
 		const result = await db.$queryRaw<[{ count: bigint }]>`
 			SELECT COUNT(*) as count FROM categories WHERE embedding IS NOT NULL
 		`;
-		
+
 		const count = Number(result[0].count);
 		console.log(`   📊 Categories with embeddings: ${count}`);
-		
+
 		if (count === 0) {
 			console.log(`   ⚠️  Vector matching disabled: No categories have embeddings. Run 'Generate category embeddings' first.`);
 		}
-		
+
 		return count > 0;
 	} catch (error) {
 		console.error(`   ❌ Error checking category embeddings:`, error);
@@ -210,9 +213,9 @@ export async function matchTransactionsBatchWithVector(
 			errors: []
 		};
 	}
-	
+
 	console.log(`   🔍 Starting vector matching for ${transactions.length} transactions (threshold: ${vectorConfig.similarityThreshold})`);
-	
+
 	if (!isEmbeddingAvailable()) {
 		throw new Error('OpenAI API is not configured. Set OPENAI_API_KEY environment variable.');
 	}
@@ -237,7 +240,7 @@ export async function matchTransactionsBatchWithVector(
 
 	// Process in batches
 	const batchSize = vectorConfig.batchSize;
-	
+
 	for (let i = 0; i < transactions.length; i += batchSize) {
 		const batch = transactions.slice(i, i + batchSize);
 		console.log(`   📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(transactions.length / batchSize)}...`);
@@ -330,7 +333,7 @@ export async function matchTransactionsBatchWithVector(
 	console.log(`      - Below threshold: ${belowThreshold}`);
 	console.log(`      - No embedding: ${noEmbedding}`);
 	console.log(`      - Errors: ${errors.length}`);
-	
+
 	// Debug: Log sample similarities if any results
 	if (results.length > 0 && results[0].similarity > 0) {
 		const sampleResults = results.slice(0, 3);
@@ -376,7 +379,7 @@ export async function getTopSimilarCategories(
 	}
 
 	const similar = await findSimilarCategories(embedding, userId, topN);
-	
+
 	return similar.map(s => ({
 		categoryId: s.id,
 		categoryName: s.name,

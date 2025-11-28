@@ -10,6 +10,8 @@
   --color-secondary-content: var(--color-base-100);
   --color-secondary: var(--color-blue-700);
   --color-info: var(--color-sky-200);
+  --color-primary-rgb: 94, 129, 172; /* Nord10 */
+  --color-secondary-rgb: 136, 192, 208; /* Nord8 */
 }
 
 @plugin "daisyui/theme" {
@@ -17,7 +19,8 @@
   default: false;
   --base-300: var(--color-base-100);
  --base-100: var(--color-base-300);
-
+ --color-primary-rgb: 56, 189, 248; /* Sky 400 */
+ --color-secondary-rgb: 129, 140, 248; /* Indigo 400 */
 }
 
 
@@ -42,37 +45,52 @@
 	}
 }
 
+html {
+	background-color: var(--color-base-300);
+	background-image: 
+		radial-gradient(at 0% 0%, rgba(var(--color-primary-rgb), 0.05) 0px, transparent 50%),
+		radial-gradient(at 100% 0%, rgba(var(--color-secondary-rgb), 0.05) 0px, transparent 50%),
+		radial-gradient(at 100% 100%, rgba(var(--color-primary-rgb), 0.05) 0px, transparent 50%),
+		radial-gradient(at 0% 100%, rgba(var(--color-secondary-rgb), 0.05) 0px, transparent 50%);
+	background-attachment: fixed;
+}
+
 body {
 	font-family: var(--font-family-sans);
-	@apply bg-base-300 min-h-screen p-8;
+	max-width: 1200px;
+	margin-left: auto;
+	margin-right: auto;
+	@apply min-h-screen p-8;
 }
 
-h1 {
-	font-size: 1rem;
-	font-weight: 700;
-	font-variation-settings: 'wght' 700, 'wdth' 125;
-	line-height: 1.1;
-	letter-spacing: -0.02em;
-	background: var(--gradient-primary-animated);
-	background-size: 200% 200%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	color: transparent;
-	animation: gradient-rotate 16s ease infinite;
-}
-
-@media (min-width: 768px) {
+@layer base {
 	h1 {
-		font-size: 1.5rem;
-		font-variation-settings: 'wght' 700, 'wdth' 150;
+		font-size: 1rem;
+		font-weight: 700;
+		font-variation-settings: 'wght' 700, 'wdth' 125;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
+		background: var(--gradient-primary-animated);
+		background-size: 200% 200%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		color: transparent;
+		animation: gradient-rotate 16s ease infinite;
 	}
-}
 
-@media (min-width: 1024px) {
-	h1 {
-		font-size: 3rem;
-		font-variation-settings: 'wght' 700, 'wdth' 175;
+	@media (min-width: 768px) {
+		h1 {
+			font-size: 1.5rem;
+			font-variation-settings: 'wght' 700, 'wdth' 150;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		h1 {
+			font-size: 3rem;
+			font-variation-settings: 'wght' 700, 'wdth' 175;
+		}
 	}
 }
 
@@ -96,4 +114,34 @@ h1 {
 	color: white;
 	border: none;
 	animation: gradient-rotate 8s ease infinite;
+}
+
+.btn-active-grey {
+	background-color: #93c5fd; /* blue-300 */
+	color: #1e3a8a; /* blue-900 */
+	border: none;
+}
+
+[data-theme='night'] .btn-active-grey {
+	background-color: #3b82f6; /* blue-500 */
+	color: #eff6ff; /* blue-50 */
+}
+
+.btn-white-swoosh {
+	background-color: #ffffff;
+	color: var(--fallback-bc,oklch(var(--bc)/1));
+	border: none;
+	transition: all 0.3s ease;
+}
+
+[data-theme='night'] .btn-white-swoosh {
+	background-color: #1f2937; /* gray-800 for dark mode */
+	color: #f3f4f6; /* gray-100 */
+}
+
+.btn-white-swoosh:hover {
+	background: var(--gradient-primary-animated);
+	background-size: 200% 200%;
+	color: white;
+	animation: gradient-rotate 2s ease infinite;
 }

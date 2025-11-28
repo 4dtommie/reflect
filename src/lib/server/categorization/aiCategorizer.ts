@@ -44,6 +44,7 @@ export interface TransactionForAI {
 export interface AICategorizationResult {
 	transactionId: number;
 	categoryId: number | null;
+	categoryName?: string; // Optional category name (when using name-based categorization)
 	confidence: number; // 0.0 - 1.0
 	suggestedKeywords: string[]; // 1-2 keywords (from merchant name only)
 	cleanedMerchantName?: string; // AI-generated cleaned merchant name
@@ -142,7 +143,7 @@ export function createCategorizationPrompt(
 	// Hide parent categories that have subcategories
 	const parentIds = new Set<number>();
 	const subcategoryMap = new Map<number, CategoryForAI[]>();
-	
+
 	// First pass: identify parents and group subcategories
 	for (const cat of categories) {
 		if (cat.parent_id === null) {
@@ -154,7 +155,7 @@ export function createCategorizationPrompt(
 			subcategoryMap.get(cat.parent_id)!.push(cat);
 		}
 	}
-	
+
 	// Filter: only include subcategories OR standalone categories (no parent, no children)
 	const categoriesToShow = categories.filter(cat => {
 		if (cat.parent_id !== null) {
@@ -187,14 +188,14 @@ export function createCategorizationPrompt(
 	const transactionsText = transactions
 		.map((t, index) => {
 			// Truncate description if too long (keep first 200 chars)
-			const description = t.description.length > 200 
-				? t.description.substring(0, 200) + '...' 
+			const description = t.description.length > 200
+				? t.description.substring(0, 200) + '...'
 				: t.description;
 			// Truncate merchant name if too long
-			const merchant = t.merchantName.length > 100 
-				? t.merchantName.substring(0, 100) + '...' 
+			const merchant = t.merchantName.length > 100
+				? t.merchantName.substring(0, 100) + '...'
 				: t.merchantName;
-			
+
 			return `${index + 1}. Transaction ID ${t.id}
    Beschrijving: ${description}
    Naam: ${merchant}
@@ -204,13 +205,13 @@ export function createCategorizationPrompt(
 		.join('\n\n');
 
 	const template = prompts;
-	const batchWarning = transactions.length > 12 
+	const batchWarning = transactions.length > 12
 		? `\n⚠️ BELANGRIJK: Je categoriseert ${transactions.length} transacties. Let goed op elke transactie ID en zorg dat je antwoorden overeenkomen met de juiste transactie. Controleer dubbel dat transactie ID's in je antwoord exact overeenkomen met de input.`
 		: '';
 
 	// Build JSON example based on useCategoryNames, cleanedMerchantName and reasoning
 	let jsonExample = template.jsonExample;
-	
+
 	if (useCategoryNames) {
 		// Using category names instead of IDs
 		if (includeCleanedMerchantName && includeReasoning) {
@@ -235,7 +236,7 @@ export function createCategorizationPrompt(
 		}
 	}
 
-	const cleanedMerchantNameInstruction = includeCleanedMerchantName 
+	const cleanedMerchantNameInstruction = includeCleanedMerchantName
 		? '\n7. Gecleande transactie naam: Geef een schone, genormaliseerde versie van de transactie naam met de volgende regels:\n   - Verwijder onnodige prefixen en suffixen (bijv. "NL * TRANSACTIE NAAM" → "Transactie naam")\n   - Verwijder bedrijfsvormen: "BV", "NV", "B.V.", "N.V." etc.\n   - Hoofdlettergebruik: Eerste letter hoofdletter, rest kleine letters (bijv. "ALBERT HEIJN" → "Albert Heijn")\n   - Behouden van belangrijke woorden: Behoud merknamen en belangrijke delen van de naam\n   - Voorbeelden: "Starbucks", "ING BANK N.V." → "ING Bank"'
 		: '';
 
@@ -290,10 +291,10 @@ async function retryWithBackoff<T>(
 			return await fn();
 		} catch (error: any) {
 			// Check if it's a rate limit error (429) or server error (5xx)
-			const isRetryable = error?.status === 429 || 
-			                    (error?.status >= 500 && error?.status < 600) ||
-			                    error?.code === 'ECONNRESET' ||
-			                    error?.code === 'ETIMEDOUT';
+			const isRetryable = error?.status === 429 ||
+				(error?.status >= 500 && error?.status < 600) ||
+				error?.code === 'ECONNRESET' ||
+				error?.code === 'ETIMEDOUT';
 
 			if (!isRetryable || attempt === maxRetries - 1) {
 				throw error; // Don't retry non-retryable errors or on last attempt
@@ -384,8 +385,8 @@ export async function categorizeBatchWithAI(
 			requestParams.max_completion_tokens = maxTokensToUse;
 		} else {
 			// For non-GPT-5 models, use provided temperature or config default
-			requestParams.temperature = options?.temperature !== undefined 
-				? options.temperature 
+			requestParams.temperature = options?.temperature !== undefined
+				? options.temperature
 				: aiConfig.temperature;
 			requestParams.max_tokens = maxTokensToUse;
 		}
@@ -409,7 +410,7 @@ export async function categorizeBatchWithAI(
 				finishReason: response.choices?.[0]?.finish_reason,
 				response: JSON.stringify(response, null, 2)
 			});
-			
+
 			// Provide more helpful error message
 			const finishReason = response.choices?.[0]?.finish_reason;
 			if (finishReason === 'content_filter') {
@@ -446,7 +447,7 @@ export async function categorizeBatchWithAI(
 
 		for (let i = 0; i < parsedResponse.results.length; i++) {
 			const result = parsedResponse.results[i];
-			
+
 			// Validate required fields
 			if (typeof result.transactionId !== 'number') {
 				errors.push({
@@ -467,11 +468,11 @@ export async function categorizeBatchWithAI(
 
 			// Handle category ID or category name
 			let categoryId: number | null = null;
-			
+
 			if (options?.useCategoryNames) {
 				// If using category names, look up the ID from the category name
 				if (result.categoryName && typeof result.categoryName === 'string') {
-					const matchedCategory = categories.find(cat => 
+					const matchedCategory = categories.find(cat =>
 						cat.name.toLowerCase().trim() === result.categoryName.toLowerCase().trim()
 					);
 					if (matchedCategory) {
@@ -489,7 +490,7 @@ export async function categorizeBatchWithAI(
 				}
 			} else {
 				// Using category IDs (original method)
-				categoryId = result.categoryId !== null && result.categoryId !== undefined 
+				categoryId = result.categoryId !== null && result.categoryId !== undefined
 					? (typeof result.categoryId === 'number' ? result.categoryId : null)
 					: null;
 			}
@@ -498,7 +499,7 @@ export async function categorizeBatchWithAI(
 			const normalizedResult: AICategorizationResult = {
 				transactionId: result.transactionId,
 				categoryId,
-				confidence: typeof result.confidence === 'number' 
+				confidence: typeof result.confidence === 'number'
 					? Math.max(0, Math.min(1, result.confidence)) // Clamp between 0 and 1
 					: 0.5, // Default confidence if missing
 				suggestedKeywords: Array.isArray(result.suggestedKeywords)
@@ -508,8 +509,8 @@ export async function categorizeBatchWithAI(
 						.filter((k: string) => k.length > 0)
 						.slice(0, 2) // Max 2 keywords (1-2 recommended: from merchant name only)
 					: [],
-				cleanedMerchantName: typeof result.cleanedMerchantName === 'string' 
-					? result.cleanedMerchantName.trim() 
+				cleanedMerchantName: typeof result.cleanedMerchantName === 'string'
+					? result.cleanedMerchantName.trim()
 					: undefined,
 				reasoning: typeof result.reasoning === 'string' ? result.reasoning : undefined
 			};
@@ -522,7 +523,7 @@ export async function categorizeBatchWithAI(
 			const missingIds = transactions
 				.filter(t => !results.some(r => r.transactionId === t.id))
 				.map(t => t.id);
-			
+
 			for (const id of missingIds) {
 				errors.push({
 					transactionId: id,

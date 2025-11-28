@@ -83,10 +83,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const transactions = transactionsRaw.map((t: any) => {
 			// If merchant is linked, use merchant.name (cleaned), otherwise clean merchantName as fallback
 			const cleanedMerchantName = t.merchants?.name || t.cleaned_merchant_name || cleanMerchantName(t.merchantName, t.description);
-			
+
 			// Use stored normalized_description, or normalize on-the-fly if not stored
 			const normalizedDesc = t.normalized_description || normalizeDescription(t.description);
-			
+
 			return {
 				id: t.id,
 				date: t.date instanceof Date ? t.date.toISOString() : t.date,
@@ -137,22 +137,22 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Group by month and calculate totals (both spending and income)
 		const monthSpendingGroups = new Map<string, number>();
 		const monthIncomeGroups = new Map<string, number>();
-		
+
 		// Group transactions by actual week (year-month-weekNumber) and sum
 		const actualWeeks = new Map<string, number>();
-		
+
 		for (const transaction of allTransactionsForStats) {
 			const d = transaction.date instanceof Date ? transaction.date : new Date(transaction.date);
-			const amount = typeof transaction.amount === 'object' && transaction.amount?.toNumber 
-				? transaction.amount.toNumber() 
+			const amount = typeof transaction.amount === 'object' && transaction.amount?.toNumber
+				? transaction.amount.toNumber()
 				: Number(transaction.amount);
 			const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
-			
+
 			// is_debit = true means expense (spending), is_debit = false means income
 			if (transaction.is_debit) {
 				// Monthly spending totals (debit transactions)
 				monthSpendingGroups.set(monthKey, (monthSpendingGroups.get(monthKey) || 0) + amount);
-				
+
 				// Weekly totals by actual week (year-month-weekNumber) - only for spending
 				const weekNumber = getWeekOfMonth(d);
 				const weekKey = `${d.getFullYear()}-${d.getMonth()}-${weekNumber}`;
@@ -162,7 +162,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				monthIncomeGroups.set(monthKey, (monthIncomeGroups.get(monthKey) || 0) + amount);
 			}
 		}
-		
+
 		// Now group by week number (1-4) and calculate averages across all months
 		const weeklyAveragesByNumber = new Map<number, { total: number; count: number }>();
 		for (const [weekKey, total] of actualWeeks.entries()) {
@@ -187,14 +187,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			const [year, month] = key.split('-').map(Number);
 			const spending = monthSpendingGroups.get(key) || 0;
 			const income = monthIncomeGroups.get(key) || 0;
-			
-			return { 
-				year, 
-				month, 
+
+			return {
+				year,
+				month,
 				total: spending, // Keep 'total' for backward compatibility (spending)
 				spending: Number(spending),
 				income: Number(income),
-				date: new Date(year, month, 1).toISOString() 
+				date: new Date(year, month, 1).toISOString()
 			};
 		});
 
@@ -216,7 +216,24 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				monthlyTotals: monthlyTotals.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
 				totalMonthlySpending,
 				averageMonthlySpending,
-				weeklyAverages: Object.fromEntries(weeklyAverages)
+				weeklyAverages: Object.fromEntries(weeklyAverages),
+				categorizedCount: await (db as any).transactions.count({
+					where: {
+						user_id: userId,
+						category_id: { not: null },
+						categories: { name: { not: 'Uncategorized' } }
+					}
+				}),
+				categorizedPercentage: totalCount > 0 ? (await (db as any).transactions.count({
+					where: {
+						user_id: userId,
+						category_id: { not: null },
+						categories: { name: { not: 'Uncategorized' } }
+					}
+				}) / Number(totalCount)) * 100 : 0,
+				totalTransactions: await (db as any).transactions.count({
+					where: { user_id: userId }
+				})
 			}
 		});
 	} catch (err: any) {
@@ -347,10 +364,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					const cleanedBatch = batch.map((t) => {
 						// Step 1: Clean merchant name
 						const cleanedMerchantName = cleanMerchantName(t.merchantName, t.description);
-						
+
 						// Step 2: Normalize description
 						const normalizedDescription = normalizeDescription(t.description);
-						
+
 						// Step 4: Categorize amount
 						const amountCategory = categorizeAmount(
 							Number(t.amount),

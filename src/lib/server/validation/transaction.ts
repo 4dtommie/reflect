@@ -20,10 +20,7 @@ export const TransactionTypeEnum = z.enum([
  * Matches the Prisma Transaction model requirements
  */
 export const TransactionInputSchema = z.object({
-	date: z.coerce.date({
-		required_error: 'Date is required',
-		invalid_type_error: 'Invalid date format'
-	}),
+	date: z.coerce.date(),
 	merchantName: z
 		.string()
 		.min(1, 'Merchant name is required')
@@ -37,14 +34,9 @@ export const TransactionInputSchema = z.object({
 		.regex(/^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$/i, 'Invalid IBAN format')
 		.optional()
 		.nullable(),
-	isDebit: z.boolean({
-		required_error: 'isDebit is required'
-	}),
+	isDebit: z.boolean(),
 	amount: z
-		.number({
-			required_error: 'Amount is required',
-			invalid_type_error: 'Amount must be a number'
-		})
+		.number()
 		.positive('Amount must be positive')
 		.max(99999999.99, 'Amount is too large'),
 	type: TransactionTypeEnum,
