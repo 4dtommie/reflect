@@ -1,5 +1,10 @@
 {
 	"files.associations": {
 		"*.css": "tailwind"
-	}
+	},
+	"workbench.colorTheme": "Cursor Dark Midnight",
+	"editor.fontSize": 16,
+	"debug.console.fontSize": 16,
+	"scm.inputFontSize": 16,
+	"terminal.integrated.fontSize": 16
 }

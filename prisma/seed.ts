@@ -13,6 +13,7 @@ async function createCategoryWithKeywords(
 		created_by: number | null;
 		group: string | null;
 		parent_id?: number | null;
+		tier?: string | null; // 'most' | 'medium' | 'less' | null
 		updated_at: Date;
 	},
 	keywords: string[]
@@ -78,7 +79,7 @@ async function main() {
 		const merchantCount = await prisma.merchants.deleteMany({});
 		log(`   ✓ Deleted ${merchantCount.count} merchants`);
 		
-		log('✅ Database cleared - ready for fresh seed data');
+		log('✅ Database cleared - all transactions and categories removed');
 		
 		// Verify category_keywords table is accessible
 		try {
@@ -96,113 +97,121 @@ async function main() {
 
 		const salary = await createCategoryWithKeywords(
 			{
-				name: 'Salary',
-				description: 'Regular employment income',
+				name: 'Salaris',
+				description: 'Loon uit dienstverband of als zelfstandige',
 				color: '#22c55e',
 				icon: 'Briefcase',
 				is_default: true,
 				created_by: null,
 				group: 'income',
+				tier: 'most',
 				updated_at: new Date()
 			},
-			['salary', 'wage', 'income', 'paycheck', 'loon', 'salaris', 'inkomen']
-		);
-
-		const freelance = await createCategoryWithKeywords(
-			{
-				name: 'Freelance/Contract',
-				description: 'Freelance or contract work income',
-				color: '#10b981',
-				icon: 'User',
-				is_default: true,
-				created_by: null,
-				group: 'income',
-				updated_at: new Date()
-			},
-			['freelance', 'contract', 'consulting', 'zzp', 'zelfstandige']
-		);
-
-		const investmentReturns = await createCategoryWithKeywords(
-			{
-				name: 'Investment Returns',
-				description: 'Dividends, interest, capital gains',
-				color: '#14b8a6',
-				icon: 'TrendingUp',
-				is_default: true,
-				created_by: null,
-				group: 'income',
-				updated_at: new Date()
-			},
-			['dividend', 'interest', 'return', 'profit', 'rente']
+			[
+				'salaris',
+				'salarisadministratie',
+				'salarisverwerking',
+				'loon',
+				'loonbetaling',
+				'loondienst',
+				'loonstrook',
+				'payroll',
+				'werkgever',
+				'salary',
+				'wage',
+				'income',
+				'paycheck',
+				'inkomen',
+				'uitbetaling',
+				'inkomsten',
+				'maandloon',
+				'nettoloon',
+				'brutoloon'
+			]
 		);
 
 		const taxReturns = await createCategoryWithKeywords(
 			{
-				name: 'Tax Returns & Subsidies',
-				description: 'Tax refunds and government subsidies (Belastingdienst, RVO, etc.)',
+				name: 'Belastingteruggave & toeslagen',
+				description: 'Alleen positieve bedragen mbt belasting en subsidies (NIET: kinderopvangtoeslag of huurtoeslag, die gaan naar Kinderopvang en woning categorie)',
 				color: '#06b6d4',
 				icon: 'FileText',
 				is_default: true,
 				created_by: null,
 				group: 'income',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			[
-				'tax return',
-				'belastingdienst',
-				'belasting',
-				'teruggave',
-				'aangifte',
-				'belastingteruggave',
-				'voorlopige teruggave',
-				'advance tax',
-				'voorlopige aanslag',
-				'belasting voorlopig',
-				'rvo',
-				'subsidie',
-				'subsidy',
-				'rijksdienst',
-				'ondernemend nederland',
-				'kinderopvangtoeslag',
-				'childcare allowance',
-				'kinderopvang',
-				'huurtoeslag',
-				'rent allowance',
-				'huur',
-				'toeslag',
-				'woningtoeslag'
-			]
-		);
-
-		const refund = await createCategoryWithKeywords(
-			{
-				name: 'Refund',
-				description: 'Money returned from purchases',
-				color: '#06b6d4',
-				icon: 'RotateCcw',
-				is_default: true,
-				created_by: null,
-				group: 'income',
-				updated_at: new Date()
-			},
-			['refund', 'terugbetaling', 'reimbursement', 'terug']
+		[
+			'belastingdienst',
+			'belasting',
+			'teruggave',
+			'belastingteruggave',
+			'voorlopige teruggave',
+			'voorlopige aanslag',
+			'rvo',
+			'subsidie',
+			'rijksoverheid',
+			'overheid',
+			'gemeente',
+			'toeslag',
+			'zorgtoeslag',
+			'kinderbijslag',
+			'svb',
+			'duo',
+			'studiefinanciering',
+			'belastingdienst.nl',
+			'rijksoverheid.nl',
+			'gemeente',
+			'provincie',
+			'waterschap',
+			'belastingaangifte',
+			'inkomstenbelasting',
+			'teruggaaf',
+			'belasting teruggaaf',
+			'toeslagen',
+			'overheidstoeslag',
+			'overheidsbijdrage'
+		]
 		);
 
 		const otherIncome = await createCategoryWithKeywords(
 			{
-				name: 'Other Income',
-				description: 'Miscellaneous income',
+				name: 'Overig inkomen',
+				description: 'Divers inkomen, dit zal bijna niet voorkomen. Probeer eerst te kijken of het bijvoorbeeld een teruggave is voor de kleding categorie of vergelijkbare situaties.',
 				color: '#3b82f6',
 				icon: 'DollarSign',
 				is_default: true,
 				created_by: null,
 				group: 'income',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['income', 'other', 'overig', 'inkomen']
+			[
+				'inkomen',
+				'income',
+				'inkomsten',
+				'overig',
+				'other income',
+				'divers inkomen',
+				'extra inkomen',
+				'bijverdienste',
+				'neveninkomsten',
+				'particulier inkomen',
+				'particulier',
+				'inkomsten overig',
+				'overige inkomsten',
+				'extra inkomsten',
+				'bijbaan',
+				'freelance',
+				'zzp',
+				'zelfstandige',
+				'ondernemer',
+				'inkomstenbron'
+			]
 		);
 
-		log('✅ Created 6 income categories');
+		log('✅ Created 3 income categories');
 
 		// ============================================
 		// EXPENSE CATEGORIES - PARENTS FIRST
@@ -211,8 +220,8 @@ async function main() {
 		// Food & Groceries (parent)
 		const foodGroceries = await createCategoryWithKeywords(
 			{
-				name: 'Food & Groceries',
-				description: 'Parent category for food and grocery purchases (use subcategories for categorization)',
+				name: 'Eten & boodschappen',
+				description: 'Hoofdcategorie voor eten en boodschappen (gebruik subcategorieën voor categorisering)',
 				color: '#f59e0b',
 				icon: 'ShoppingCart',
 				is_default: true,
@@ -226,8 +235,8 @@ async function main() {
 		// Restaurants & Dining (parent)
 		const restaurantsDining = await createCategoryWithKeywords(
 			{
-				name: 'Restaurants & Dining',
-				description: 'Parent category for dining-related expenses (use subcategories for categorization)',
+				name: 'Restaurants & uit eten',
+				description: 'Hoofdcategorie voor uit-eten gerelateerde uitgaven (gebruik subcategorieën voor categorisering)',
 				color: '#f97316',
 				icon: 'Utensils',
 				is_default: true,
@@ -241,8 +250,8 @@ async function main() {
 		// Transportation (parent)
 		const transportation = await createCategoryWithKeywords(
 			{
-				name: 'Transportation',
-				description: 'Parent category for transportation expenses (use subcategories for categorization)',
+				name: 'Vervoer',
+				description: 'Hoofdcategorie voor vervoerskosten (gebruik subcategorieën voor categorisering)',
 				color: '#6366f1',
 				icon: 'Car',
 				is_default: true,
@@ -256,10 +265,25 @@ async function main() {
 		// Shopping (parent)
 		const shopping = await createCategoryWithKeywords(
 			{
-				name: 'Shopping',
-				description: 'Parent category for retail purchases (use subcategories for categorization)',
+				name: 'Winkelen',
+				description: 'Hoofdcategorie voor retail aankopen (gebruik subcategorieën voor categorisering)',
 				color: '#8b5cf6',
 				icon: 'ShoppingBag',
+				is_default: true,
+				created_by: null,
+				group: 'lifestyle',
+				updated_at: new Date()
+			},
+			[] // Empty - parent category only
+		);
+
+		// Hobbies & Leisure (parent)
+		const hobbiesLeisure = await createCategoryWithKeywords(
+			{
+				name: 'Hobby\'s & vrije tijd',
+				description: 'Hoofdcategorie voor hobby\'s en vrijetijdsactiviteiten (gebruik subcategorieën voor categorisering)',
+				color: '#a855f7',
+				icon: 'Palette',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
@@ -274,99 +298,155 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Supermarket',
-				description: 'Large grocery stores, supermarkets, convenience stores, and online grocery delivery',
+				name: 'Supermarkt',
+				description: 'Grote supermarkten, buurtwinkels en online boodschappenbezorging',
 				color: '#f59e0b',
 				icon: 'ShoppingCart',
 				is_default: true,
 				created_by: null,
 				parent_id: foodGroceries.id,
 				group: 'essential',
+				tier: 'most',
 				updated_at: new Date()
 			},
-			[
-				'supermarket',
-				'grocery store',
-				'ah',
-				'albert heijn',
-				'jumbo',
-				'aldi',
-				'lidl',
-				'plus',
-				'coop',
-				'ekoplaza',
-				'supermarkt',
-				'boodschappen',
-				'convenience store',
-				'corner shop',
-				'buurtwinkel',
-				'tankstation',
-				'gas station shop',
-				'spar',
-				'small shop',
-				'picnic',
-				'online grocery',
-				'grocery delivery',
-				'bezorging boodschappen',
-				'thuisbezorgd grocery',
-				'ah bezorg',
-				'jumbo bezorg'
-			]
+		[
+			'albert heijn',
+			'ah',
+			'jumbo',
+			'aldi',
+			'lidl',
+			'plus',
+			'coop',
+			'spar',
+			'vomar',
+			'dirk',
+			'hoogvliet',
+			'picnic',
+			'crisp',
+			'flink',
+			'supermarkt',
+			'boodschappen',
+			'deka markt',
+			'jan linders',
+			'poiesz',
+			'ekoplaza'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Butcher',
-				description: 'Butcher shops and meat stores',
+				name: 'Slager',
+				description: 'Slagerijen en vleeswinkels',
 				color: '#dc2626',
 				icon: 'Drumstick',
 				is_default: true,
 				created_by: null,
 				parent_id: foodGroceries.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['butcher', 'slager', 'slagerij', 'vlees', 'meat', 'vleeswaren']
+			[
+				'butcher',
+				'slager',
+				'slagerij',
+				'vlees',
+				'meat',
+				'vleeswaren',
+				'keurslager',
+				'keurslagerij',
+				'poelier',
+				'poelierij',
+				'vleeswarenwinkel',
+				'vleeswinkel',
+				'vleesboer',
+				'vleesboerderij',
+				'biologische slager',
+				'biologisch vlees',
+				'halal slager',
+				'halal vlees'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Baker',
-				description: 'Bakeries and bread shops',
+				name: 'Bakker',
+				description: 'Bakkerijen en broodwinkels',
 				color: '#fbbf24',
 				icon: 'Wheat',
 				is_default: true,
 				created_by: null,
 				parent_id: foodGroceries.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['baker', 'bakker', 'bakkerij', 'bread', 'brood', 'pastry', 'gebak']
+			[
+				'baker',
+				'bakker',
+				'bakkerij',
+				'bread',
+				'brood',
+				'pastry',
+				'gebak',
+				'broodwinkel',
+				'broodjeszaak',
+				'patisserie',
+				'banketbakker',
+				'banketbakkerij',
+				'ambachtelijke bakker',
+				'biologische bakker',
+				'brood & banket',
+				'brood en banket',
+				'warme bakker',
+				'koud bakker'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Specialty Food Stores',
-				description: 'Delicatessen, specialty food shops, organic stores, health food stores',
+				name: 'Speciaalzaken',
+				description: 'Delicatessenzaken, speciaalzaken, biologische winkels, natuurvoedingswinkels, kaaswinkels, etc.',
 				color: '#10b981',
 				icon: 'Leaf',
 				is_default: true,
 				created_by: null,
 				parent_id: foodGroceries.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			[
-				'delicatessen',
-				'specialty',
-				'organic',
-				'health food',
-				'natuurwinkel',
-				'biologisch',
-				'ekoplaza',
-				'marqt',
-				'specialty store'
-			]
+		[
+			'marqt',
+			'natuurwinkel',
+			'biologisch',
+			'delicatessen',
+			'kaaswinkel',
+			'kaasboer',
+			'wijnhandel',
+			'boerenmarkt',
+			'speciaalzaak',
+			'toko',
+			'reformwinkel',
+			'notenbar',
+			'ekoplaza',
+			'odin',
+			'biowinkel',
+			'biologische winkel',
+			'natuurvoedingswinkel',
+			'kaasboerderij',
+			'kaashandel',
+			'wijnwinkel',
+			'wijnboer',
+			'viswinkel',
+			'visboer',
+			'visboerderij',
+			'zuivelboerderij',
+			'boerenwinkel',
+			'streekproducten',
+			'ambachtelijke winkel',
+			'ambachtelijke producten'
+		]
 		);
 
 		log('✅ Created Food & Groceries with 4 subcategories');
@@ -377,77 +457,193 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Coffee',
-				description: 'Coffee shops and cafes',
+				name: 'Koffie',
+				description: 'Koffiezaken en cafés, gebruik hiervoor ook de tijd als die beschikbaar is (vaak tussen 8:00 en 11:00)',
 				color: '#ea580c',
 				icon: 'Coffee',
 				is_default: true,
 				created_by: null,
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
+				tier: 'most',
 				updated_at: new Date()
 			},
-			['coffee', 'cafe', 'koffie', 'espresso', 'latte', 'cappuccino', 'starbucks', 'douwe egberts']
+		[
+			'starbucks',
+			'coffeecompany',
+			'coffee company',
+			'bagels & beans',
+			'koffie',
+			'cafe',
+			'café',
+			'espresso',
+			'barista',
+			'lebkov',
+			'anne & max',
+			'koffiebar',
+			'doppio',
+			'illy',
+			'nespresso'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
 				name: 'Lunch',
-				description: 'Lunch meals and snacks',
+				description: 'Lunchmaaltijden en snacks (dit zijn vaak restaurants, cafes, bakkers, tankstations en dergelijke maar dan te identificeren door bedragen rond 10 euro het tijstip (tussen 11:00 en 14:00',
 				color: '#f97316',
 				icon: 'Sandwich',
 				is_default: true,
 				created_by: null,
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['lunch', 'lunchen', 'middageten', 'sandwich', 'broodje']
+		[
+			'lunch',
+			'broodje',
+			'broodjeszaak',
+			'subway',
+			'backwerk',
+			'la place',
+			'smullers',
+			'febo',
+			'kwalitaria',
+			'sandwich',
+			'saladebar',
+			'lunchroom'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Eating Out',
-				description: 'Restaurant meals (dinner, etc.)',
+				name: 'Uit eten',
+				description: 'Restaurantmaaltijden (diner, avondeten, vooral te identificeren door tijdstip na 17:00)',
 				color: '#c2410c',
 				icon: 'UtensilsCrossed',
 				is_default: true,
 				created_by: null,
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['restaurant', 'dining', 'dinner', 'uit eten', 'eten']
+			[
+				'restaurant',
+				'dining',
+				'dinner',
+				'uit eten',
+				'eten',
+				'eetcafé',
+				'eetcafe',
+				'brasserie',
+				'bistro',
+				'trattoria',
+				'steakhouse',
+				'grill',
+				'pizzeria',
+				'fine dining',
+				'gastronomie',
+				'avondeten',
+				'dineren',
+				'eten buiten de deur',
+				'shabu shabu',
+				'vapiano',
+				'wagamama',
+				'five guys',
+				'mcdonald\'s',
+				'mcdonalds',
+				'burger king',
+				'kfc',
+				'domino\'s',
+				'dominos',
+				'new york pizza',
+				'pizza hut',
+				'la place',
+				'smullers',
+				'febo',
+				'wok to walk',
+				'sushi point',
+				'sumo',
+				'wok & roll',
+				'wok away',
+				'wok express',
+				'wok to go'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Ordering Food',
-				description: 'Food delivery and takeout',
+				name: 'Bestellen',
+				description: 'Maaltijdbezorging en afhaalmaaltijden, verschilt vaak van uit eten door het bedrag dat lager is dan 50 euro',
 				color: '#ea580c',
 				icon: 'ShoppingBag',
 				is_default: true,
 				created_by: null,
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['food delivery', 'takeout', 'thuisbezorgd', 'uber eats', 'deliveroo', 'bezorging', 'afhalen']
+			[
+				'food delivery',
+				'takeout',
+				'thuisbezorgd',
+				'uber eats',
+				'deliveroo',
+				'bezorging',
+				'afhalen',
+				'thuisbezorgd.nl',
+				'ubereats',
+				'deliveroo.nl',
+				'dominos',
+				'domino\'s',
+				'pizzahut',
+				'new york pizza',
+				'pizza hut',
+				'pizza bestellen',
+				'maaltijdbezorging',
+				'maaltijd bezorging',
+				'afhaalmaaltijd',
+				'afhaal maaltijd',
+				'bezorgmaaltijd',
+				'bezorg maaltijd',
+				'food ordering',
+				'online bestellen',
+				'eten bestellen',
+				'maaltijd bestellen'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Uitgaan/Bars & Drinks',
-				description: 'Going out, bars, drinks, nightlife',
+				name: 'Uitgaan/bars',
+				description: 'Uitgaan, bars, drankjes, discotheken, nachtleven (vooral te identificeren door tijdstip na 21:00)',
 				color: '#dc2626',
 				icon: 'Wine',
 				is_default: true,
 				created_by: null,
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['uitgaan', 'bar', 'drinks', 'nightlife', 'kroeg', 'café', 'bier', 'wine', 'cocktail', 'uit']
+		[
+			'uitgaan',
+			'bar',
+			'kroeg',
+			'café',
+			'cafe',
+			'cocktailbar',
+			'wijnbar',
+			'brouwerij',
+			'discotheek',
+			'nachtclub',
+			'club',
+			'bier',
+			'borrel'
+		]
 		);
 
 		log('✅ Created Restaurants & Dining with 5 subcategories');
@@ -458,24 +654,38 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Car Payment',
-				description: 'Car loan payments, lease payments',
+				name: 'Autobetaling',
+				description: 'Lening of lease bedrag voor een auto, bedrag is vaak hoger dan 300 euro',
 				color: '#6366f1',
 				icon: 'Car',
 				is_default: true,
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['car payment', 'auto loan', 'lease', 'autolening', 'lease auto', 'auto lease']
+		[
+			'lease',
+			'leaseplan',
+			'ald automotive',
+			'arval',
+			'alphabet',
+			'autolening',
+			'autolease',
+			'leasebetaling',
+			'auto financiering',
+			'terberg',
+			'justlease'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Fuel',
-				description: 'Gas, diesel, charging for electric vehicles',
+				name: 'Brandstof',
+				description: 'Benzine, diesel, opladen voor elektrische voertuigen, bedragen lager dan 15 euro zijn eerder lunch of boodschappen',
 				color: '#4f46e5',
+				tier: 'most',
 				icon: 'Fuel',
 				is_default: true,
 				created_by: null,
@@ -483,88 +693,163 @@ async function main() {
 				group: 'essential',
 				updated_at: new Date()
 			},
-			['fuel', 'gas', 'diesel', 'benzine', 'tankstation', 'gas station', 'charging', 'laden', 'elektrisch']
+		[
+			'shell',
+			'bp',
+			'esso',
+			'total',
+			'totalenergies',
+			'tinq',
+			'tango',
+			'avia',
+			'texaco',
+			'q8',
+			'gulf',
+			'tankstation',
+			'benzine',
+			'diesel',
+			'fastned',
+			'allego',
+			'laadpaal',
+			'laadstation'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Public Transit',
-				description: 'Public transportation, OV-chipkaart, train, bus, tram, metro',
+				name: 'Openbaar vervoer',
+				description: 'Openbaar vervoer',
 				color: '#7c3aed',
 				icon: 'Train',
 				is_default: true,
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				tier: 'most',
 				updated_at: new Date()
 			},
-			[
-				'public transport',
-				'ov-chipkaart',
-				'ns',
-				'ov',
-				'train',
-				'trein',
-				'bus',
-				'tram',
-				'metro',
-				'openbaar vervoer'
-			]
+		[
+			'ns',
+			'nederlandse spoorwegen',
+			'ov-chipkaart',
+			'ov chipkaart',
+			'gvb',
+			'ret',
+			'htm',
+			'connexxion',
+			'arriva',
+			'keolis',
+			'qbuzz',
+			'flixbus',
+			'trein',
+			'bus',
+			'tram',
+			'metro',
+			'openbaar vervoer',
+			'ovpay'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Parking',
-				description: 'Parking fees, parking permits',
+				name: 'Parkeren',
+				description: 'Parkeerkosten, parkeervergunningen',
 				color: '#8b5cf6',
 				icon: 'SquareParking',
 				is_default: true,
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['parking', 'parkeren', 'parking fee', 'parkeergeld', 'parking permit']
+			[
+				'parking',
+				'parkeren',
+				'parking fee',
+				'parkeergeld',
+				'parking permit',
+				'q-park',
+				'interparking',
+				'parkbee',
+				'parkmobile',
+				'parkline',
+				'parkeergarage',
+				'parkeerplaats',
+				'parkeerkaart',
+				'parkeerautomaat',
+				'parkeervergunning',
+				'parkeertarief',
+				'parkeerkosten',
+				'betaald parkeren',
+				'parkeer betaald',
+				'parkeer betaalautomaat',
+				'parkeer betaalpaal',
+				'parkeer betaalterminal',
+				'parkeer betaalzuil'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Maintenance & Repairs',
-				description: 'Car maintenance, repairs, inspections, tires',
+				name: 'Onderhoud & reparaties',
+				description: 'Auto-onderhoud, reparaties, keuringen, banden',
 				color: '#a855f7',
 				icon: 'Wrench',
 				is_default: true,
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			[
-				'car maintenance',
-				'repair',
-				'inspection',
-				'apk',
-				'tires',
-				'banden',
-				'onderhoud',
-				'garage',
-				'auto reparatie'
-			]
+		[
+			'apk',
+			'garage',
+			'autogarage',
+			'kwikfit',
+			'profile',
+			'euromaster',
+			'banden',
+			'onderhoud',
+			'reparatie',
+			'wasstraat',
+			'autowasstraat',
+			'carwash',
+			'autoschade',
+			'carglass'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Taxi & Rideshare',
-				description: 'Taxis, Uber, Lyft, other rideshare services',
+				name: 'Taxi & deelvervoer',
+				description: 'Taxis, Uber, Lyft, andere deelvervoersdiensten',
 				color: '#9333ea',
 				icon: 'Taxi',
 				is_default: true,
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['taxi', 'uber', 'lyft', 'rideshare']
+		[
+			'uber',
+			'bolt',
+			'taxi',
+			'taxicentrale',
+			'greenwheels',
+			'mywheels',
+			'snappcar',
+			'felyx',
+			'lime',
+			'go sharing',
+			'check',
+			'deelauto',
+			'deelscooter',
+			'sixt'
+		]
 		);
 
 		log('✅ Created Transportation with 6 subcategories');
@@ -575,44 +860,104 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Clothing',
-				description: 'Clothing, shoes, accessories',
+				name: 'Kleding',
+				description: 'Kleding, schoenen, accessoires',
 				color: '#8b5cf6',
 				icon: 'Shirt',
 				is_default: true,
 				created_by: null,
 				parent_id: shopping.id,
 				group: 'lifestyle',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['clothing', 'clothes', 'kleding', 'shoes', 'schoenen', 'accessories', 'accessoires', 'fashion', 'mode']
+			[
+				'clothing',
+				'clothes',
+				'kleding',
+				'shoes',
+				'schoenen',
+				'accessories',
+				'accessoires',
+				'fashion',
+				'mode',
+				'h&m',
+				'zara',
+				'pull&bear',
+				'bershka',
+				'primark',
+				'c&a',
+				'we fashion',
+				'bijenkorf',
+				'wibra',
+				'zeeman',
+				'hm',
+				'mango',
+				'massimo dutti',
+				'stradivarius',
+				'only',
+				'vero moda',
+				'jack & jones',
+				'selected',
+				'name it',
+				'reserved',
+				'new yorker',
+				'pepe jeans',
+				'g-star',
+				'scotch & soda',
+				'denham',
+				'denim',
+				'kledingwinkel',
+				'modezaak',
+				'fashion store',
+				'kledingzaak'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Electronics',
-				description: 'Electronics, computers, phones, gadgets',
+				name: 'Elektronica',
+				description: 'Elektronica, computers, telefoons, gadgets',
 				color: '#7c3aed',
 				icon: 'Smartphone',
 				is_default: true,
 				created_by: null,
 				parent_id: shopping.id,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['electronics', 'computer', 'phone', 'smartphone', 'laptop', 'tablet', 'gadget', 'elektronica', 'telefoon']
+		[
+			'mediamarkt',
+			'coolblue',
+			'bol.com',
+			'amazon',
+			'apple',
+			'samsung',
+			'alternate',
+			'azerty',
+			'belsimpel',
+			'elektronica',
+			'computer',
+			'telefoon',
+			'laptop',
+			'tablet',
+			'expert',
+			'bcc'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Home Goods',
-				description: 'Furniture, home decor, appliances, household items',
+				name: 'Woninginrichting',
+				description: 'Meubels, woningdecoratie, apparaten, huishoudelijke artikelen',
 				color: '#9333ea',
 				icon: 'Home',
 				is_default: true,
 				created_by: null,
 				parent_id: shopping.id,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
 			[
@@ -623,23 +968,80 @@ async function main() {
 				'meubels',
 				'woninginrichting',
 				'huishoudelijk',
-				'apparaten'
+				'apparaten',
+				'ikea',
+				'leen bakker',
+				'loods 5',
+				'kwantum',
+				'karwei',
+				'praxis',
+				'gamma',
+				'formido',
+				'blokker',
+				'xenos',
+				'action',
+				'wibra',
+				'zeeman',
+				'hema',
+				'woonwinkel',
+				'meubelwinkel',
+				'meubelzaak',
+				'woningdecoratie',
+				'decoratie',
+				'home & garden',
+				'woonaccessoires',
+				'woonwinkels',
+				'woonketen',
+				'woonboulevard',
+				'woonmall'
 			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'General Retail',
-				description: 'Other retail purchases that don\'t fit other subcategories',
+				name: 'Algemene retail',
+				description: 'Andere retail aankopen die niet in andere subcategorieën passen',
 				color: '#a855f7',
 				icon: 'ShoppingBag',
 				is_default: true,
 				created_by: null,
 				parent_id: shopping.id,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['shopping', 'retail', 'store', 'winkel', 'general', 'algemeen']
+			[
+				'shopping',
+				'retail',
+				'store',
+				'winkel',
+				'general',
+				'algemeen',
+				'hema',
+				'action',
+				'kruidvat',
+				'etos',
+				'douglas',
+				'ici paris xl',
+				'rituals',
+				'body shop',
+				'lush',
+				'bijenkorf',
+				'de bijenkorf',
+				'v&d',
+				'vroom & dreesmann',
+				'de bazaar',
+				'big bazaar',
+				'wibra',
+				'zeeman',
+				'retail store',
+				'winkelcentrum',
+				'shopping center',
+				'winkelstraat',
+				'retailwinkel',
+				'algemene winkel',
+				'diverse winkel'
+			]
 		);
 
 		log('✅ Created Shopping with 4 subcategories');
@@ -650,41 +1052,145 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Bills & Utilities',
-				description: 'Electricity, water, gas, internet, phone',
+				name: 'Energie/water',
+				description: 'Elektriciteit, gas, water en gemeentelijke voorzieningen (afval, riool, gemeentelijke belastingen)',
 				color: '#ec4899',
 				icon: 'Zap',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'most',
 				updated_at: new Date()
 			},
-			['utility', 'electricity', 'water', 'gas', 'internet', 'phone', 'energie', 'water', 'gas', 'internet', 'telefoon', 'ziggo', 'kpn']
+		[
+			'eneco',
+			'essent',
+			'vattenfall',
+			'greenchoice',
+			'budgetenergie',
+			'vandebron',
+			'engie',
+			'energiedirect',
+			'oxxio',
+			'pure energie',
+			'om | nieuwe energie',
+			'frank energie',
+			'anwb energie',
+			'energie van onbekend',
+			'energyswitch',
+			'energievergelijk',
+			'vitens',
+			'waternet',
+			'evides',
+			'brabant water',
+			'pwn',
+			'dunea',
+			'energie',
+			'water',
+			'gas',
+			'stroom',
+			'elektriciteit',
+			'nutstotaal',
+			'liander',
+			'stedin',
+			'een',
+			'westland infranet'
+		]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Housing',
-				description: 'Rent, mortgage, maintenance',
+				name: 'TV/internet/telefoon',
+				description: 'Internet, telefoon, TV en kabelabonnementen',
+				color: '#ec4899',
+				icon: 'Wifi',
+				is_default: true,
+				created_by: null,
+				group: 'essential',
+				tier: 'most',
+				updated_at: new Date()
+			},
+		[
+			'ziggo',
+			'kpn',
+			'odido',
+			't-mobile',
+			'vodafone',
+			'tele2',
+			'youfone',
+			'simyo',
+			'hollandsnieuwe',
+			'ben',
+			'lebara',
+			'internet',
+			'telefoon',
+			'tv',
+			'glasvezel',
+			'mobiel'
+		]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Woning',
+				description: 'Huur, hypotheek, onderhoud (NIET energie en water, die vallen onder de Energie/water categorie)',
 				color: '#ef4444',
 				icon: 'Home',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['rent', 'mortgage', 'housing', 'maintenance', 'huur', 'hypotheek', 'woning', 'onderhoud']
+			[
+				'rent',
+				'mortgage',
+				'housing',
+				'maintenance',
+				'huur',
+				'hypotheek',
+				'woning',
+				'onderhoud',
+				'rabobank',
+				'ing',
+				'abn amro',
+				'sns bank',
+				'asr',
+				'nationale nederlanden',
+				'nn',
+				'achmea',
+				'vereniging eigen huis',
+				'veh',
+				'wooncorporatie',
+				'woningcorporatie',
+				'woningstichting',
+				'huurtoeslag',
+				'huurverhoging',
+				'huurprijs',
+				'maandhuur',
+				'hypotheekrente',
+				'hypotheekbetaling',
+				'hypotheeklasten',
+				'woningonderhoud',
+				'huisonderhoud',
+				'woningbelasting',
+				'ozb',
+				'ozb belasting',
+				'woonlasten',
+				'woonkosten'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Healthcare',
-				description: 'Medical expenses, pharmacy, health subscriptions (gym, fitness apps)',
+				name: 'Gezondheidszorg',
+				description: 'Medische kosten, apotheek, gezondheidsapps (NIET: sportschool/fitness - gebruik Sport categorie)',
 				color: '#f43f5e',
 				icon: 'Heart',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'medium',
 				updated_at: new Date()
 			},
 			[
@@ -698,181 +1204,725 @@ async function main() {
 				'apotheek',
 				'arts',
 				'ziekenhuis',
-				'gym',
-				'fitness',
-				'sportschool',
-				'strava',
-				'myfitnesspal'
+				'health app',
+				'myfitnesspal',
+				'kruidvat',
+				'etos',
+				'davipharm',
+				'apotheek',
+				'apotheek online',
+				'medicijnen',
+				'medicatie',
+				'huisarts',
+				'tandarts',
+				'fysiotherapeut',
+				'fysio',
+				'psycholoog',
+				'psychiater',
+				'ziekenfonds',
+				'zorgverzekering',
+				'zorgverzekeraar',
+				'zilveren kruis',
+				'cz',
+				'vgz',
+				'menzis',
+				'ditzo',
+				'zorgkosten',
+				'eigen risico',
+				'medische kosten',
+				'gezondheidszorg',
+				'zorg'
 			]
 		);
+
+		// ============================================
+		// HOBBIES & LEISURE SUBCATEGORIES
+		// ============================================
 
 		await createCategoryWithKeywords(
 			{
 				name: 'Entertainment',
-				description: 'Movies, streaming, games, hobbies, entertainment subscriptions',
+				description: 'Films, streaming, games, entertainmentabonnementen.',
 				color: '#a855f7',
 				icon: 'Film',
 				is_default: true,
 				created_by: null,
+				parent_id: hobbiesLeisure.id,
 				group: 'lifestyle',
+				tier: 'most',
+				updated_at: new Date()
+			},
+		[
+			'netflix',
+			'spotify',
+			'disney+',
+			'disney plus',
+			'hbo max',
+			'videoland',
+			'prime video',
+			'amazon prime',
+			'apple tv',
+			'youtube premium',
+			'playstation',
+			'xbox',
+			'nintendo',
+			'steam',
+			'pathe',
+			'bioscoop',
+			'streaming',
+			'gaming'
+		]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Sport',
+				description: 'Sportschoolabonnementen, fitness, sportartikelen',
+				color: '#10b981',
+				icon: 'Dumbbell',
+				is_default: true,
+				created_by: null,
+				parent_id: hobbiesLeisure.id,
+				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
 			[
-				'entertainment',
-				'netflix',
-				'spotify',
-				'streaming',
-				'movie',
-				'game',
-				'film',
-				'spel',
-				'disney',
-				'hbo',
-				'prime',
-				'youtube premium',
-				'twitch',
-				'gaming',
-				'playstation',
-				'xbox',
-				'nintendo'
+				'gym',
+				'fitness',
+				'sportschool',
+				'sports',
+				'workout',
+				'personal trainer',
+				'yoga',
+				'pilates',
+				'sports equipment',
+				'sporting goods',
+				'sports events',
+				'tickets',
+				'strava',
+				'basic fit',
+				'fit for free',
+				'fit'
 			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Education',
-				description: 'Courses, books, tuition, educational subscriptions',
+				name: 'Boeken/tijdschriften/games',
+				description: 'Boeken, tijdschriften en tijdschrift abonnementen, e-books, audioboeken, games',
+				color: '#06b6d4',
+				icon: 'BookOpen',
+				is_default: true,
+				created_by: null,
+				parent_id: hobbiesLeisure.id,
+				group: 'lifestyle',
+				tier: 'less',
+				updated_at: new Date()
+			},
+			[
+				'book',
+				'books',
+				'boek',
+				'boeken',
+				'magazine',
+				'e-book',
+				'ebook',
+				'audiobook',
+				'kindle',
+				'kobo',
+				'bookstore',
+				'bookshop',
+				'boekenwinkel',
+				'library',
+				'bibliotheek',
+				'bruna',
+				'libris',
+				'slegte',
+				'donner'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Hobby',
+				description: 'Hobby\'s, contributies zoals toneel of muziekverenigingen NIET: sportverenigingen (gebruik Sport), entertainment abonnementen (gebruik Entertainment)',
+				color: '#a855f7',
+				icon: 'Palette',
+				is_default: true,
+				created_by: null,
+				parent_id: hobbiesLeisure.id,
+				group: 'lifestyle',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			[
+				'hobby',
+				'hobbies',
+				'vereniging',
+				'verenigingscontributie',
+				'contributie',
+				'lidmaatschap',
+				'hobbywinkel',
+				'knutselen',
+				'knutselspullen',
+				'creatief',
+				'creatieve materialen',
+				'modelbouw',
+				'fotografie',
+				'fotoprint',
+				'muziekinstrument',
+				'muziekles',
+				'muzieklessen',
+				'hobbyclub',
+				'kunst',
+				'handwerk',
+				'breien',
+				'haken',
+				'naaien',
+				'schilderen',
+				'tekenen',
+				'puzzel',
+				'legpuzzel',
+				'boardgame',
+				'bordspel',
+				'verenigingslidmaatschap',
+				'club',
+				'verenigingslid',
+				'culturele vereniging',
+				'muziekvereniging',
+				'fanfare',
+				'harmonie',
+				'orkest',
+				'koor',
+				'toneelvereniging',
+				'zangvereniging'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Uitjes & activiteiten',
+				description: 'Uitjes, dagjes uit, attracties, musea, theaters, concerten, festivals en andere activiteiten',
+				color: '#a855f7',
+				icon: 'Ticket',
+				is_default: true,
+				created_by: null,
+				parent_id: hobbiesLeisure.id,
+				group: 'lifestyle',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			[
+				'uitje',
+				'dagje uit',
+				'attractiepark',
+				'pretpark',
+				'themapark',
+				'museum',
+				'musea',
+				'theater',
+				'concert',
+				'concerten',
+				'dierentuin',
+				'zwembad',
+				'festival',
+				'evenement',
+				'beurs',
+				'tentoonstelling',
+				'activiteit',
+				'uitstapje',
+				'culturele activiteit',
+				'vrije tijd'
+			]
+		);
+
+		log('✅ Created Hobbies & Leisure with 5 subcategories');
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Onderwijs',
+				description: 'Cursussen, collegegeld, educatieve abonnementen NIET: algemene boeken of entertainment',
 				color: '#06b6d4',
 				icon: 'GraduationCap',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['education', 'course', 'tuition', 'book', 'school', 'onderwijs', 'cursus', 'boek', 'udemy', 'coursera', 'skillshare', 'masterclass']
+			[
+				'education',
+				'course',
+				'tuition',
+				'school',
+				'onderwijs',
+				'cursus',
+				'udemy',
+				'coursera',
+				'skillshare',
+				'masterclass',
+				'educational software',
+				'duo',
+				'studiefinanciering',
+				'collegegeld',
+				'schoolgeld',
+				'lesgeld',
+				'studie',
+				'universiteit',
+				'hogeschool',
+				'mbo',
+				'havo',
+				'vwo',
+				'basisschool',
+				'voortgezet onderwijs',
+				'online cursus',
+				'e-learning',
+				'elearning',
+				'studiemateriaal',
+				'studieboeken',
+				'college',
+				'les',
+				'opleiding',
+				'training',
+				'workshop',
+				'seminar',
+				'conferentie',
+				'educatie',
+				'leermateriaal'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Software & Tools',
-				description: 'Software licenses, SaaS subscriptions, productivity tools',
-				color: '#8b5cf6',
-				icon: 'Code',
-				is_default: true,
-				created_by: null,
-				group: 'lifestyle',
-				updated_at: new Date()
-			},
-			['software', 'saas', 'license', 'adobe', 'microsoft', 'office', 'dropbox', 'google workspace', 'notion', 'figma', 'slack', 'zoom', 'tool', 'productivity']
-		);
-
-		await createCategoryWithKeywords(
-			{
-				name: 'Travel',
-				description: 'Hotels, flights, vacation expenses',
+				name: 'Reizen',
+				description: 'Hotels, vluchten, campings, zaken in andere landen dan nederland (behalve als je een specifiekere categorie kunt vinden)',
 				color: '#0ea5e9',
 				icon: 'Plane',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['travel', 'hotel', 'flight', 'vacation', 'trip', 'reizen', 'vlucht', 'vakantie']
+			[
+				'travel',
+				'hotel',
+				'flight',
+				'vacation',
+				'trip',
+				'reizen',
+				'vlucht',
+				'vakantie',
+				'booking.com',
+				'expedia',
+				'trivago',
+				'airbnb',
+				'klm',
+				'transavia',
+				'easyjet',
+				'ryanair',
+				'vueling',
+				'brussels airlines',
+				'lufthansa',
+				'hotel',
+				'resort',
+				'vakantiepark',
+				'camping',
+				'hostel',
+				'pension',
+				'bed & breakfast',
+				'b&b',
+				'reisbureau',
+				'tui',
+				'corendon',
+				'kras',
+				'vakantie',
+				'vliegticket',
+				'vliegtickets',
+				'hotelboeking',
+				'hotel booking',
+				'reis',
+				'reisje',
+				'citytrip',
+				'city trip',
+				'weekendje weg',
+				'vakantiebestemming'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Insurance',
-				description: 'Health, car, home insurance',
+				name: 'Verzekering',
+				description: 'Zorg auto inboedel reisverzekering etc.',
 				color: '#3b82f6',
 				icon: 'Shield',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'medium',
 				updated_at: new Date()
 			},
-			['insurance', 'verzekering', 'zorgverzekering', 'autoverzekering', 'inboedelverzekering', 'aansprakelijkheidsverzekering']
+			[
+				'verzekering',
+				'insurance',
+				'inshared',
+				'centraal beheer',
+				'nationale nederlanden',
+				'nn',
+				'ohra',
+				'interpolis',
+				'unive',
+				'aegon',
+				'asr',
+				'achmea',
+				'zilveren kruis',
+				'cz',
+				'vgz',
+				'menzis',
+				'ditzo',
+				'fbto',
+				'allianz'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Fees & Charges',
-				description: 'Bank fees, service charges',
+				name: 'Belastingen & boetes',
+				description: 'Belastingen en boetes die je moet betalen (alleen negatieve bedragen, anders bij categorie belastingteruggaven)',
+				color: '#ef4444',
+				icon: 'FileText',
+				is_default: true,
+				created_by: null,
+				group: 'essential',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			[
+				'belastingdienst',
+				'belastingdienst.nl',
+				'inkomstenbelasting',
+				'voorlopige aanslag',
+				'definitieve aanslag',
+				'belastingaanslag',
+				'boete',
+				'verkeersboete',
+				'parkeerboete',
+				'cjib',
+				'centraal justitieel incassobureau',
+				'belasting betalen',
+				'rijksoverheid',
+				'gemeente belasting'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Kosten & vergoedingen',
+				description: 'Voornamelijk bankkosten, deze categorie komt weinig voor',
 				color: '#64748b',
 				icon: 'CreditCard',
 				is_default: true,
 				created_by: null,
 				group: 'financial',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['fee', 'charge', 'bank fee', 'service fee', 'kosten', 'vergoeding', 'bankkosten']
+			[
+				'fee',
+				'charge',
+				'bank fee',
+				'service fee',
+				'kosten',
+				'bankkosten',
+				'rabobank',
+				'ing',
+				'abn amro',
+				'sns bank',
+				'asn bank',
+				'knab',
+				'bunq',
+				'revolut',
+				'wise',
+				'bankkosten',
+				'bank kosten',
+				'servicekosten',
+				'service kosten',
+				'administratiekosten',
+				'administratie kosten',
+				'beheerkosten',
+				'beheer kosten',
+				'kostenvergoeding',
+				'vergoeding',
+				'kosten',
+				'fee',
+				'charges',
+				'bank charges',
+				'bankkosten',
+				'maandkosten',
+				'jaarkosten',
+				'periodiek kosten',
+				'periodieke kosten'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Charity & Donations',
-				description: 'Charitable contributions',
+				name: 'Geldopnames',
+				description: 'Geldopnames bij pinautomaten en geldautomaten',
+				color: '#3b82f6',
+				icon: 'Wallet',
+				is_default: true,
+				created_by: null,
+				group: 'financial',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			['geldmaat', 'geldopname', 'cash withdrawal', 'atm', 'pinautomaat', 'geldautomaat', 'withdrawal', 'cash', 'geld opname']
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Goede doelen & donaties',
+				description: 'Goede doelen bijdragen, gebruik hier voornamelijk de bekendere organisaties of als de beschrijving duidelijk is',
 				color: '#84cc16',
 				icon: 'HeartHandshake',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['donation', 'charity', 'donatie', 'goede doel']
+			[
+				'donation',
+				'charity',
+				'donatie',
+				'goede doel',
+				'unicef',
+				'rode kruis',
+				'wereld natuur fonds',
+				'wwf',
+				'greenpeace',
+				'oxfam',
+				'novib',
+				'cordaid',
+				'kippen',
+				'kika',
+				'kankerfonds',
+				'hartstichting',
+				'diabetesfonds',
+				'longfonds',
+				'maag lever darm stichting',
+				'ms fonds',
+				'parkinson vereniging',
+				'alzheimer nederland',
+				'goede doelen',
+				'goed doel',
+				'charity',
+				'charitatieve organisatie',
+				'donatie',
+				'giften',
+				'gift',
+				'steun',
+				'steunactie',
+				'actie',
+				'collecte',
+				'collecteren',
+				'fondsenwerving',
+				'sponsoring',
+				'steunactie'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Personal Care',
-				description: 'Haircuts, cosmetics, personal items',
+				name: 'Persoonlijke verzorging',
+				description: 'Kappers, cosmetica, persoonlijke artikelen en drogisterijen als kruidvat of etos',
 				color: '#f472b6',
 				icon: 'Sparkles',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['personal care', 'haircut', 'cosmetics', 'personal', 'kapper', 'cosmetica', 'persoonlijk']
+			[
+				'personal care',
+				'haircut',
+				'cosmetics',
+				'personal',
+				'kapper',
+				'cosmetica',
+				'persoonlijk',
+				'kapper',
+				'kapsalon',
+				'hairdresser',
+				'haar',
+				'knippen',
+				'föhnen',
+				'verven',
+				'kleuren',
+				'douglas',
+				'ici paris xl',
+				'rituals',
+				'body shop',
+				'lush',
+				'kruidvat',
+				'etos',
+				'de tuinen',
+				'cosmetica',
+				'parfumerie',
+				'parfum',
+				'geuren',
+				'verzorging',
+				'gezichtsverzorging',
+				'bodyverzorging',
+				'handverzorging',
+				'voetverzorging',
+				'manicure',
+				'pedicure',
+				'nagelstudio',
+				'nagelsalon',
+				'beauty salon',
+				'schoonheidssalon',
+				'wellness',
+				'spa',
+				'massage',
+				'fysiotherapie',
+				'fysio'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Loans & Debt Repayment',
-				description: 'Loan payments and debt repayment',
+				name: 'Leningen & schuldaflossing',
+				description: 'Leningen en aflossingen (NIET: creditcard betalingen - gebruik Creditcard betalingen categorie)',
 				color: '#ef4444',
 				icon: 'CreditCard',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['loan', 'debt', 'credit card payment', 'student loan', 'personal loan', 'auto loan', 'lening', 'schuld', 'creditcard', 'studielening', 'persoonlijke lening', 'autolening']
+			[
+				'loan',
+				'debt',
+				'student loan',
+				'personal loan',
+				'auto loan',
+				'lening',
+				'schuld',
+				'studielening',
+				'persoonlijke lening',
+				'autolening',
+				'duo',
+				'studiefinanciering',
+				'studielening',
+				'studie lening',
+				'persoonlijke lening',
+				'consumptief krediet',
+				'consumptief krediet',
+				'flitskrediet',
+				'minilening',
+				'kleine lening',
+				'grote lening',
+				'hypotheek',
+				'woonhypotheek',
+				'huurkoop',
+				'koop op afbetaling',
+				'afbetaling',
+				'aflossing',
+				'schuldaflossing',
+				'schuld aflossing',
+				'rente',
+				'leningrente',
+				'krediet',
+				'kredietverstrekker',
+				'kredietbank',
+				'financiering',
+				'financieringsmaatschappij',
+				'betaalregeling',
+				'regeling',
+				'betalingsregeling'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Savings & Investments',
-				description: 'Savings contributions and investment deposits',
+				name: 'Sparen & beleggen',
+				description: 'Overboekingen naar spaar, beleggings en crypto rekeningen of wallets.',
 				color: '#10b981',
 				icon: 'PiggyBank',
 				is_default: true,
 				created_by: null,
 				group: 'financial',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['savings', 'investment', 'emergency fund', 'retirement', 'pension', 'sparen', 'investering', 'spaargeld', 'pensioen', 'noodfonds', 'spaarrekening']
+			[
+				'savings',
+				'investment',
+				'emergency fund',
+				'retirement',
+				'pension',
+				'sparen',
+				'investering',
+				'spaargeld',
+				'pensioen',
+				'noodfonds',
+				'spaarrekening',
+				'notprovided',
+				'degiro',
+				'lynx',
+				'binck bank',
+				'bolero',
+				'brand new day',
+				'meesman',
+				'beleggen',
+				'beleggingsrekening',
+				'beleggingsrekening',
+				'effectenrekening',
+				'effecten',
+				'aandelen',
+				'obligaties',
+				'fondsen',
+				'indexfondsen',
+				'etf',
+				'pensioensparen',
+				'pensioen sparen',
+				'lijfrente',
+				'banksparen',
+				'bank sparen',
+				'spaardeposito',
+				'deposito',
+				'spaarplan',
+				'maandelijks sparen',
+				'automatisch sparen',
+				'spaardoel',
+				'spaarrekening',
+				'spaarrekening',
+				'rente',
+				'spaarrente',
+				'beleggingsrente',
+				'winst',
+				'dividend',
+				'koerswinst',
+				'verkoop effecten',
+				'aankoop effecten'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Pet Care',
-				description: 'Pet food, veterinary care, grooming, pet supplies',
+				name: 'Huisdierenverzorging',
+				description: 'Voer, dierenarts, uitlaatservice',
 				color: '#f59e0b',
 				icon: 'Heart',
 				is_default: true,
 				created_by: null,
 				group: 'lifestyle',
+				tier: 'less',
 				updated_at: new Date()
 			},
 			['pet', 'veterinary', 'vet', 'pet food', 'dierenarts', 'hondenvoer', 'kattenvoer', 'huisdier', 'dier', 'pet care', 'dierenverzorging']
@@ -880,58 +1930,202 @@ async function main() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Childcare & Dependent Care',
-				description: 'Daycare, childcare services, school supplies, elder care',
+				name: 'Kinderopvang & zorg',
+				description: 'Kinderopvang, oppasdiensten, ouderenzorg, ook positieve bedragen zoals kinderopvang toeslag, kindergeld, etc.',
 				color: '#06b6d4',
 				icon: 'Baby',
 				is_default: true,
 				created_by: null,
 				group: 'essential',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			['childcare', 'daycare', 'babysitting', 'school supplies', 'elder care', 'kinderopvang', 'oppas', 'schoolspullen', 'ouderenzorg', 'zorg']
+			[
+				'childcare',
+				'daycare',
+				'babysitting',
+				'school supplies',
+				'elder care',
+				'kinderopvang',
+				'oppas',
+				'schoolspullen',
+				'ouderenzorg',
+				'zorg',
+				'kinderopvang',
+				'kinderdagverblijf',
+				'kinderdagopvang',
+				'peuterspeelzaal',
+				'buitenschoolse opvang',
+				'bso',
+				'gastouder',
+				'oppas',
+				'oppasdienst',
+				'babysit',
+				'babysitter',
+				'oppasdienst',
+				'oppas service',
+				'kinderopvangtoeslag',
+				'kinderopvang toeslag',
+				'kindergeld',
+				'kinderbijslag',
+				'svb',
+				'sociale verzekeringsbank',
+				'schoolspullen',
+				'schoolbenodigdheden',
+				'schoolmateriaal',
+				'schoolboeken',
+				'schooltas',
+				'schoolkleding',
+				'schoolgeld',
+				'lesgeld',
+				'ouderenzorg',
+				'thuiszorg',
+				'verpleging',
+				'verzorging',
+				'zorg',
+				'zorgverlener',
+				'zorgverlening',
+				'zorginstelling',
+				'verzorgingshuis',
+				'verpleeghuis',
+				'zorgcentrum',
+				'zorgwoning',
+				'zorgverzekering',
+				'wmo',
+				'wet maatschappelijke ondersteuning',
+				'persoonsgebonden budget',
+				'pgb',
+				'zorgbudget',
+				'zorgtoeslag',
+				'zorg toeslag'
+			]
 		);
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Transfers Between Own Accounts',
-				description: 'Transfers between your own bank accounts, savings accounts, investment accounts',
+				name: 'Betaalverzoeken',
+				description: 'Betaalverzoeken en betaallinks zoals Tikkie, betaalverzoek, LET OP: als er uit de beschrijving een echte categorie op te maken is gebruik die dan, LET OP: als het niet heel duidelijk een betaalverzoek is dan deze categorie niet gebruiken.',
+				color: '#8b5cf6',
+				icon: 'Send',
+				is_default: true,
+				created_by: null,
+				group: 'financial',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			[
+				'betaalverzoek',
+				'tikkie',
+				'tikkie.nl',
+				'payment request',
+				'pay request',
+				'payment link',
+				'betaallink',
+				'paylink',
+				'request payment',
+				'payment invitation',
+				'betaaluitnodiging',
+				'pay request',
+				'payment link',
+				'betaal link',
+				'pay link'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Creditcard betalingen',
+				description: 'Creditcard betalingen en afschriften (NIET: leningen - gebruik Leningen & schuldaflossing categorie)',
+				color: '#3b82f6',
+				icon: 'CreditCard',
+				is_default: true,
+				created_by: null,
+				group: 'financial',
+				tier: 'medium',
+				updated_at: new Date()
+			},
+			[
+				'creditcard',
+				'credit card',
+				'creditcard payment',
+				'credit card payment',
+				'cc payment',
+				'visa',
+				'mastercard',
+				'amex',
+				'american express',
+				'creditcardafschrift',
+				'credit card statement',
+				'creditcard statement',
+				'cc statement',
+				'creditcard betaling',
+				'credit card betaling'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Overboekingen eigen rekeningen',
+				description: 'Overboekingen tussen je eigen bankrekeningen, spaarrekeningen, beleggingsrekeningen',
 				color: '#94a3b8',
 				icon: 'ArrowLeftRight',
 				is_default: true,
 				created_by: null,
 				group: 'financial',
+				tier: 'less',
 				updated_at: new Date()
 			},
 			['transfer', 'own account', 'eigen rekening', 'overboeking', 'savings account', 'investment account', 'beleggingsrekening']
 		);
 
 		// ============================================
-		// SYSTEM CATEGORY
+		// OTHER CATEGORIES
 		// ============================================
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Uncategorized',
-				description: 'Transactions that haven\'t been categorized',
+				name: 'Niet gecategoriseerd',
+				description: 'Systeemcategorie voor transacties die niet automatisch zijn gecategoriseerd',
 				color: '#94a3b8',
 				icon: 'HelpCircle',
 				is_default: true,
 				created_by: null,
 				group: 'other',
+				tier: 'less',
 				updated_at: new Date()
 			},
-			[] // Empty - catch-all
+			[] // Empty - system category only
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Overig',
+				description: 'Diverse uitgaven die niet in andere categorieën passen (gebruiker selecteerbaar)',
+				color: '#64748b',
+				icon: 'MoreHorizontal',
+				is_default: true,
+				created_by: null,
+				group: 'other',
+				tier: 'less',
+				updated_at: new Date()
+			},
+			['other', 'miscellaneous', 'overig', 'diversen']
 		);
 
 		log('✅ Created all standalone expense categories');
-		log('✅ Created Uncategorized system category');
+		log('✅ Created Uncategorized and Other system categories');
 
 		log('📊 Seed completed successfully!');
-		log('   - 6 Income categories');
-		log('   - 21 Expense categories (4 parents + 19 subcategories)');
-		log('   - 1 System category (Uncategorized)');
-		log('   - Total: 46 categories');
+		log('   - 3 Income categories');
+		log('   - Expense categories: 4 parents + subcategories');
+		log('     * Food & Groceries: 4 subcategories');
+		log('     * Restaurants & Dining: 5 subcategories');
+		log('     * Transportation: 6 subcategories');
+		log('     * Shopping: 4 subcategories');
+		log('     * Hobbies & Leisure: 4 subcategories');
+		log('   - Standalone expense categories: 15');
+		log('   - Financial management categories: 5 (Geldopnames, Betaalverzoeken, Creditcard betalingen, Sparen & beleggen, Overboekingen eigen rekeningen)');
+		log('   - Other categories: 2 (Uncategorized, Other)');
 	} catch (error) {
 		console.error('❌ Error during seeding:', error);
 		throw error;

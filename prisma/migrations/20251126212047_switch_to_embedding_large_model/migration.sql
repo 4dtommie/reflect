@@ -1,0 +1,3 @@
+-- This migration was created to switch to large model but pgvector indexes only support up to 2000 dimensions
+-- Reverting back to small model (1536 dimensions) which works with HNSW index
+-- No changes needed - column is already vector(1536) and index already exists

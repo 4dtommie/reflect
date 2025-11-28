@@ -17,12 +17,16 @@
 	} | null>(null);
 	let completed = $state(false);
 	let eventSource: EventSource | null = $state(null);
+	let startTime = $state<number | null>(null);
+	let duration = $state<number | null>(null);
 
 	async function startCategorization() {
 		processing = true;
 		error = null;
 		progress = null;
 		completed = false;
+		startTime = Date.now();
+		duration = null;
 
 		try {
 			console.log('🚀 Starting categorization...');
@@ -80,6 +84,9 @@
 									message: data.message
 								};
 								completed = true;
+								if (startTime) {
+									duration = Date.now() - startTime;
+								}
 								// Invalidate transactions to refresh the list
 								await invalidateAll();
 							} else if (data.type === 'error') {
@@ -115,7 +122,7 @@
 {/if}
 
 {#if progress}
-	<div class="card bg-base-200 mb-6">
+	<div class="card bg-base-100 mb-6">
 		<div class="card-body p-0">
 			<h2 class="card-title px-0 pt-6">Progress</h2>
 			
@@ -159,7 +166,16 @@
 			{#if completed}
 				<div class="alert alert-success mx-0 mb-6 mt-4">
 					<CheckCircle size={20} />
-					<span>Categorization complete!</span>
+					<span>
+						Categorization complete!
+						{#if duration !== null}
+							{@const seconds = (duration / 1000).toFixed(1)}
+							{@const minutes = Math.floor(duration / 60000)}
+							{@const remainingSeconds = ((duration % 60000) / 1000).toFixed(1)}
+							{@const timeText = minutes > 0 ? `${minutes}m ${remainingSeconds}s` : `${seconds}s`}
+							<span class="ml-2 opacity-80">(took {timeText})</span>
+						{/if}
+					</span>
 				</div>
 			{/if}
 		</div>

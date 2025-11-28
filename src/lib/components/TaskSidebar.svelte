@@ -72,7 +72,7 @@
 	}
 </script>
 
-<div class="bg-base-200 rounded shadow-sm flex flex-col transition-all duration-300 {isExpanded ? 'w-80 sidebar-expanded' : 'w-16'} lg:w-80 p-2 lg:p-4 overflow-x-hidden" style="height: 100%;">
+<div class="bg-base-100 rounded shadow-sm flex flex-col transition-all duration-300 {isExpanded ? 'w-80 sidebar-expanded' : 'w-16'} lg:w-80 p-2 lg:p-4 overflow-x-hidden" style="height: 100%;">
 	<!-- Top section: Expand/collapse button and step numbers (when collapsed) -->
 	{#if isExpanded}
 		<!-- Expanded: Button at top -->
@@ -114,9 +114,9 @@
 	<div class="flex-1 {isExpanded ? '' : 'hidden'} lg:block">
 		<!-- Progress Header -->
 		<div class="mb-6">
-			<h2 class="text-lg font-semibold text-base-content">Your plan</h2>
+			<h2 class="text-lg font-semibold text-base-content">Your reflection</h2>
 			<div class="badge badge-primary badge-lg mt-2">
-				{completedCount} of {totalCount} reflections completed
+				{completedCount} of {totalCount} tasks completed
 			</div>
 		</div>
 		

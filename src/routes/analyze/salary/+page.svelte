@@ -8,7 +8,7 @@
 
 <p class="text-lg mb-8">Analyze your transactions to identify salary payments.</p>
 
-<div class="fieldset bg-base-200 border-base-300 rounded-box border p-4 max-w-2xl">
+<div class="fieldset bg-base-100 border-base-300 rounded-box border p-4 max-w-2xl">
 	<legend class="fieldset-legend">Analysis Settings</legend>
 	<div class="form-control">
 		<label class="label">

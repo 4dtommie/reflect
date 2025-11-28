@@ -9,6 +9,10 @@ import {
 	type ColumnMapping,
 	type TransactionInput
 } from '$lib/utils/transactionMapper';
+import { cleanMerchantName } from '$lib/server/categorization/merchantNameCleaner';
+import { normalizeDescription } from '$lib/server/categorization/descriptionCleaner';
+import { categorizeAmount } from '$lib/server/categorization/amountCategorizer';
+import { getOrCreateFuzzyMatchingJob } from '$lib/server/categorization/fuzzyMatchingJob';
 
 /**
  * Get paginated transactions for the current user
@@ -26,24 +30,44 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
 		const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20')));
 		const skip = (page - 1) * pageSize;
+		const uncategorizedOnly = url.searchParams.get('uncategorized') === 'true';
+		const recentOnly = url.searchParams.get('recent') === 'true';
+
+		// Build where clause
+		const whereClause: any = { user_id: userId };
+		if (uncategorizedOnly) {
+			whereClause.category_id = null;
+		}
+		if (recentOnly) {
+			// Get transactions categorized in the last 5 minutes
+			const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+			whereClause.updated_at = { gte: fiveMinutesAgo };
+			whereClause.category_id = { not: null };
+		}
 
 		// Get total count
 		const totalCount = await (db as any).transactions.count({
-			where: { user_id: userId }
+			where: whereClause
 		});
 
 		// Fetch transactions with category and merchant relations
 		const transactionsRaw = await (db as any).transactions.findMany({
-			where: { user_id: userId },
+			where: whereClause,
 			take: pageSize,
-			orderBy: { date: 'desc' },
+			skip: skip,
+			orderBy: recentOnly ? { updated_at: 'desc' } : { date: 'desc' },
 			include: {
 				categories: {
 					select: {
 						id: true,
 						name: true,
 						color: true,
-						icon: true
+						icon: true,
+						category_keywords: {
+							select: {
+								keyword: true
+							}
+						}
 					}
 				},
 				merchants: {
@@ -56,29 +80,44 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 
 		// Serialize to plain objects - convert Decimal to number, Date to string
-		const transactions = transactionsRaw.map((t: any) => ({
-			id: t.id,
-			date: t.date instanceof Date ? t.date.toISOString() : t.date,
-			merchantName: t.merchantName, // Raw merchant name
-			merchant_id: t.merchant_id,
-			iban: t.iban,
-			counterparty_iban: t.counterparty_iban,
-			is_debit: t.is_debit,
-			amount: typeof t.amount === 'object' && t.amount?.toNumber ? t.amount.toNumber() : Number(t.amount),
-			type: t.type,
-			description: t.description,
-			category_id: t.category_id,
-			category: t.categories ? {
-				id: t.categories.id,
-				name: t.categories.name,
-				color: t.categories.color,
-				icon: t.categories.icon
-			} : null,
-			merchant: t.merchants ? {
-				id: t.merchants.id,
-				name: t.merchants.name // Cleaned merchant name
-			} : null
-		}));
+		const transactions = transactionsRaw.map((t: any) => {
+			// If merchant is linked, use merchant.name (cleaned), otherwise clean merchantName as fallback
+			const cleanedMerchantName = t.merchants?.name || t.cleaned_merchant_name || cleanMerchantName(t.merchantName, t.description);
+			
+			// Use stored normalized_description, or normalize on-the-fly if not stored
+			const normalizedDesc = t.normalized_description || normalizeDescription(t.description);
+			
+			return {
+				id: t.id,
+				date: t.date instanceof Date ? t.date.toISOString() : t.date,
+				merchantName: t.merchantName, // Raw merchant name (for tooltip)
+				cleaned_merchant_name: t.cleaned_merchant_name || cleanedMerchantName,
+				merchant_id: t.merchant_id,
+				iban: t.iban,
+				counterparty_iban: t.counterparty_iban,
+				is_debit: t.is_debit,
+				amount: typeof t.amount === 'object' && t.amount?.toNumber ? t.amount.toNumber() : Number(t.amount),
+				type: t.type,
+				description: t.description, // Original description (for tooltip)
+				normalized_description: normalizedDesc, // Cleaned description for display
+				amount_category: t.amount_category,
+				category_id: t.category_id,
+				category: t.categories ? {
+					id: t.categories.id,
+					name: t.categories.name,
+					color: t.categories.color,
+					icon: t.categories.icon,
+					keywords: t.categories.category_keywords?.map((kw: any) => kw.keyword) || []
+				} : null,
+				merchant: t.merchants ? {
+					id: t.merchants.id,
+					name: t.merchants.name // Cleaned merchant name from merchant record
+				} : (cleanedMerchantName ? {
+					id: null,
+					name: cleanedMerchantName // Fallback: cleaned merchant name if no merchant linked
+				} : null)
+			};
+		});
 
 		// Calculate monthly statistics from ALL transactions (not just current page)
 		const allTransactionsForStats = await (db as any).transactions.findMany({
@@ -164,6 +203,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		return json({
 			transactions,
+			total: Number(totalCount),
 			pagination: {
 				page,
 				pageSize,
@@ -197,6 +237,7 @@ interface ImportResult {
 	skipped: number;
 	errors: ImportError[];
 	duplicates: number;
+	fuzzyMatchingJobId?: string; // Job ID for async fuzzy matching
 }
 
 
@@ -302,22 +343,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				for (let i = 0; i < finalTransactions.length; i += batchSize) {
 					const batch = finalTransactions.slice(i, i + batchSize);
 
-					// Use transactions (plural) - matches runtime Prisma client
-					// Field names must match schema exactly (snake_case for some fields)
-					await (db as any).transactions.createMany({
-						data: batch.map((t) => ({
+					// Clean and normalize data for each transaction (Steps 1, 2, 4)
+					const cleanedBatch = batch.map((t) => {
+						// Step 1: Clean merchant name
+						const cleanedMerchantName = cleanMerchantName(t.merchantName, t.description);
+						
+						// Step 2: Normalize description
+						const normalizedDescription = normalizeDescription(t.description);
+						
+						// Step 4: Categorize amount
+						const amountCategory = categorizeAmount(
+							Number(t.amount),
+							t.type,
+							t.isDebit,
+							{ considerRefund: true }
+						);
+
+						return {
 							user_id: userId,
 							date: t.date,
-							merchantName: t.merchantName,
+							merchantName: t.merchantName, // Keep original
 							iban: t.iban,
 							counterparty_iban: t.counterpartyIban || null,
 							is_debit: t.isDebit,
 							amount: t.amount,
 							type: t.type,
-							description: t.description,
+							description: t.description, // Keep original
 							category_id: t.categoryId || null,
+							// Store cleaned data
+							cleaned_merchant_name: cleanedMerchantName || null,
+							normalized_description: normalizedDescription || null,
+							amount_category: amountCategory,
 							updated_at: new Date() // Required field
-						}))
+						};
+					});
+
+					// Use transactions (plural) - matches runtime Prisma client
+					// Field names must match schema exactly (snake_case for some fields)
+					await (db as any).transactions.createMany({
+						data: cleanedBatch
 					});
 
 					importedCount += batch.length;
@@ -334,12 +398,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Combine all errors
 		const allErrors = [...mappingErrors, ...validationErrors, ...insertErrors];
 
+		// Start async fuzzy matching job (Step 3)
+		let fuzzyMatchingJobId: string | undefined;
+		if (importedCount > 0) {
+			try {
+				fuzzyMatchingJobId = await getOrCreateFuzzyMatchingJob(userId);
+				console.log(`🔍 Started fuzzy matching job: ${fuzzyMatchingJobId}`);
+			} catch (err) {
+				console.error('Failed to start fuzzy matching job:', err);
+				// Don't fail the import if fuzzy matching fails to start
+			}
+		}
+
 		const result: ImportResult = {
 			success: allErrors.length === 0 && importedCount > 0,
 			imported: importedCount,
 			skipped: 0,
 			errors: allErrors,
-			duplicates: 0
+			duplicates: 0,
+			fuzzyMatchingJobId
 		};
 
 		return json(result);

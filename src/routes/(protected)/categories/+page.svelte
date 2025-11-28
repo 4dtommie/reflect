@@ -184,7 +184,7 @@
 	{/if}
 
 	{#if showCreateForm}
-		<div class="card bg-base-200 mb-6">
+		<div class="card bg-base-100 mb-6">
 			<div class="card-body">
 				<h2 class="card-title">Create New Category</h2>
 				<div class="form-control">
@@ -222,7 +222,7 @@
 		</div>
 	{/if}
 
-	<div class="card bg-base-200">
+	<div class="card bg-base-100">
 		<div class="card-body">
 			<h2 class="card-title">All categories</h2>
 			{#if categories.length === 0}

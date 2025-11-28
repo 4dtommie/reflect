@@ -35,15 +35,14 @@
 	}
 </script>
 
-<div class="max-w-md mx-auto mt-12">
-	<h1 class="text-4xl font-bold mb-6">Sign up</h1>
+<h1 class="text-4xl font-bold mb-6">Sign up</h1>
 
 	{#if error}
 		<div class="alert alert-error mb-4">{error}</div>
 	{/if}
 
 	<form onsubmit={handleSubmit} class="space-y-6">
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-4">
 			<legend class="fieldset-legend">Account Details</legend>
 
 			<label for="username" class="label">
@@ -82,5 +81,4 @@
 		Already have an account?
 		<a href="/signin" class="link link-primary">Sign in</a>
 	</p>
-</div>
 

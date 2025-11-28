@@ -263,7 +263,7 @@
 			<span class="loading loading-spinner loading-lg"></span>
 		</div>
 	{:else if category}
-		<div class="card bg-base-200">
+		<div class="card bg-base-100">
 			<div class="card-body">
 				{#if !editing}
 					<!-- View Mode -->

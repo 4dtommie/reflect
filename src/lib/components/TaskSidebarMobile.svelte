@@ -60,7 +60,7 @@
 	}
 </script>
 
-<div class="bg-base-200 rounded shadow-sm min-h-full w-16 p-2 flex flex-col items-center">
+<div class="bg-base-100 rounded shadow-sm min-h-full w-16 p-2 flex flex-col items-center">
 	<!-- Hamburger menu button -->
 	<div class="mb-4">
 		<label for="task-drawer" class="btn btn-ghost btn-circle btn-xs drawer-button">

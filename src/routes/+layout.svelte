@@ -3,7 +3,8 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { Sun, Moon } from 'lucide-svelte';
+	import { page } from '$app/stores';
+	import { Sun, Moon, User } from 'lucide-svelte';
 	import TaskSidebar from '$lib/components/TaskSidebar.svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
@@ -16,6 +17,9 @@
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+	
+	// Hide sidebar on categorize-all page
+	const showSidebar = $derived(!$page.url.pathname.includes('/categorize-all'));
 
 	let currentTheme = $state<'nord' | 'night'>('nord');
 
@@ -150,7 +154,7 @@
 					<summary>Enrich data</summary>
 					<ul class="bg-base-100 rounded-t-none p-2 w-52">
 						<li><a href="/categories" onclick={closeDropdownOnLinkClick}>Category Management</a></li>
-						<li><a href="/enrich/categorize" onclick={closeDropdownOnLinkClick}>Categorize transactions</a></li>
+						<li><a href="/categorize-all" onclick={closeDropdownOnLinkClick}>Categorize all transactions</a></li>
 					</ul>
 				</details>
 			</li>
@@ -165,19 +169,41 @@
 			</li>
 		</ul>
 	</div>
-	<div class="flex-1 flex justify-end">
-		<label class="flex cursor-pointer gap-2 items-center mr-4">
-			<Sun size={20} />
-			<input
-				type="checkbox"
-				checked={currentTheme === 'night'}
-				onchange={toggleTheme}
-				class="toggle theme-controller"
-			/>
-			<Moon size={20} />
-		</label>
+	<div class="flex-1 flex justify-end items-center gap-2">
 		{#if data.user}
-			<button onclick={signOut} class="btn btn-ghost">Logout</button>
+			<details use:registerDropdown ontoggle={handleDetailsToggle} class="dropdown dropdown-end">
+				<summary class="btn btn-ghost gap-2">
+					<User size={20} />
+					<span>{data.user.username}</span>
+				</summary>
+				<ul class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg">
+					<li><a href="/merchants" onclick={closeDropdownOnLinkClick}>Merchant management</a></li>
+					<li class="my-2">
+						<div class="border-t border-base-300"></div>
+					</li>
+					<li><a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}>Test AI categorization</a></li>
+					<li><a href="/test-ai-categorize-v2" onclick={closeDropdownOnLinkClick}>Test AI categorization v2</a></li>
+					<li><a href="/categories/generate-embeddings" onclick={closeDropdownOnLinkClick}>Generate category embeddings</a></li>
+					<li class="my-2">
+						<div class="border-t border-base-300"></div>
+					</li>
+					<li>
+						<label class="flex cursor-pointer gap-2 items-center">
+							<input
+								type="checkbox"
+								checked={currentTheme === 'night'}
+								onchange={toggleTheme}
+								class="toggle theme-controller"
+							/>
+							<span>Dark mode</span>
+						</label>
+					</li>
+					<li class="my-2">
+						<div class="border-t border-base-300"></div>
+					</li>
+					<li><button onclick={signOut} class="w-full text-left">Logout</button></li>
+				</ul>
+			</details>
 		{:else}
 			<a href="/signin" class="btn btn-ghost">Login</a>
 		{/if}
@@ -187,16 +213,18 @@
 {#if data.user}
 	<!-- Sidebar and content wrapper -->
 	<div class="flex items-stretch min-w-0">
-		<!-- Sidebar - always visible, collapses on mobile -->
-		<div class="pt-2 pr-2 lg:pr-4 flex-shrink-0">
-			<div class="h-full">
-				<TaskSidebar onExpandedChange={handleSidebarExpandedChange} />
+		{#if showSidebar}
+			<!-- Sidebar - always visible, collapses on mobile -->
+			<div class="pt-2 pr-2 lg:pr-4 flex-shrink-0">
+				<div class="h-full">
+					<TaskSidebar onExpandedChange={handleSidebarExpandedChange} />
+				</div>
 			</div>
-		</div>
+		{/if}
 		
 		<!-- Main content -->
-		<div class="flex-1 pt-2 pl-2 lg:pl-4 transition-all duration-300 min-w-0">
-			<div class="bg-base-200 rounded shadow-sm p-8 min-h-full min-w-0" style="overflow-x: hidden; max-width: 100%; box-sizing: border-box;">
+		<div class="flex-1 pt-2 {showSidebar ? 'pl-2 lg:pl-4' : 'px-2 lg:px-4'} transition-all duration-300 min-w-0">
+			<div class="bg-base-100 shadow-sm p-8 min-h-full min-w-0" style="overflow-x: hidden; max-width: 100%; box-sizing: border-box;">
 				<div class="lg:contents {sidebarExpanded ? 'invisible' : ''}">
 					{@render children()}
 				</div>
@@ -205,7 +233,7 @@
 	</div>
 {:else}
 	<!-- No drawer for unauthenticated users -->
-	<div class="bg-base-100 rounded-box shadow-md p-8 max-w-7xl mx-auto">
+	<div class="bg-base-100 shadow-md p-8">
 		{@render children()}
 	</div>
 {/if}

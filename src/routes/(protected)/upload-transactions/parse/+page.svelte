@@ -86,7 +86,7 @@
 {:else if parseResult}
 	<div class="space-y-6">
 		<!-- Summary Card -->
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Parse results</legend>
 			
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -145,7 +145,7 @@
 		{/if}
 
 		<!-- Headers -->
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Headers</legend>
 			<div class="flex flex-wrap gap-2">
 				{#each parseResult.headers as header, index}
@@ -157,7 +157,7 @@
 		</fieldset>
 
 		<!-- Sample Data (First 10 rows) -->
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Sample Data (First 10 rows)</legend>
 			
 			{#if parseResult.rows.length === 0}

@@ -30,6 +30,13 @@
 	let mappedTransactions: (TransactionInput | null)[] = $state([]);
 	let mappingErrors: MappingError[][] = $state([]);
 	let previewRowCount = $state(5);
+	let previewTransactions: Array<{
+		transaction: TransactionInput;
+		cleaned_merchant_name: string;
+		normalized_description: string;
+		amount_category: 'tiny' | 'small' | 'medium' | 'large' | 'huge';
+	} | null> = $state([]);
+	let loadingPreview = $state(false);
 
 	onMount(() => {
 		// Retrieve parsed CSV data from sessionStorage
@@ -59,11 +66,13 @@
 		updateMappedTransactions();
 	}
 
-	function updateMappedTransactions() {
+	async function updateMappedTransactions() {
 		if (!parseResult) return;
 
 		mappedTransactions = [];
 		mappingErrors = [];
+		previewTransactions = [];
+		loadingPreview = false;
 
 		// Only map preview rows for UI (first 100 rows for preview)
 		// Full mapping will be done on the server during import
@@ -93,6 +102,82 @@
 					errors
 				});
 			}
+		}
+
+		// Fetch cleaned preview data from server
+		await fetchPreviewData();
+	}
+
+	async function fetchPreviewData() {
+		const validTransactions = mappedTransactions.filter((t): t is TransactionInput => t !== null);
+		
+		if (validTransactions.length === 0) {
+			previewTransactions = [];
+			return;
+		}
+
+		loadingPreview = true;
+		try {
+			// Serialize transactions for API (convert Date to ISO string)
+			const serializedTransactions = validTransactions.map((t) => ({
+				...t,
+				date: t.date instanceof Date ? t.date.toISOString() : t.date
+			}));
+
+			console.log('Fetching preview for', serializedTransactions.length, 'transactions');
+
+			const response = await fetch('/api/transactions/preview', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					transactions: serializedTransactions
+				})
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Preview API error:', response.status, errorText);
+				throw new Error(`Failed to fetch preview data: ${response.status}`);
+			}
+
+			const data = await response.json();
+			console.log('Preview data received:', data.transactions?.length, 'transactions');
+			
+			// Map preview transactions back to original array structure (including nulls)
+			// Since we send valid transactions in order, we can map by index
+			let previewIndex = 0;
+			previewTransactions = mappedTransactions.map((t) => {
+				if (!t) return null;
+				const preview = data.transactions[previewIndex++];
+				if (preview) {
+					console.log('Mapped preview:', {
+						original_desc: t.description,
+						normalized_desc: preview.normalized_description,
+						different: preview.normalized_description !== t.description
+					});
+				}
+				return preview ? {
+					transaction: t,
+					cleaned_merchant_name: preview.cleaned_merchant_name,
+					normalized_description: preview.normalized_description,
+					amount_category: preview.amount_category
+				} : null;
+			});
+		} catch (err) {
+			console.error('Failed to fetch preview data:', err);
+			// Fallback: use original data without cleaning
+			previewTransactions = mappedTransactions.map((t) => 
+				t ? {
+					transaction: t,
+					cleaned_merchant_name: t.merchantName,
+					normalized_description: t.description,
+					amount_category: 'medium' as const
+				} : null
+			);
+		} finally {
+			loadingPreview = false;
 		}
 	}
 
@@ -147,7 +232,7 @@
 {:else}
 	<div class="space-y-6">
 		<!-- Mapping Summary -->
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Mapping status</legend>
 			
 			<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
@@ -201,7 +286,7 @@
 		{/if}
 
 		<!-- Column Mapping Table -->
-		<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 			<legend class="fieldset-legend">Column mapping</legend>
 			
 			<div class="overflow-x-auto">
@@ -292,7 +377,7 @@
 
 		<!-- Preview Mapped Transactions -->
 		{#if mappedTransactions.length > 0}
-			<fieldset class="fieldset bg-base-200 border-base-300 rounded-box border p-6">
+			<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-6">
 				<legend class="fieldset-legend">
 					Preview (showing {previewRowCount} items from total of {totalRows} rows)
 				</legend>
@@ -320,30 +405,80 @@
 									<th>Row</th>
 									<th>Date</th>
 									<th>Merchant</th>
+									<th>Description</th>
 									<th>Amount</th>
+									<th>Amount category</th>
 									<th>Type</th>
-									<th>IBAN</th>
 									<th>Status</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each mappedTransactions.slice(0, previewRowCount) as transaction, index}
 									{@const errors = mappingErrors[index] || []}
+									{@const preview = previewTransactions[index]}
 									<tr class={transaction ? '' : 'opacity-50'}>
 										<td class="font-mono">{index + 1}</td>
 										{#if transaction}
 											<td>{transaction.date.toLocaleDateString()}</td>
-											<td class="max-w-xs truncate" title={transaction.merchantName}>
-												{transaction.merchantName}
+											<td class="max-w-xs">
+												{#if preview && preview.cleaned_merchant_name !== transaction.merchantName}
+													<div 
+														class="truncate cursor-help" 
+														title="Original: {transaction.merchantName}"
+													>
+														<span class="font-medium">{preview.cleaned_merchant_name}</span>
+														<span class="text-xs text-base-content/50 ml-1">(cleaned)</span>
+													</div>
+												{:else}
+													<div class="truncate" title={transaction.merchantName}>
+														{transaction.merchantName}
+													</div>
+												{/if}
+											</td>
+											<td class="max-w-md">
+												{#if preview}
+													{#if preview.normalized_description !== transaction.description}
+														<div 
+															class="cursor-help whitespace-normal break-words" 
+															title="Original: {transaction.description}"
+														>
+															<span class="font-medium">{preview.normalized_description}</span>
+															<span class="text-xs text-base-content/50 ml-1">(normalized)</span>
+														</div>
+													{:else}
+														<div class="whitespace-normal break-words" title={transaction.description}>
+															{preview.normalized_description}
+														</div>
+													{/if}
+												{:else if loadingPreview}
+													<div class="whitespace-normal break-words" title={transaction.description}>
+														<span class="loading loading-spinner loading-xs"></span>
+														<span class="ml-2">{transaction.description}</span>
+													</div>
+												{:else}
+													<div class="whitespace-normal break-words" title={transaction.description}>
+														{transaction.description}
+													</div>
+												{/if}
 											</td>
 											<td class={transaction.isDebit ? 'text-error' : 'text-success'}>
 												{transaction.isDebit ? '-' : '+'}
 												€{transaction.amount.toFixed(2)}
 											</td>
 											<td>
+												{#if preview}
+													<span class="badge badge-sm badge-outline">
+														{preview.amount_category}
+													</span>
+												{:else if loadingPreview}
+													<span class="loading loading-spinner loading-xs"></span>
+												{:else}
+													<span class="text-base-content/50">—</span>
+												{/if}
+											</td>
+											<td>
 												<span class="badge badge-sm">{transaction.type}</span>
 											</td>
-											<td class="font-mono text-xs">{transaction.iban}</td>
 											<td>
 												{#if errors.length > 0}
 													<span class="badge badge-error badge-sm">{errors.length} error(s)</span>
@@ -352,7 +487,7 @@
 												{/if}
 											</td>
 										{:else}
-											<td colspan="6" class="text-error">
+											<td colspan="7" class="text-error">
 												Invalid: {errors.map((e) => e.message).join(', ')}
 											</td>
 										{/if}

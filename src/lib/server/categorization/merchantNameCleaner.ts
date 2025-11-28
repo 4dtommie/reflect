@@ -13,9 +13,13 @@ export function cleanMerchantName(rawName: string, description?: string): string
 		return '';
 	}
 
-	// Check if merchant name is "Notprovided" or similar
-	// Leave these for AI to handle - don't try to extract from description
+	// Check if merchant name is exactly "NOTPROVIDED" (case-sensitive) - map to "ING Spaarrekening"
 	const trimmedName = rawName.trim();
+	if (trimmedName === 'NOTPROVIDED') {
+		return 'ING Spaarrekening';
+	}
+	
+	// Check for other "not provided" variations - leave for AI to handle
 	const notProvidedPattern = /^(notprovided|not\s+provided|niet\s+opgegeven|onbekend|unknown|n\/a|na|geen|none|leeg|empty)\s*$/i;
 	if (notProvidedPattern.test(trimmedName) || trimmedName.length === 0) {
 		// Return empty string - let AI handle this later
@@ -58,6 +62,32 @@ export function cleanMerchantName(rawName: string, description?: string): string
 	// Pattern: #123, STORE 456, LOC 789
 	cleaned = cleaned.replace(/#\d+\b/gi, '');
 	cleaned = cleaned.replace(/\b(STORE|LOC|LOCATION|WINKEL|FILIAAL)[\s\-]?\d+\b/gi, '');
+
+	// Remove country codes at the end (NLD, USA, UK, etc.)
+	// Pattern: "Haagse Poort NLD" → "Haagse Poort"
+	cleaned = cleaned.replace(/\s+(NLD|USA|UK|GBR|DEU|FRA|BEL|ESP|ITA|AUT|CHE|DNK|SWE|NOR|FIN|POL|CZE|HUN|ROU|BGR|GRC|PRT|IRL|LUX|MLT|CYP|EST|LVA|LTU|SVK|SVN|HRV)\s*$/i, '');
+
+	// Remove prefix patterns: letters + asterisk before merchant name
+	// Pattern: "Bck*decathlon" → "decathlon"
+	cleaned = cleaned.replace(/^[A-Za-z]+\*+/i, '');
+
+	// Remove numeric + short letter code prefixes
+	// Pattern: "5869 GVC AH To Go" → "AH To Go"
+	// Pattern: "1234 ABC Merchant Name" → "Merchant Name"
+	cleaned = cleaned.replace(/^\d+\s+[A-Z]{2,4}\s+/i, '');
+
+	// Remove alphanumeric codes (letters + numbers combinations that look like codes)
+	// Pattern: "Ev281schningen", "Nn001215", etc.
+	// Match: 1-3 letters followed by 2+ digits (with optional trailing alphanumeric)
+	// This catches codes like "Ev281schningen", "Nn001215", "A123B" but avoids legitimate names
+	cleaned = cleaned.replace(/\b[A-Za-z]{1,3}\d{2,}[A-Za-z0-9]*\b/gi, '');
+	// Also match: 2+ letters followed by 3+ digits (like "Nn001215")
+	cleaned = cleaned.replace(/\b[A-Za-z]{2,}\d{3,}\b/gi, '');
+
+	// Remove trailing single digits or zeros
+	// Pattern: "decathlon NLD 0" → "decathlon" (after NLD removal)
+	cleaned = cleaned.replace(/\s+0\s*$/, '');
+	cleaned = cleaned.replace(/\s+\d\s*$/, ''); // Remove single trailing digit
 
 	// Remove common business suffixes (but keep if it's part of the name)
 	// Only remove if at the end: BV, NV, B.V., N.V., LTD, LLC, etc.
@@ -152,13 +182,29 @@ function toTitleCaseWithNames(str: string): string {
 }
 
 /**
+ * Normalize IBAN for storage (uppercase, remove spaces)
+ */
+function normalizeIBANForStorage(iban: string | null | undefined): string | null {
+	if (!iban || typeof iban !== 'string') {
+		return null;
+	}
+	return iban.trim().replace(/\s/g, '').toUpperCase();
+}
+
+/**
  * Find or create a merchant record
  * Returns the merchant ID
+ * 
+ * @param db - Database instance
+ * @param cleanedName - Cleaned merchant name
+ * @param categoryId - Optional default category ID
+ * @param counterpartyIban - Optional counterparty IBAN to store
  */
 export async function findOrCreateMerchant(
 	db: any,
 	cleanedName: string,
-	categoryId?: number | null
+	categoryId?: number | null,
+	counterpartyIban?: string | null
 ): Promise<number> {
 	if (!cleanedName || cleanedName.trim().length === 0) {
 		throw new Error('Merchant name cannot be empty');
@@ -176,24 +222,37 @@ export async function findOrCreateMerchant(
 
 	if (existing) {
 		// Update default category if provided and different
+		const updates: any = {};
 		if (categoryId && existing.default_category_id !== categoryId) {
+			updates.default_category_id = categoryId;
+		}
+		
+		// Add IBAN if provided and not already present
+		const normalizedIban = normalizeIBANForStorage(counterpartyIban);
+		if (normalizedIban) {
+			const currentIbans = existing.ibans || [];
+			if (!currentIbans.includes(normalizedIban)) {
+				updates.ibans = [...currentIbans, normalizedIban];
+			}
+		}
+		
+		if (Object.keys(updates).length > 0) {
+			updates.updated_at = new Date();
 			await db.merchants.update({
 				where: { id: existing.id },
-				data: {
-					default_category_id: categoryId,
-					updated_at: new Date()
-				}
+				data: updates
 			});
 		}
 		return existing.id;
 	}
 
 	// Create new merchant
+	const normalizedIban = normalizeIBANForStorage(counterpartyIban);
 	const newMerchant = await db.merchants.create({
 		data: {
 			name: cleanedName,
 			keywords: [],
-			ibans: [],
+			ibans: normalizedIban ? [normalizedIban] : [],
 			default_category_id: categoryId || null,
 			is_active: true,
 			updated_at: new Date()
@@ -201,5 +260,39 @@ export async function findOrCreateMerchant(
 	});
 
 	return newMerchant.id;
+}
+
+/**
+ * Ensure an IBAN is stored in a merchant record
+ */
+export async function ensureIBANInMerchant(
+	db: any,
+	merchantId: number,
+	iban: string
+): Promise<void> {
+	const normalizedIban = normalizeIBANForStorage(iban);
+	if (!normalizedIban) {
+		return;
+	}
+
+	const merchant = await db.merchants.findUnique({
+		where: { id: merchantId },
+		select: { ibans: true }
+	});
+
+	if (!merchant) {
+		return;
+	}
+
+	const currentIbans = merchant.ibans || [];
+	if (!currentIbans.includes(normalizedIban)) {
+		await db.merchants.update({
+			where: { id: merchantId },
+			data: {
+				ibans: [...currentIbans, normalizedIban],
+				updated_at: new Date()
+			}
+		});
+	}
 }
 

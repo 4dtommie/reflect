@@ -16,6 +16,7 @@
 		"db:migrate": "prisma migrate dev",
 		"db:migrate:deploy": "prisma migrate deploy",
 		"db:seed": "tsx prisma/seed.ts",
+		"seed": "tsx prisma/seed.ts",
 		"db:studio": "prisma studio",
 		"db:reset": "prisma migrate reset",
 		"db:push": "prisma db push",
@@ -41,6 +42,7 @@
 		"vite": "^7.1.10"
 	},
 	"dependencies": {
+		"@google/generative-ai": "^0.21.0",
 		"@prisma/client": "^6.19.0",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
@@ -49,6 +51,7 @@
 		"chartjs-plugin-zoom": "^2.2.0",
 		"dotenv": "^17.2.3",
 		"lucide-svelte": "^0.554.0",
+		"openai": "^6.9.1",
 		"zod": "^4.1.12"
 	}
 }

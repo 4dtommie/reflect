@@ -2,13 +2,13 @@
  * Keyword Matching Engine
  * 
  * Matches transactions to categories using keyword-based word boundary matching.
- * Case-insensitive matching against transaction description and merchant name.
+ * Case-insensitive matching against merchant name only (not description).
  */
 
 export interface KeywordMatch {
 	categoryId: number;
 	matchedKeyword: string;
-	matchType: 'description' | 'merchant';
+	matchType: 'merchant';
 }
 
 export interface Keyword {
@@ -45,8 +45,10 @@ export function createWordBoundaryRegex(keyword: string): RegExp {
 /**
  * Match a transaction to a category using keywords
  * 
- * @param description - Transaction description
- * @param merchantName - Merchant name
+ * Only matches against merchant name (not description).
+ * 
+ * @param description - Transaction description (unused, kept for API compatibility)
+ * @param merchantName - Merchant name (only field used for matching)
  * @param keywords - Array of keywords with category_id
  * @returns Match result or null if no match
  */
@@ -55,16 +57,15 @@ export function matchTransactionToCategory(
 	merchantName: string,
 	keywords: Keyword[]
 ): KeywordMatch | null {
-	// Normalize input text
-	const normalizedDescription = normalizeText(description);
+	// Normalize merchant name
 	const normalizedMerchant = normalizeText(merchantName);
 
-	// If both are empty, no match possible
-	if (!normalizedDescription && !normalizedMerchant) {
+	// If merchant name is empty, no match possible
+	if (!normalizedMerchant) {
 		return null;
 	}
 
-	// Try each keyword
+	// Pass 1: Try exact word boundary matching (highest confidence)
 	for (const keywordData of keywords) {
 		const keyword = normalizeText(keywordData.keyword);
 
@@ -76,20 +77,32 @@ export function matchTransactionToCategory(
 		// Create regex for word boundary matching
 		const regex = createWordBoundaryRegex(keyword);
 
-		// Check description first (more specific)
-		if (normalizedDescription && regex.test(normalizedDescription)) {
+		// Check merchant name only
+		if (regex.test(normalizedMerchant)) {
 			return {
 				categoryId: keywordData.category_id,
 				matchedKeyword: keywordData.keyword, // Return original keyword (not normalized)
-				matchType: 'description'
+				matchType: 'merchant'
 			};
 		}
+	}
 
-		// Check merchant name
-		if (normalizedMerchant && regex.test(normalizedMerchant)) {
+	// Pass 2: Try substring matching for Dutch compound words
+	// Only for keywords with 5+ characters to avoid false positives
+	// Example: "salaris" matches "salarisadministratie"
+	for (const keywordData of keywords) {
+		const keyword = normalizeText(keywordData.keyword);
+
+		// Skip short keywords (too likely to cause false positives)
+		if (!keyword || keyword.length < 5) {
+			continue;
+		}
+
+		// Check if keyword is contained within the merchant name
+		if (normalizedMerchant.includes(keyword)) {
 			return {
 				categoryId: keywordData.category_id,
-				matchedKeyword: keywordData.keyword, // Return original keyword (not normalized)
+				matchedKeyword: keywordData.keyword,
 				matchType: 'merchant'
 			};
 		}

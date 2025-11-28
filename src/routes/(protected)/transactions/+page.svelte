@@ -790,7 +790,7 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div 
-		class="relative w-full mb-6 bg-base-200 rounded chart-container {isDragging ? 'grabbing' : 'grab'}"
+		class="relative w-full mb-6 bg-base-100 rounded chart-container {isDragging ? 'grabbing' : 'grab'}"
 		bind:this={chartContainer}
 		role="img"
 		tabindex="0"
@@ -869,7 +869,7 @@
 					{#each monthGroup.weekGroups as weekGroup}
 						{@const avgForWeekNumber = weeklyAverages().get(weekGroup.weekNumber) || 0}
 						<!-- Week header row -->
-						<tr class="bg-base-200">
+						<tr class="bg-base-100">
 							<td colspan="3" class="font-bold">
 								<div class="flex justify-between items-start">
 									<span>Week {weekGroup.weekNumber}</span>
@@ -920,13 +920,12 @@
 												<span class="font-medium" title={transaction.merchantName}>
 													{transaction.merchant?.name ?? transaction.merchantName}
 												</span>
-												<span 
-													class="text-sm text-base-content/70 truncate" 
-													style="max-width: 100%;"
-													title={transaction.description}
-												>
-													{transaction.description}
-												</span>
+											<span 
+												class="text-sm text-base-content/70 whitespace-normal break-words" 
+												title="Original: {transaction.description}"
+											>
+												{transaction.normalized_description || transaction.description}
+											</span>
 											</div>
 										</div>
 									</td>
