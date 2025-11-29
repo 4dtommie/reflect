@@ -226,16 +226,6 @@
 </script>
 
 <div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
-	<!-- Title Widget -->
-	<DashboardWidget size="wide">
-		<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
-			<h1 class="mb-4 text-7xl font-bold">Assign columns</h1>
-			<p class="text-2xl opacity-70">
-				Assign the columns from your CSV file to the corresponding fields in your transactions.
-			</p>
-		</div>
-	</DashboardWidget>
-
 	{#if !parseResult}
 		<DashboardWidget size="wide">
 			<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
@@ -246,146 +236,165 @@
 			</div>
 		</DashboardWidget>
 	{:else}
-		<!-- Mapping Summary -->
-
-		<DashboardWidget size="small" title="Mapping summary">
-			<div class="flex h-full flex-col justify-center">
-				<div class="mb-4 grid grid-cols-2 gap-4">
-					<StatItem label="Total rows" value={totalRows} />
-					<StatItem label="Valid" value={validCount} color="text-success" />
-					<StatItem label="Errors" value={errorCount} color="text-error" />
-					<StatItem label="Missing" value={missingRequired.length} color="text-warning" />
-				</div>
-
-				<button
-					class="btn btn-primary"
-					disabled={validCount === 0 || missingRequired.length > 0}
-					onclick={handleContinue}
-				>
-					<Check class="h-4 w-4" />
-					Ready to import {totalRows} transactions
-				</button>
-			</div>
-		</DashboardWidget>
-
-		<!-- Missing Required Fields Warning -->
-		{#if missingRequired.length > 0}
-			<div class="alert alert-warning">
-				<p class="font-semibold">Missing required fields:</p>
-				<ul class="mt-2 list-inside list-disc">
-					{#each missingRequired as field}
-						<li>{TRANSACTION_FIELDS.find((f) => f.value === field)?.label || field}</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
-
-		<DashboardWidget size="wide" title="Column mapping">
-			<div class="flex h-full flex-col justify-center">
-				<div class="overflow-x-auto">
-					<table class="table w-full">
-						<thead>
-							<tr>
-								<th>CSV column</th>
-								<th class="w-20">Sample value</th>
-								<th>Map to field</th>
-								<th>Status</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each parseResult.headers as header, index}
-								{@const currentMapping = mapping[index] || 'skip'}
-								{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
-								{@const isRequired =
-									TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
-								<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
-									<td>
-										<p class="font-medium">{header || '(empty header)'}</p>
-									</td>
-									<td class="w-20 max-w-20">
-										<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
-									</td>
-									<td>
-										<select
-											class="select-bordered select w-full"
-											value={currentMapping}
-											onchange={(e) =>
-												updateMapping(
-													index,
-													(e.target as HTMLSelectElement).value as TransactionField
-												)}
-										>
-											<option value="skip">-- (Skip column) --</option>
-											{#each TRANSACTION_FIELDS as field}
-												{@const alreadyMapped =
-													getMappedColumn(field.value) !== null &&
-													getMappedColumn(field.value) !== index}
-												<option
-													value={field.value}
-													disabled={alreadyMapped && field.value !== 'skip'}
-												>
-													{field.label}
-													{field.required ? '*' : ''}
-													{#if alreadyMapped && field.value !== 'skip'}
-														(already mapped){/if}
-												</option>
-											{/each}
-										</select>
-									</td>
-									<td>
-										{#if currentMapping === 'skip'}
-											<span class="badge badge-ghost">Skipped</span>
-										{:else if isRequired}
-											<span class="badge badge-success">Required</span>
-										{:else}
-											<span class="badge badge-info">Optional</span>
-										{/if}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			</div></DashboardWidget
-		>
-
-		<!-- Error Details (if any) -->
-		{#if errorCount > 0}
-			<fieldset class="fieldset rounded-box border border-error bg-error/10 p-6">
-				<legend class="fieldset-legend text-error">Validation errors ({errorCount})</legend>
-
-				<div class="max-h-64 overflow-y-auto">
-					{#each mappingErrors.slice(0, 50) as rowErrors, rowIndex}
-						{#if rowErrors.length > 0}
-							<div class="mb-3 rounded bg-base-100 p-3">
-								<p class="mb-2 font-semibold text-error">Row {rowIndex + 1}:</p>
-								<ul class="list-inside list-disc space-y-1 text-sm">
-									{#each rowErrors as err}
-										<li>
-											<span class="font-medium">{err.field}:</span>
-											{err.message}
-										</li>
-									{/each}
-								</ul>
-							</div>
-						{/if}
-					{/each}
-					{#if mappingErrors.flat().length > 50}
-						<p class="text-sm text-base-content/70 italic">
-							... and {mappingErrors.flat().length - 50} more errors
+		<!-- Two-column layout: Title + Column mapping on left, widgets on right -->
+		<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
+			<!-- Left Column: Title + Column Mapping -->
+			<div class="lg:col-span-2 flex flex-col gap-8">
+				<!-- Title Widget -->
+				<DashboardWidget size="wide">
+					<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
+						<h1 class="mb-4 text-7xl font-bold">Assign columns</h1>
+						<p class="text-2xl opacity-70">
+							Assign the columns from your CSV file to the corresponding fields in your transactions.
 						</p>
-					{/if}
-				</div>
-			</fieldset>
-		{/if}
+					</div>
+				</DashboardWidget>
 
-		<!-- Preview Mapped Transactions -->
-		{#if mappedTransactions.length > 0}
-			<DashboardWidget size="small" title="Preview">
+				<!-- Column Mapping Widget -->
+				<DashboardWidget size="wide" title="Column mapping">
 				<div class="flex h-full flex-col justify-center">
+					<div class="overflow-x-auto">
+						<table class="table w-full">
+							<thead>
+								<tr>
+									<th>CSV column</th>
+									<th class="w-20">Sample value</th>
+									<th>Map to field</th>
+									<th>Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each parseResult.headers as header, index}
+									{@const currentMapping = mapping[index] || 'skip'}
+									{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
+									{@const isRequired =
+										TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
+									<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
+										<td>
+											<p class="font-medium">{header || '(empty header)'}</p>
+										</td>
+										<td class="w-20 max-w-20">
+											<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
+										</td>
+										<td>
+											<select
+												class="select-bordered select w-full"
+												value={currentMapping}
+												onchange={(e) =>
+													updateMapping(
+														index,
+														(e.target as HTMLSelectElement).value as TransactionField
+													)}
+											>
+												<option value="skip">-- (Skip column) --</option>
+												{#each TRANSACTION_FIELDS as field}
+													{@const alreadyMapped =
+														getMappedColumn(field.value) !== null &&
+														getMappedColumn(field.value) !== index}
+													<option
+														value={field.value}
+														disabled={alreadyMapped && field.value !== 'skip'}
+													>
+														{field.label}
+														{field.required ? '*' : ''}
+														{#if alreadyMapped && field.value !== 'skip'}
+															(already mapped){/if}
+													</option>
+												{/each}
+											</select>
+										</td>
+										<td>
+											{#if currentMapping === 'skip'}
+												<span class="badge badge-ghost">Skipped</span>
+											{:else if isRequired}
+												<span class="badge badge-success">Required</span>
+											{:else}
+												<span class="badge badge-info">Optional</span>
+											{/if}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</DashboardWidget>
+			</div>
+
+			<!-- Right Column: Summary and Status Widgets (starts at top) -->
+			<div class="flex flex-col gap-8">
+				<!-- Mapping Summary -->
+				<DashboardWidget size="small" title="Mapping summary">
 					<div class="flex h-full flex-col justify-center">
+						<div class="mb-4 grid grid-cols-2 gap-4">
+							<StatItem label="Total rows" value={totalRows} />
+							<StatItem label="Valid" value={validCount} color="text-success" />
+							<StatItem label="Errors" value={errorCount} color="text-error" />
+							<StatItem label="Missing" value={missingRequired.length} color="text-warning" />
+						</div>
+
+						{#if missingRequired.length === 0 && validCount > 1}
+							<button class="btn btn-primary" onclick={handleContinue}>
+								<Check class="h-4 w-4" />
+								Ready to import {totalRows} transactions
+							</button>
+						{/if}
+					</div>
+				</DashboardWidget>
+
+				<!-- Missing Required Fields Widget -->
+				{#if missingRequired.length > 0}
+					<DashboardWidget size="small" title="Missing required fields">
+						<div class="flex h-full flex-col justify-center">
+							<div class="alert alert-warning flex-row flex">
+								<div class="font-semibold mb-2 full-width">Please map the following required fields:</div>
+								<div class="">
+									{#each missingRequired as field}
+										<div>{TRANSACTION_FIELDS.find((f) => f.value === field)?.label || field}</div>
+									{/each}
+								</div>
+							</div>
+						</div>
+					</DashboardWidget>
+				{/if}
+
+				<!-- Validation Errors Widget -->
+				{#if errorCount > 0}
+					<DashboardWidget size="small" title="Validation errors ({errorCount})">
+						<div class="flex h-full flex-col justify-center">
+							<div class="max-h-64 overflow-y-auto">
+								{#each mappingErrors.slice(0, 50) as rowErrors, rowIndex}
+									{#if rowErrors.length > 0}
+										<div class="mb-3 rounded bg-base-200 p-3">
+											<p class="mb-2 font-semibold text-error">Row {rowIndex + 1}:</p>
+											<ul class="list-inside list-disc space-y-1 text-sm">
+												{#each rowErrors as err}
+													<li>
+														<span class="font-medium">{err.field}:</span>
+														{err.message}
+													</li>
+												{/each}
+											</ul>
+										</div>
+									{/if}
+								{/each}
+								{#if mappingErrors.flat().length > 50}
+									<p class="text-sm text-base-content/70 italic">
+										... and {mappingErrors.flat().length - 50} more errors
+									</p>
+								{/if}
+							</div>
+						</div>
+					</DashboardWidget>
+				{/if}
+
+				<!-- Preview Mapped Transactions -->
+				{#if mappedTransactions.length > 0}
+			<DashboardWidget size="small" title="Preview">
+				<div class="flex h-full flex-col justify-start">
+					<div class="flex h-full flex-col justify-start">
 						{#if validCount === 0}
-							<div class="alert alert-error">
+							<div class="alert alert-error flex flex-col items-start">
 								<p class="mb-2 font-semibold">No valid transactions found.</p>
 								<p class="mb-2 text-sm">
 									Please check the validation errors section above to see what needs to be fixed.
@@ -489,5 +498,7 @@
 				</div></DashboardWidget
 			>
 		{/if}
+			</div>
+		</div>
 	{/if}
 </div>

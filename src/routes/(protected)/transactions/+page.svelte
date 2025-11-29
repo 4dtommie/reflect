@@ -20,6 +20,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import UploadCTAWidget from '$lib/components/UploadCTAWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
+	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 
 	// Register Chart.js components
 	Chart.register(
@@ -250,6 +252,81 @@
 		return new Map(
 			Object.entries(data.stats.weeklyAverages).map(([k, v]) => [Number(k), v as number])
 		);
+	});
+
+	// Get last full month vs last year same month comparison
+	const lastFullMonthComparison = $derived(() => {
+		if (!data.stats || !monthlyStats().monthlyData.length) {
+			return {
+				month: null,
+				year: null,
+				monthSpending: 0,
+				lastYearMonthSpending: 0,
+				difference: 0,
+				percentageChange: 0,
+				averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
+			};
+		}
+
+		const now = new Date();
+		const currentYear = now.getFullYear();
+		const currentMonth = now.getMonth();
+
+		// Find the last full month (not the current month if we're still in it)
+		// Get all months sorted by date (newest first)
+		const sortedMonths = [...monthlyStats().monthlyData].sort(
+			(a: any, b: any) => b.date.getTime() - a.date.getTime()
+		);
+
+		// Find the last complete month (exclude current month if we're still in it)
+		let lastFullMonth = sortedMonths.find((m: any) => {
+			// If the month is before the current month, it's complete
+			if (m.year < currentYear) return true;
+			if (m.year === currentYear && m.month < currentMonth) return true;
+			return false;
+		});
+
+		// If no month found before current, use the most recent month in data
+		if (!lastFullMonth && sortedMonths.length > 0) {
+			lastFullMonth = sortedMonths[0];
+		}
+
+		if (!lastFullMonth) {
+			return {
+				month: null,
+				year: null,
+				monthSpending: 0,
+				lastYearMonthSpending: 0,
+				difference: 0,
+				percentageChange: 0,
+				averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
+			};
+		}
+
+		const monthYear = lastFullMonth.year;
+		const monthMonth = lastFullMonth.month;
+		const monthSpending = lastFullMonth.spending || 0;
+
+		// Find last year same month spending
+		const lastYearMonthData = monthlyStats().monthlyData.find(
+			(m: any) => m.year === monthYear - 1 && m.month === monthMonth
+		);
+		const lastYearMonthSpending = lastYearMonthData?.spending || 0;
+
+		// Calculate difference and percentage change
+		const difference = monthSpending - lastYearMonthSpending;
+		const percentageChange =
+			lastYearMonthSpending > 0 ? (difference / lastYearMonthSpending) * 100 : 0;
+
+		return {
+			month: monthMonth,
+			year: monthYear,
+			monthSpending,
+			lastYearMonthSpending,
+			difference,
+			percentageChange,
+			averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
+		};
 	});
 
 	// Group transactions by month for display
@@ -830,233 +907,313 @@
 	});
 </script>
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-	<!-- Left Column -->
-	<div class="space-y-6">
-		<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
-		{#if data.stats}
-			<TransactionStatsWidget
-				totalTransactions={data.stats.totalTransactions}
-				categorizedCount={data.stats.categorizedCount}
-				categorizedPercentage={data.stats.categorizedPercentage}
-			/>
-		{/if}
-	</div>
+<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
+	<!-- Two-column layout: Stats on left, content on right -->
+	<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
+		<!-- Left Column: Stats Widgets -->
+		<div class="flex flex-col gap-8">
+			<!-- Title Widget -->
+			<PageTitleWidget title="Transactions" />
+			<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
+			{#if data.stats}
+				<TransactionStatsWidget
+					totalTransactions={data.stats.totalTransactions}
+					categorizedCount={data.stats.categorizedCount}
+					categorizedPercentage={data.stats.categorizedPercentage}
+				/>
 
-	<!-- Right Column -->
-	<div class="space-y-6 lg:col-span-2">
-		<h1 class="mb-6 text-4xl font-bold">Transactions</h1>
-
-		{#if chartData() && chartData()!.labels.length > 0}
-			{@const chartDataValue = chartData()!}
-			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-			<div
-				class="chart-container relative mb-6 w-full rounded bg-base-100 {isDragging
-					? 'grabbing'
-					: 'grab'}"
-				bind:this={chartContainer}
-				role="img"
-				tabindex="0"
-				aria-label="Interactive transaction chart - drag to pan, scroll to zoom"
-				style="height: 220px; min-height: 220px; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; position: relative; cursor: {isDragging
-					? 'grabbing'
-					: 'grab'};"
-				onmousedown={() => (isDragging = true)}
-				onmouseup={() => (isDragging = false)}
-				onmouseleave={() => (isDragging = false)}
-			>
-				<!-- Hint text -->
-				{#if showHint && chartDataValue.labels.length > 9}
-					<div
-						class="absolute top-2 left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2 rounded-full bg-base-300/90 px-3 py-1 text-xs"
-					>
-						<span>Drag to explore</span>
-						<button
-							class="text-base-content/60 hover:text-base-content"
-							onclick={() => (showHint = false)}
-							aria-label="Dismiss hint"
-						>
-							×
-						</button>
-					</div>
-				{/if}
-
-				<canvas
-					bind:this={chartCanvas}
-					style="display: block; width: 100% !important; height: 100% !important; max-width: 100%; box-sizing: border-box;"
-				></canvas>
-			</div>
-		{/if}
-
-		{#if data.transactions.length === 0}
-			<p>No transactions found.</p>
-		{:else}
-			<div class="overflow-x-auto" style="width: 100%; max-width: 100%;">
-				<table
-					class="table table-zebra"
-					style="width: 100%; min-width: 0; table-layout: fixed; max-width: 100%;"
-				>
-					<colgroup>
-						<col style="width: 70px;" />
-						<col />
-						<col style="width: 100px;" />
-					</colgroup>
-					<tbody>
-						<!-- Group by month -->
-						{#each transactionsByMonth() as monthGroup}
-							{@const previousYear = monthGroup.year - 1}
-							{@const previousMonthKey = `${previousYear}-${monthGroup.month}`}
-							{@const previousYearData = monthlyStats().monthlyData.find(
-								(m: any) => m.monthKey === previousMonthKey
-							)}
-							{@const previousYearDate = previousYearData
-								? new Date(previousYear, monthGroup.month, 1)
-								: null}
-							<!-- Month header row -->
-							<tr class="bg-base-300">
-								<td colspan="3" class="font-bold">
-									<div class="flex items-start justify-between">
-										<span>
-											{monthGroup.date.toLocaleDateString('en-US', { month: 'long' })}
-										</span>
-										{#if monthGroup.monthTotal > 0}
-											<div class="text-right">
-												<div class="flex justify-end">
-													<span class="text-right">Spent</span>
-													<span class="ml-1 text-right"
-														>{formatAmountNoDecimals(monthGroup.monthTotal)}</span
-													>
-												</div>
-												{#if previousYearData && previousYearDate}
-													<div class="flex justify-end text-sm font-normal text-base-content/70">
-														<span class="text-right"
-															>Last {previousYearDate.toLocaleDateString('en-US', {
-																month: 'long'
-															})}</span
-														>
-														<span class="ml-1 text-right"
-															>{formatAmountNoDecimals(previousYearData.total)}</span
-														>
-													</div>
-												{:else}
-													<div class="flex justify-end text-sm font-normal text-base-content/70">
-														<span class="text-right">Avg</span>
-														<span class="ml-1 text-right"
-															>{formatAmountNoDecimals(monthlyStats().averageMonthlySpending)}</span
-														>
-													</div>
-												{/if}
-											</div>
-										{/if}
+				<!-- Last Full Month vs Last Year Widget -->
+				{@const comparison = lastFullMonthComparison()}
+				{#if comparison.month !== null}
+					{@const monthDate = new Date(comparison.year, comparison.month, 1)}
+					{@const lastYearDate = new Date(comparison.year - 1, comparison.month, 1)}
+					<DashboardWidget size="small">
+						<div class="flex h-full flex-col justify-center">
+							<div class="grid grid-cols-2 gap-4">
+								<!-- This Month -->
+								<div class="flex flex-col">
+									<div class="text-xs text-base-content/70 mb-1">
+										{monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
 									</div>
-								</td>
-							</tr>
+									<div class="text-2xl font-bold">
+										{formatAmountNoDecimals(comparison.monthSpending)}
+									</div>
+								</div>
 
-							<!-- Week groups within month -->
-							{#each monthGroup.weekGroups as weekGroup}
-								{@const avgForWeekNumber = weeklyAverages().get(weekGroup.weekNumber) || 0}
-								<!-- Week header row -->
-								<tr class="bg-base-100">
-									<td colspan="3" class="font-bold">
-										<div class="flex items-start justify-between">
-											<span>Week {weekGroup.weekNumber}</span>
-											{#if avgForWeekNumber > 0}
-												<div class="text-right">
-													<div class="flex justify-end">
-														<span class="text-right">Spent</span>
-														<span class="ml-1 text-right"
-															>{formatAmountNoDecimals(weekGroup.totalSpending)}</span
-														>
-													</div>
-													<div class="flex justify-end text-sm font-normal text-base-content/70">
-														<span class="text-right">Avg</span>
-														<span class="ml-1 text-right"
-															>{formatAmountNoDecimals(avgForWeekNumber)}</span
-														>
-													</div>
-												</div>
-											{:else}
-												<div class="text-right">
-													Spent {formatAmountNoDecimals(weekGroup.totalSpending)}
-												</div>
-											{/if}
+								<!-- Same Month Last Year -->
+								<div class="flex flex-col">
+									<div class="text-xs text-base-content/70 mb-1">
+										{lastYearDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+									</div>
+									<div class="text-2xl font-bold">
+										{formatAmountNoDecimals(comparison.lastYearMonthSpending)}
+									</div>
+								</div>
+							</div>
+
+							<div class="divider my-3"></div>
+							<div class="grid grid-cols-2 gap-4">
+								<!-- Difference -->
+								{#if comparison.lastYearMonthSpending > 0}
+									<div class="text-center">
+										<div class="text-xs text-base-content/70 mb-1">Difference</div>
+										<div
+											class="text-lg font-semibold {comparison.difference >= 0
+												? 'text-error'
+												: 'text-success'}"
+										>
+											{comparison.difference >= 0 ? '+' : ''}
+											{formatAmountNoDecimals(comparison.difference)}
 										</div>
-									</td>
-								</tr>
-								<!-- Day groups within week -->
-								{#each weekGroup.days as [dayKey, transactions]}
-									<!-- Transaction rows for this day -->
-									{#each transactions as transaction, index}
-										{@const CategoryIcon = transaction.category
-											? getCategoryIcon(transaction.category.icon)
+										<div
+											class="text-xs {comparison.difference >= 0 ? 'text-error' : 'text-success'}"
+										>
+											({comparison.difference >= 0 ? '+' : ''}
+											{comparison.percentageChange.toFixed(1)}%)
+										</div>
+									</div>
+								{/if}
+
+								<!-- Average -->
+								<div class="text-center">
+									<div class="text-xs text-base-content/70 mb-1">Average</div>
+									<div class="text-lg font-semibold">
+										{formatAmountNoDecimals(comparison.averageMonthlySpending)}
+									</div>
+									<div class="text-xs text-base-content/70">All months</div>
+								</div>
+							</div>
+						</div>
+					</DashboardWidget>
+				{/if}
+			{/if}
+		</div>
+
+		<!-- Right Column: Chart, and Transactions -->
+		<div class="lg:col-span-2 flex flex-col gap-8">
+
+			<!-- Chart Widget -->
+			{#if chartData() && chartData()!.labels.length > 0}
+				{@const chartDataValue = chartData()!}
+				<DashboardWidget size="wide" title="Monthly overview">
+					<div class="flex h-full flex-col justify-center">
+						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+						<div
+							class="chart-container relative w-full rounded {isDragging
+								? 'grabbing'
+								: 'grab'}"
+							bind:this={chartContainer}
+							role="img"
+							tabindex="0"
+							aria-label="Interactive transaction chart - drag to pan, scroll to zoom"
+							style="height: 220px; min-height: 220px; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; position: relative; cursor: {isDragging
+								? 'grabbing'
+								: 'grab'};"
+							onmousedown={() => (isDragging = true)}
+							onmouseup={() => (isDragging = false)}
+							onmouseleave={() => (isDragging = false)}
+						>
+							<!-- Hint text -->
+							{#if showHint && chartDataValue.labels.length > 9}
+								<div
+									class="absolute top-2 left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2 rounded-full bg-base-300/90 px-3 py-1 text-xs"
+								>
+									<span>Drag to explore</span>
+									<button
+										class="text-base-content/60 hover:text-base-content"
+										onclick={() => (showHint = false)}
+										aria-label="Dismiss hint"
+									>
+										×
+									</button>
+								</div>
+							{/if}
+
+							<canvas
+								bind:this={chartCanvas}
+								style="display: block; width: 100% !important; height: 100% !important; max-width: 100%; box-sizing: border-box;"
+							></canvas>
+						</div>
+					</div>
+				</DashboardWidget>
+			{/if}
+
+			<!-- Transactions Widget -->
+			<DashboardWidget size="wide" title="Transaction list">
+				<div class="flex h-full flex-col justify-start">
+					{#if data.transactions.length === 0}
+						<p>No transactions found.</p>
+					{:else}
+						<div class="overflow-x-auto" style="width: 100%; max-width: 100%;">
+							<table
+								class="table table-zebra"
+								style="width: 100%; min-width: 0; table-layout: fixed; max-width: 100%;"
+							>
+								<colgroup>
+									<col style="width: 70px;" />
+									<col />
+									<col style="width: 100px;" />
+								</colgroup>
+								<tbody>
+									<!-- Group by month -->
+									{#each transactionsByMonth() as monthGroup}
+										{@const previousYear = monthGroup.year - 1}
+										{@const previousMonthKey = `${previousYear}-${monthGroup.month}`}
+										{@const previousYearData = monthlyStats().monthlyData.find(
+											(m: any) => m.monthKey === previousMonthKey
+										)}
+										{@const previousYearDate = previousYearData
+											? new Date(previousYear, monthGroup.month, 1)
 											: null}
-										<tr>
-											{#if index === 0}
-												<td rowspan={transactions.length} class="align-top">
-													<span class="text-sm">{formatDate(transaction.date)}</span>
-												</td>
-											{/if}
-											<td>
-												<div class="flex items-start gap-3">
-													<div class="mt-0.5 flex-shrink-0">
-														{#if CategoryIcon}
-															<CategoryIcon
-																size={20}
-																style="color: {transaction.category.color || '#94a3b8'};"
-															/>
-														{:else}
-															<HelpCircle size={20} class="text-base-content/40" />
-														{/if}
-													</div>
-													<div class="flex min-w-0 flex-1 flex-col gap-1">
-														<span class="font-medium" title={transaction.merchantName}>
-															{transaction.merchant?.name ?? transaction.merchantName}
-														</span>
-														<span
-															class="text-sm break-words whitespace-normal text-base-content/70"
-															title="Original: {transaction.description}"
-														>
-															{transaction.normalized_description || transaction.description}
-														</span>
-													</div>
-												</div>
-											</td>
-											<td class="text-right">
-												<div class="flex flex-col items-end">
-													<span
-														class="font-medium {transaction.is_debit
-															? 'text-error'
-															: 'text-success'}"
-													>
-														{transaction.is_debit ? '-' : '+'}{formatAmount(transaction.amount)}
+										<!-- Month header row -->
+										<tr class="bg-base-300">
+											<td colspan="3" class="font-bold">
+												<div class="flex items-start justify-between">
+													<span>
+														{monthGroup.date.toLocaleDateString('en-US', { month: 'long' })}
 													</span>
-													<span class="text-xs text-base-content/70"
-														>{transaction.type || 'Transfer'}</span
-													>
+													{#if monthGroup.monthTotal > 0}
+														<div class="text-right">
+															<div class="flex justify-end">
+																<span class="text-right">Spent</span>
+																<span class="ml-1 text-right"
+																	>{formatAmountNoDecimals(monthGroup.monthTotal)}</span
+																>
+															</div>
+															{#if previousYearData && previousYearDate}
+																<div class="flex justify-end text-sm font-normal text-base-content/70">
+																	<span class="text-right"
+																		>Last {previousYearDate.toLocaleDateString('en-US', {
+																			month: 'long'
+																		})}</span
+																	>
+																	<span class="ml-1 text-right"
+																		>{formatAmountNoDecimals(previousYearData.total)}</span
+																	>
+																</div>
+															{:else}
+																<div class="flex justify-end text-sm font-normal text-base-content/70">
+																	<span class="text-right">Avg</span>
+																	<span class="ml-1 text-right"
+																		>{formatAmountNoDecimals(monthlyStats().averageMonthlySpending)}</span
+																	>
+																</div>
+															{/if}
+														</div>
+													{/if}
 												</div>
 											</td>
 										</tr>
-									{/each}
-								{/each}
-							{/each}
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
 
-		<!-- Delete All Transactions Button -->
-		<div class="mt-8 flex justify-end">
-			<button
-				class="btn btn-outline btn-error"
-				onclick={() => (showDeleteConfirm = true)}
-				disabled={deleting}
-			>
-				<Trash2 size={20} />
-				Delete all transactions
-			</button>
+										<!-- Week groups within month -->
+										{#each monthGroup.weekGroups as weekGroup}
+											{@const avgForWeekNumber = weeklyAverages().get(weekGroup.weekNumber) || 0}
+											<!-- Week header row -->
+											<tr class="bg-base-100">
+												<td colspan="3" class="font-bold">
+													<div class="flex items-start justify-between">
+														<span>Week {weekGroup.weekNumber}</span>
+														{#if avgForWeekNumber > 0}
+															<div class="text-right">
+																<div class="flex justify-end">
+																	<span class="text-right">Spent</span>
+																	<span class="ml-1 text-right"
+																		>{formatAmountNoDecimals(weekGroup.totalSpending)}</span
+																	>
+																</div>
+																<div class="flex justify-end text-sm font-normal text-base-content/70">
+																	<span class="text-right">Avg</span>
+																	<span class="ml-1 text-right"
+																		>{formatAmountNoDecimals(avgForWeekNumber)}</span
+																	>
+																</div>
+															</div>
+														{:else}
+															<div class="text-right">
+																Spent {formatAmountNoDecimals(weekGroup.totalSpending)}
+															</div>
+														{/if}
+													</div>
+												</td>
+											</tr>
+											<!-- Day groups within week -->
+											{#each weekGroup.days as [dayKey, transactions]}
+												<!-- Transaction rows for this day -->
+												{#each transactions as transaction, index}
+													{@const CategoryIcon = transaction.category
+														? getCategoryIcon(transaction.category.icon)
+														: null}
+													<tr>
+														{#if index === 0}
+															<td rowspan={transactions.length} class="align-top">
+																<span class="text-sm">{formatDate(transaction.date)}</span>
+															</td>
+														{/if}
+														<td>
+															<div class="flex items-start gap-3">
+																<div class="mt-0.5 flex-shrink-0">
+																	{#if CategoryIcon}
+																		<CategoryIcon
+																			size={20}
+																			style="color: {transaction.category.color || '#94a3b8'};"
+																		/>
+																	{:else}
+																		<HelpCircle size={20} class="text-base-content/40" />
+																	{/if}
+																</div>
+																<div class="flex min-w-0 flex-1 flex-col gap-1">
+																	<span class="font-medium" title={transaction.merchantName}>
+																		{transaction.merchant?.name ?? transaction.merchantName}
+																	</span>
+																	<span
+																		class="text-sm break-words whitespace-normal text-base-content/70"
+																		title="Original: {transaction.description}"
+																	>
+																		{transaction.normalized_description || transaction.description}
+																	</span>
+																</div>
+															</div>
+														</td>
+														<td class="text-right">
+															<div class="flex flex-col items-end">
+																<span
+																	class="font-medium {transaction.is_debit
+																		? 'text-error'
+																		: 'text-success'}"
+																>
+																	{transaction.is_debit ? '-' : '+'}{formatAmount(transaction.amount)}
+																</span>
+																<span class="text-xs text-base-content/70"
+																	>{transaction.type || 'Transfer'}</span
+																>
+															</div>
+														</td>
+													</tr>
+												{/each}
+											{/each}
+										{/each}
+									{/each}
+								</tbody>
+							</table>
+						</div>
+
+						<!-- Delete All Transactions Button -->
+						<div class="mt-8 flex justify-end">
+							<button
+								class="btn btn-outline btn-error"
+								onclick={() => (showDeleteConfirm = true)}
+								disabled={deleting}
+							>
+								<Trash2 size={20} />
+								Delete all transactions
+							</button>
+						</div>
+					{/if}
+				</div>
+			</DashboardWidget>
 		</div>
+	</div>
 
 		<!-- Delete Confirmation Modal -->
 		{#if showDeleteConfirm}
@@ -1115,5 +1272,4 @@
 				></div>
 			</div>
 		{/if}
-	</div>
 </div>

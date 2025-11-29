@@ -203,7 +203,7 @@
 
 		<!-- Errors -->
 		{#if importResult.errors.length > 0}
-			<DashboardWidget size="wide" title="Errors ({importResult.errors.length})">
+			<DashboardWidget size="full" title="Errors ({importResult.errors.length})">
 				<div class="flex h-full flex-col justify-center">
 					<div class="max-h-96 overflow-y-auto">
 						<table class="table table-zebra w-full text-sm">
