@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { ArrowLeft, Check } from 'lucide-svelte';
 	import type { ParseResult } from '$lib/utils/csvParser';
+	import StatItem from '$lib/components/StatItem.svelte';
 	import {
 		detectColumnMapping,
 		mapCSVRowToTransaction,
@@ -11,6 +12,7 @@
 		type TransactionInput,
 		type MappingError
 	} from '$lib/utils/transactionMapper';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 
 	const TRANSACTION_FIELDS: { value: TransactionField; label: string; required: boolean }[] = [
 		{ value: 'date', label: 'Date', required: true },
@@ -226,57 +228,48 @@
 	const previewRows = $derived(mappedTransactions.length);
 </script>
 
-<h1 class="mb-6 text-4xl font-bold">Assign columns</h1>
+<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
+	<!-- Title Widget -->
+	<DashboardWidget size="wide">
+		<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
+			<h1 class="mb-4 text-7xl font-bold">Assign columns</h1>
+			<p class="text-2xl opacity-70">
+				Assign the columns from your CSV file to the corresponding fields in your transactions.
+			</p>
+		</div>
+	</DashboardWidget>
 
-{#if !parseResult}
-	<div class="alert alert-warning">
-		<p>No parsed data found. Please go back and parse your CSV file first.</p>
-		<button class="btn btn-ghost" onclick={goBack}>Go Back</button>
-	</div>
-{:else}
-	<div class="space-y-6">
-		<!-- Mapping Summary -->
-		<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
-			<legend class="fieldset-legend">Mapping status</legend>
-
-			<div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-5">
-				<div>
-					<p class="text-sm text-base-content/70">Total rows</p>
-					<p class="font-semibold">{totalRows}</p>
-				</div>
-				<div>
-					<p class="text-sm text-base-content/70">Valid</p>
-					<p class="font-semibold text-success">{validCount} / {previewRows}</p>
-				</div>
-				<div>
-					<p class="text-sm text-base-content/70">Errors</p>
-					<p class="font-semibold text-error">{errorCount}</p>
-				</div>
-				<div>
-					<p class="text-sm text-base-content/70">Mapped</p>
-					<p class="font-semibold">
-						{Object.values(mapping).filter((f) => f !== 'skip').length} / {parseResult
-							? parseResult.headers.length
-							: 0}
-					</p>
-				</div>
-				<div>
-					<p class="text-sm text-base-content/70">Missing</p>
-					<p class="font-semibold text-warning">{missingRequired.length}</p>
+	{#if !parseResult}
+		<DashboardWidget size="wide">
+			<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
+				<div class="alert alert-warning">
+					<p>No parsed data found. Please go back and parse your CSV file first.</p>
+					<button class="btn btn-ghost" onclick={goBack}>Go Back</button>
 				</div>
 			</div>
+		</DashboardWidget>
+	{:else}
+		<!-- Mapping Summary -->
 
-			<div class="mt-4 flex justify-end">
+		<DashboardWidget size="small" title="Mapping summary">
+			<div class="flex h-full flex-col justify-center">
+				<div class="mb-4 grid grid-cols-2 gap-4">
+					<StatItem label="Total rows" value={totalRows} />
+					<StatItem label="Valid" value={validCount} color="text-success" />
+					<StatItem label="Errors" value={errorCount} color="text-error" />
+					<StatItem label="Missing" value={missingRequired.length} color="text-warning" />
+				</div>
+
 				<button
 					class="btn btn-primary"
 					disabled={validCount === 0 || missingRequired.length > 0}
 					onclick={handleContinue}
 				>
 					<Check class="h-4 w-4" />
-					Continue to import {totalRows} transactions
+					Ready to import {totalRows} transactions
 				</button>
 			</div>
-		</fieldset>
+		</DashboardWidget>
 
 		<!-- Missing Required Fields Warning -->
 		{#if missingRequired.length > 0}
@@ -561,5 +554,5 @@
 				Continue to import {totalRows} transactions
 			</button>
 		</div>
-	</div>
-{/if}
+	{/if}
+</div>
