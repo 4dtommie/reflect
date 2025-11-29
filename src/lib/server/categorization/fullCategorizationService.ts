@@ -48,7 +48,6 @@ import {
 	matchTransactionsByMerchantName,
 	type MerchantNameMatch
 } from './merchantNameMatcher';
-import { categorizeAmount, type AmountCategory } from './amountCategorizer';
 import { normalizeDescription } from './descriptionCleaner';
 
 export interface FullCategorizationOptions {

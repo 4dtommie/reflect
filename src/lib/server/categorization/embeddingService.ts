@@ -9,7 +9,6 @@
 import OpenAI from 'openai';
 import { db } from '$lib/server/db';
 import { aiConfig, isAIAvailable } from './config';
-import type { AmountCategory } from './amountCategorizer';
 
 // Initialize OpenAI client (reuse from aiCategorizer pattern)
 const openai = aiConfig.apiKey ? new OpenAI({ apiKey: aiConfig.apiKey }) : null;
@@ -30,7 +29,6 @@ export interface TransactionForEmbedding {
 	id: number;
 	cleaned_merchant_name: string | null;
 	normalized_description: string | null;
-	amount_category: AmountCategory | string | null;
 	type: string;
 	is_debit: boolean;
 }
@@ -329,15 +327,8 @@ export async function generateCategoryEmbeddings(userId?: number): Promise<{
 
 		try {
 			// Use raw SQL to update vector column (Prisma doesn't support vector type natively)
-			// Cast to vector without specifying dimensions - PostgreSQL will use the column's dimension
-			const embeddingString = `[${embedding.join(',')}]`;
-			
-			await db.$executeRaw`
-				UPDATE categories 
-				SET embedding = ${embeddingString}::vector,
-				    embedding_updated_at = NOW()
-				WHERE id = ${category.id}
-			`;
+			// Embedding fields removed from schema - skip storage
+			console.warn(`   ⚠️  Skipping embedding storage for category ${category.id} (embedding fields removed from schema)`);
 
 			updated++;
 		} catch (error) {
@@ -400,15 +391,8 @@ export async function updateCategoryEmbedding(categoryId: number): Promise<void>
 	};
 
 	const text = prepareCategoryText(categoryWithKeywords);
-	const embedding = await generateEmbedding(text);
-	const embeddingString = `[${embedding.join(',')}]`;
-
-	await db.$executeRaw`
-		UPDATE categories 
-		SET embedding = ${embeddingString}::vector,
-		    embedding_updated_at = NOW()
-		WHERE id = ${categoryId}
-	`;
+	// Embedding fields removed from schema - skip storage
+	console.warn(`   ⚠️  Skipping embedding storage for category ${categoryId} (embedding fields removed from schema)`);
 
 	console.log(`   ✅ Updated embedding for category: ${category.name} (${category.category_keywords.length} keywords)`);
 }
@@ -465,17 +449,9 @@ export async function getCategoryEmbeddingStats(): Promise<{
 }> {
 	const total = await db.categories.count();
 	
-	// Use raw query to count categories with embeddings
-	const withEmbeddingResult = await db.$queryRaw<[{ count: bigint }]>`
-		SELECT COUNT(*) as count FROM categories WHERE embedding IS NOT NULL
-	`;
-	const withEmbedding = Number(withEmbeddingResult[0].count);
-
-	// Get last updated time
-	const lastUpdatedResult = await db.$queryRaw<[{ max: Date | null }]>`
-		SELECT MAX(embedding_updated_at) as max FROM categories
-	`;
-	const lastUpdated = lastUpdatedResult[0].max;
+	// Embedding fields removed from schema - return zeros
+	const withEmbedding = 0;
+	const lastUpdated = null;
 
 	return {
 		total,

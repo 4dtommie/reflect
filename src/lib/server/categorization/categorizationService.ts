@@ -9,7 +9,6 @@ import { matchTransactionToCategory, type Keyword } from './keywordMatcher';
 import { matchTransactionByIBAN, type MerchantWithIBANs, normalizeIBAN } from './ibanMatcher';
 import { cleanMerchantName, findOrCreateMerchant, ensureIBANInMerchant } from './merchantNameCleaner';
 import { matchTransactionsBatchWithVector, isVectorMatchingAvailable, type TransactionForEmbedding } from './vectorMatcher';
-import { categorizeAmount, type AmountCategory } from './amountCategorizer';
 import { isTransferBetweenPersons } from './transferDetector';
 
 // Re-export Keyword for use by other modules
@@ -283,7 +282,6 @@ export async function categorizeTransactionsBatch(
 			is_category_manual: true,
 			cleaned_merchant_name: true,
 			normalized_description: true,
-			amount_category: true,
 			type: true,
 			is_debit: true,
 			amount: true,
@@ -545,7 +543,6 @@ export async function categorizeTransactionsBatch(
 						// Use cleaned data if available, otherwise calculate on the fly
 						let cleanedName = t.cleaned_merchant_name;
 						let normalizedDesc = t.normalized_description;
-						let amountCat: AmountCategory | string | null = t.amount_category as AmountCategory | null;
 
 						// If cleaning fields are missing, calculate them
 						if (!cleanedName) {
@@ -555,19 +552,11 @@ export async function categorizeTransactionsBatch(
 							// Use description as-is for now (could add description cleaner here)
 							normalizedDesc = t.description;
 						}
-						if (!amountCat) {
-							amountCat = categorizeAmount(
-								parseFloat(t.amount.toString()),
-								t.type,
-								t.is_debit
-							);
-						}
 
 						return {
 							id: t.id,
 							cleaned_merchant_name: cleanedName,
 							normalized_description: normalizedDesc,
-							amount_category: amountCat,
 							type: t.type,
 							is_debit: t.is_debit
 						};

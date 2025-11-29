@@ -36,7 +36,6 @@
 		transaction: TransactionInput;
 		cleaned_merchant_name: string;
 		normalized_description: string;
-		amount_category: 'tiny' | 'small' | 'medium' | 'large' | 'huge';
 	} | null> = $state([]);
 	let loadingPreview = $state(false);
 
@@ -164,8 +163,7 @@
 					? {
 							transaction: t,
 							cleaned_merchant_name: preview.cleaned_merchant_name,
-							normalized_description: preview.normalized_description,
-							amount_category: preview.amount_category
+							normalized_description: preview.normalized_description
 						}
 					: null;
 			});
@@ -177,8 +175,7 @@
 					? {
 							transaction: t,
 							cleaned_merchant_name: t.merchantName,
-							normalized_description: t.description,
-							amount_category: 'medium' as const
+							normalized_description: t.description
 						}
 					: null
 			);

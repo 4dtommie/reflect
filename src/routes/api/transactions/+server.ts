@@ -11,8 +11,6 @@ import {
 } from '$lib/utils/transactionMapper';
 import { cleanMerchantName } from '$lib/server/categorization/merchantNameCleaner';
 import { normalizeDescription } from '$lib/server/categorization/descriptionCleaner';
-import { categorizeAmount } from '$lib/server/categorization/amountCategorizer';
-import { getOrCreateFuzzyMatchingJob } from '$lib/server/categorization/fuzzyMatchingJob';
 
 /**
  * Get paginated transactions for the current user
@@ -100,7 +98,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				type: t.type,
 				description: t.description, // Original description (for tooltip)
 				normalized_description: normalizedDesc, // Cleaned description for display
-				amount_category: t.amount_category,
 				category_id: t.category_id,
 				category: t.categories ? {
 					id: t.categories.id,
@@ -254,7 +251,6 @@ interface ImportResult {
 	skipped: number;
 	errors: ImportError[];
 	duplicates: number;
-	fuzzyMatchingJobId?: string; // Job ID for async fuzzy matching
 }
 
 
@@ -360,21 +356,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				for (let i = 0; i < finalTransactions.length; i += batchSize) {
 					const batch = finalTransactions.slice(i, i + batchSize);
 
-					// Clean and normalize data for each transaction (Steps 1, 2, 4)
+					// Clean and normalize data for each transaction
 					const cleanedBatch = batch.map((t) => {
 						// Step 1: Clean merchant name
 						const cleanedMerchantName = cleanMerchantName(t.merchantName, t.description);
 
 						// Step 2: Normalize description
 						const normalizedDescription = normalizeDescription(t.description);
-
-						// Step 4: Categorize amount
-						const amountCategory = categorizeAmount(
-							Number(t.amount),
-							t.type,
-							t.isDebit,
-							{ considerRefund: true }
-						);
 
 						return {
 							user_id: userId,
@@ -390,7 +378,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							// Store cleaned data
 							cleaned_merchant_name: cleanedMerchantName || null,
 							normalized_description: normalizedDescription || null,
-							amount_category: amountCategory,
 							updated_at: new Date() // Required field
 						};
 					});
@@ -415,25 +402,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Combine all errors
 		const allErrors = [...mappingErrors, ...validationErrors, ...insertErrors];
 
-		// Start async fuzzy matching job (Step 3)
-		let fuzzyMatchingJobId: string | undefined;
-		if (importedCount > 0) {
-			try {
-				fuzzyMatchingJobId = await getOrCreateFuzzyMatchingJob(userId);
-				console.log(`🔍 Started fuzzy matching job: ${fuzzyMatchingJobId}`);
-			} catch (err) {
-				console.error('Failed to start fuzzy matching job:', err);
-				// Don't fail the import if fuzzy matching fails to start
-			}
-		}
-
 		const result: ImportResult = {
 			success: allErrors.length === 0 && importedCount > 0,
 			imported: importedCount,
 			skipped: 0,
 			errors: allErrors,
-			duplicates: 0,
-			fuzzyMatchingJobId
+			duplicates: 0
 		};
 
 		return json(result);

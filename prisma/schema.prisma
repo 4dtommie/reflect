@@ -33,9 +33,6 @@ model categories {
   is_default       Boolean           @default(false)
   group            String?            // "income", "essential", "lifestyle", "financial", "other"
   tier             String?            // "most" | "medium" | "less" - for AI prompt ordering
-  // Vector embedding fields (for semantic similarity search)
-  embedding               Unsupported("vector(1536)")?  // OpenAI text-embedding-3-small (1536 dimensions)
-  embedding_updated_at    DateTime?  // When embedding was generated/updated
   users            User?             @relation(fields: [created_by], references: [id])
   categories       categories?       @relation("categoriesTocategories", fields: [parent_id], references: [id])
   other_categories categories[]      @relation("categoriesTocategories")
@@ -77,13 +74,9 @@ model transactions {
   updated_at         DateTime
   user_id            Int
   merchant_id        Int?
-  // Data cleaning fields (for vector embeddings)
+  // Data cleaning fields
   cleaned_merchant_name    String?
   normalized_description   String?
-  amount_category          String?   // 'tiny' | 'small' | 'medium' | 'large' | 'huge'
-  // Fuzzy matching status
-  fuzzy_matched_at         DateTime?
-  fuzzy_match_merchant     String?
   categories         categories?     @relation(fields: [category_id], references: [id])
   merchants          merchants?      @relation(fields: [merchant_id], references: [id])
   users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -93,7 +86,6 @@ model transactions {
   @@index([user_id, category_id])
   @@index([user_id, date])
   @@index([user_id, merchant_id])
-  @@index([user_id, fuzzy_matched_at])
 }
 
 model user_categories {

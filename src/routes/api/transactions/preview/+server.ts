@@ -2,13 +2,11 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cleanMerchantName } from '$lib/server/categorization/merchantNameCleaner';
 import { normalizeDescription } from '$lib/server/categorization/descriptionCleaner';
-import { categorizeAmount } from '$lib/server/categorization/amountCategorizer';
 import type { TransactionInput } from '$lib/utils/transactionMapper';
 
 interface PreviewTransaction extends TransactionInput {
 	cleaned_merchant_name: string;
 	normalized_description: string;
-	amount_category: 'tiny' | 'small' | 'medium' | 'large' | 'huge';
 }
 
 /**
@@ -43,21 +41,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				
 				// Step 2: Normalize description
 				const normalizedDescription = normalizeDescription(transaction.description);
-				
-				// Step 4: Categorize amount
-				const amountCategory = categorizeAmount(
-					Number(transaction.amount),
-					transaction.type,
-					transaction.isDebit,
-					{ considerRefund: true }
-				);
 
 				return {
 					...transaction,
 					date,
 					cleaned_merchant_name: cleanedMerchantName || transaction.merchantName,
-					normalized_description: normalizedDescription || transaction.description,
-					amount_category: amountCategory
+					normalized_description: normalizedDescription || transaction.description
 				};
 			});
 
