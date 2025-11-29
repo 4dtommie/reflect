@@ -31,7 +31,7 @@
 	let mapping: ColumnMapping = $state({});
 	let mappedTransactions: (TransactionInput | null)[] = $state([]);
 	let mappingErrors: MappingError[][] = $state([]);
-	let previewRowCount = $state(5);
+	let previewRowCount = $state(3);
 	let previewTransactions: Array<{
 		transaction: TransactionInput;
 		cleaned_merchant_name: string;
@@ -384,174 +384,113 @@
 
 		<!-- Preview Mapped Transactions -->
 		{#if mappedTransactions.length > 0}
-			<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
-				<legend class="fieldset-legend">
-					Preview (showing {previewRowCount} items from total of {totalRows} rows)
-				</legend>
-
-				{#if validCount === 0}
-					<div class="alert alert-error">
-						<p class="mb-2 font-semibold">No valid transactions found.</p>
-						<p class="mb-2 text-sm">
-							Please check the validation errors section above to see what needs to be fixed.
-						</p>
-						<details class="mt-2">
-							<summary class="cursor-pointer text-sm font-medium">Common issues and fixes:</summary>
-							<ul class="mt-2 list-inside list-disc space-y-1 text-sm">
-								<li>
-									<strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY,
-									or YYYY-MM-DD
-								</li>
-								<li>
-									<strong>Amount format:</strong> Ensure it's a number (can include decimal point or
-									comma, currency symbols will be removed)
-								</li>
-								<li>
-									<strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric
-									characters (spaces allowed)
-								</li>
-								<li>
-									<strong>Missing fields:</strong> Make sure all required fields (marked with *) are
-									mapped to CSV columns
-								</li>
-								<li>
-									<strong>Empty values:</strong> Check that your CSV doesn't have empty cells in required
-									columns
-								</li>
-							</ul>
-						</details>
-					</div>
-				{:else}
-					<div class="overflow-x-auto">
-						<table class="table w-full table-zebra text-sm">
-							<thead>
-								<tr>
-									<th>Row</th>
-									<th>Date</th>
-									<th>Merchant</th>
-									<th>Description</th>
-									<th>Amount</th>
-									<th>Amount category</th>
-									<th>Type</th>
-									<th>Status</th>
-								</tr>
-							</thead>
-							<tbody>
+			<DashboardWidget size="small" title="Preview">
+				<div class="flex h-full flex-col justify-center">
+					<div class="flex h-full flex-col justify-center">
+						{#if validCount === 0}
+							<div class="alert alert-error">
+								<p class="mb-2 font-semibold">No valid transactions found.</p>
+								<p class="mb-2 text-sm">
+									Please check the validation errors section above to see what needs to be fixed.
+								</p>
+								<details class="mt-2">
+									<summary class="cursor-pointer text-sm font-medium"
+										>Common issues and fixes:</summary
+									>
+									<ul class="mt-2 list-inside list-disc space-y-1 text-sm">
+										<li>
+											<strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY,
+											or YYYY-MM-DD
+										</li>
+										<li>
+											<strong>Amount format:</strong> Ensure it's a number (can include decimal point
+											or comma, currency symbols will be removed)
+										</li>
+										<li>
+											<strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric
+											characters (spaces allowed)
+										</li>
+										<li>
+											<strong>Missing fields:</strong> Make sure all required fields (marked with *)
+											are mapped to CSV columns
+										</li>
+										<li>
+											<strong>Empty values:</strong> Check that your CSV doesn't have empty cells in
+											required columns
+										</li>
+									</ul>
+								</details>
+							</div>
+						{:else}
+							<div class="space-y-4">
 								{#each mappedTransactions.slice(0, previewRowCount) as transaction, index}
 									{@const errors = mappingErrors[index] || []}
 									{@const preview = previewTransactions[index]}
-									<tr class={transaction ? '' : 'opacity-50'}>
-										<td class="font-mono">{index + 1}</td>
-										{#if transaction}
-											<td>{transaction.date.toLocaleDateString()}</td>
-											<td class="max-w-xs">
-												{#if preview && preview.cleaned_merchant_name !== transaction.merchantName}
-													<div
-														class="cursor-help truncate"
-														title="Original: {transaction.merchantName}"
-													>
-														<span class="font-medium">{preview.cleaned_merchant_name}</span>
-														<span class="ml-1 text-xs text-base-content/50">(cleaned)</span>
-													</div>
-												{:else}
-													<div class="truncate" title={transaction.merchantName}>
-														{transaction.merchantName}
-													</div>
-												{/if}
-											</td>
-											<td class="max-w-md">
-												{#if preview}
-													{#if preview.normalized_description !== transaction.description}
-														<div
-															class="cursor-help break-words whitespace-normal"
-															title="Original: {transaction.description}"
-														>
-															<span class="font-medium">{preview.normalized_description}</span>
-															<span class="ml-1 text-xs text-base-content/50">(normalized)</span>
-														</div>
-													{:else}
-														<div
-															class="break-words whitespace-normal"
-															title={transaction.description}
-														>
-															{preview.normalized_description}
-														</div>
-													{/if}
-												{:else if loadingPreview}
-													<div
-														class="break-words whitespace-normal"
-														title={transaction.description}
-													>
-														<span class="loading loading-xs loading-spinner"></span>
-														<span class="ml-2">{transaction.description}</span>
-													</div>
-												{:else}
-													<div
-														class="break-words whitespace-normal"
-														title={transaction.description}
-													>
-														{transaction.description}
-													</div>
-												{/if}
-											</td>
-											<td class={transaction.isDebit ? 'text-error' : 'text-success'}>
-												{transaction.isDebit ? '-' : '+'}
-												€{transaction.amount.toFixed(2)}
-											</td>
-											<td>
-												{#if preview}
-													<span class="badge badge-outline badge-sm">
-														{preview.amount_category}
-													</span>
-												{:else if loadingPreview}
-													<span class="loading loading-xs loading-spinner"></span>
-												{:else}
-													<span class="text-base-content/50">—</span>
-												{/if}
-											</td>
-											<td>
-												<span class="badge badge-sm">{transaction.type}</span>
-											</td>
-											<td>
+									<div class="card relative bg-base-200 shadow-sm">
+										<div class="card-body p-4">
+											<div class="absolute top-4 right-4">
 												{#if errors.length > 0}
-													<span class="badge badge-sm badge-error">{errors.length} error(s)</span>
+													<span class="badge badge-error">{errors.length} error(s)</span>
 												{:else}
-													<span class="badge badge-sm badge-success">OK</span>
+													<span class="badge badge-success">OK</span>
 												{/if}
-											</td>
-										{:else}
-											<td colspan="7" class="text-error">
-												Invalid: {errors.map((e) => e.message).join(', ')}
-											</td>
-										{/if}
-									</tr>
+											</div>
+
+											{#if transaction}
+												<div class="grid grid-cols-1 gap-2">
+													<div>
+														<span class="font-semibold opacity-70">Date:</span>
+														<span>{transaction.date.toLocaleDateString()}</span>
+													</div>
+													<div>
+														<span class="font-semibold opacity-70">Amount:</span>
+														<span class={transaction.isDebit ? 'text-error' : 'text-success'}>
+															{transaction.isDebit ? '-' : '+'}
+															€{transaction.amount.toFixed(2)}
+														</span>
+													</div>
+													<div>
+														<span class="font-semibold opacity-70">Merchant:</span>
+														{#if preview && preview.cleaned_merchant_name}
+															<span>{preview.cleaned_merchant_name}</span>
+														{:else}
+															<span>{transaction.merchantName}</span>
+														{/if}
+													</div>
+													<div>
+														<span class="font-semibold opacity-70">Description:</span>
+														{#if preview}
+															<span>{preview.normalized_description}</span>
+														{:else if loadingPreview}
+															<span class="loading loading-xs loading-spinner"></span>
+														{:else}
+															<span>{transaction.description}</span>
+														{/if}
+													</div>
+													<div>
+														<span class="font-semibold opacity-70">Type:</span>
+														<span class="badge badge-sm">{transaction.type}</span>
+													</div>
+												</div>
+											{:else}
+												<div class="text-error">
+													Invalid: {errors.map((e) => e.message).join(', ')}
+												</div>
+											{/if}
+										</div>
+									</div>
 								{/each}
-							</tbody>
-						</table>
-						{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
-							<p class="mt-2 text-sm text-base-content/70">
-								Showing {previewRowCount} items from total of {totalRows} rows
-							</p>
+
+								{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
+									<p class="mt-2 text-center text-sm text-base-content/70">
+										Showing {previewRowCount} items from total of {totalRows} rows
+									</p>
+								{/if}
+							</div>
 						{/if}
 					</div>
-				{/if}
-			</fieldset>
-		{/if}
-
-		<!-- Actions -->
-		<div class="flex gap-4">
-			<button class="btn btn-ghost" onclick={goBack}>
-				<ArrowLeft class="h-4 w-4" />
-				Go Back
-			</button>
-			<button
-				class="btn btn-primary"
-				disabled={validCount === 0 || missingRequired.length > 0}
-				onclick={handleContinue}
+				</div></DashboardWidget
 			>
-				<Check class="h-4 w-4" />
-				Continue to import {totalRows} transactions
-			</button>
-		</div>
+		{/if}
 	{/if}
 </div>
