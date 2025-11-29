@@ -1,6 +1,28 @@
 <script lang="ts">
-	import { Loader2, Play, CheckCircle, AlertCircle, Square } from 'lucide-svelte';
+	import { Loader2, Play, CheckCircle, AlertCircle, SquareStop } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
+	import StatItem from '$lib/components/StatItem.svelte';
+
+	const categorizationMessages = [
+		'Time to organize your financial chaos! 🎯',
+		'Let AI do the heavy lifting while you relax.',
+		'Categorization: because "miscellaneous" isn\'t a category.',
+		'From chaos to clarity, one transaction at a time!',
+		'Your transactions deserve better than "uncategorized".',
+		"Let's sort this out, shall we?",
+		'AI-powered categorization: smarter than a spreadsheet.',
+		'Turning transaction chaos into financial insights!',
+		'Categorize now, analyze later, profit always!',
+		'Your wallet called, it wants better organization.',
+		'From random expenses to organized insights!',
+		"Categorization: it's like Marie Kondo for your finances.",
+		'Let the magic of AI organize your spending! ✨',
+		'One click, thousands of transactions organized.',
+		'Categorization: the unsung hero of financial clarity.'
+	];
+
+	const randomMessage = categorizationMessages[Math.floor(Math.random() * categorizationMessages.length)];
 
 	interface CategorizedTransaction {
 		id: number;
@@ -368,91 +390,42 @@
 	});
 </script>
 
-	<div class="mb-6">
-		<h1 class="text-3xl font-bold mb-2">Categorize all transactions</h1>
-		<p class="text-base-content/70">
-			Automatically categorize all uncategorized transactions using keywords, IBAN matching, and AI.
-		</p>
-	</div>
-
-	<div class="flex items-center justify-between mb-6">
-		<div>
-			<h2 class="text-xl font-semibold mb-1">Status</h2>
-			<p class="text-sm text-base-content/70">
-				{#if categorizing}
-					Categorization in progress...
-				{:else if result}
-					Complete
-				{:else}
-					Ready to start
-				{/if}
-			</p>
+<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
+	<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
+		<!-- Title Widget (Large) -->
+		<div class="lg:col-span-2">
+			<DashboardWidget size="wide">
+				<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
+					<h1 class="mb-4 text-7xl font-bold">Categorize all transactions</h1>
+					<p class="text-2xl opacity-70">
+						{randomMessage}
+					</p>
+				</div>
+			</DashboardWidget>
 		</div>
-		<div class="flex gap-2">
-			{#if categorizing}
-				<button
-					class="btn btn-error"
-					onclick={stopCategorization}
-				>
-					<Square class="w-4 h-4 mr-2" />
-					Stop
-				</button>
-			{:else}
-				<button
-					class="btn btn-primary"
-					onclick={startCategorization}
-				>
-					<Play class="w-4 h-4 mr-2" />
-					Start categorization
-				</button>
-			{/if}
-		</div>
-	</div>
 
-	{#if categorizing || result}
-		<div class="space-y-4 mb-6">
-			<!-- Progress Stats -->
-			<div class="stats stats-vertical lg:stats-horizontal shadow w-full">
-				<div class="stat">
-					<div class="stat-title">Verwerkt</div>
-					<div class="stat-value text-primary">{processedCount}</div>
-					<div class="stat-desc">
-						{#if totalTransactions > 0}
-							van {totalTransactions} transacties
-						{:else}
-							transacties
-						{/if}
-					</div>
-				</div>
-				<div class="stat">
-					<div class="stat-title">Gecategoriseerd</div>
-					<div class="stat-value text-success">{categorizedCount}</div>
-					<div class="stat-desc">transacties</div>
-				</div>
-				<div class="stat">
-					<div class="stat-title">Niet gecategoriseerd</div>
-					<div class="stat-value text-warning">{uncategorizedCount}</div>
-					<div class="stat-desc">transacties</div>
-				</div>
-				<div class="stat">
-					<div class="stat-title">Tijd</div>
-					<div class="stat-value text-info">{formatTime(elapsedTime)}</div>
-					<div class="stat-desc">
-						{#if categorizing}
-							lopend
-						{:else}
-							totale tijd
-						{/if}
-					</div>
-				</div>
-			</div>
-
-					<!-- Progress Bar -->
-					{#if categorizing || (result && totalTransactions > 0)}
-						<div class="w-full">
+		<!-- Status Widget (Small) -->
+		<DashboardWidget size="small">
+			<div class="flex h-full flex-col justify-between">
+				<div>
+					{#if categorizing || result}
+						<div class="mb-4 grid grid-cols-2 gap-4">
+							<StatItem
+								label="Total transactions"
+								value={totalTransactions > 0 ? totalTransactions : processedCount}
+								color="text-primary"
+							/>
+							<StatItem label="Categorized" value={categorizedCount} color="text-success" />
+							<StatItem label="Uncategorized" value={uncategorizedCount} color="text-warning" />
+							<StatItem label="Time" value={formatTime(elapsedTime)} color="text-info" />
+						</div>
+					{/if}
+					
+					{#if categorizing && totalTransactions > 0}
+						<div class="mb-4">
 							<div class="flex justify-between mb-2">
-								<span class="text-sm font-medium">Progress</span>
-								<span class="text-sm font-medium">{Math.round(progress)}%</span>
+								<span class="text-xs text-base-content/70">Progress</span>
+								<span class="text-xs text-base-content/70">{Math.round(progress)}%</span>
 							</div>
 							<progress
 								class="progress progress-primary w-full"
@@ -461,222 +434,131 @@
 							></progress>
 						</div>
 					{/if}
-					
-					<!-- Current Progress Message -->
-					{#if categorizing && currentProgressMessage}
-						<div class="alert alert-info">
-							<Loader2 class="w-5 h-5 animate-spin" />
-							<span class="text-sm">{currentProgressMessage}</span>
-						</div>
-					{/if}
-
-					<!-- Vector Search Progress -->
-					
-					<!-- AI Progress -->
-					{#if categorizing && aiProgress}
-						<div class="bg-base-200 p-4 rounded-lg">
-							<h3 class="text-lg font-semibold mb-2">AI Processing</h3>
-							<div class="space-y-2 text-sm">
-								<div class="flex justify-between items-center">
-									<span class="font-semibold">Batch progress:</span>
-									<span>{aiProgress.currentBatch} / {aiProgress.totalBatches}</span>
-								</div>
-								<progress
-									class="progress progress-secondary w-full"
-									value={aiProgress.currentBatch}
-									max={aiProgress.totalBatches}
-								></progress>
-								<div class="grid grid-cols-2 gap-4 mt-3">
-									<div>
-										<span class="font-semibold">Transactions processed:</span>
-										<span class="ml-2">{aiProgress.transactionsProcessed}</span>
-									</div>
-									<div>
-										<span class="font-semibold">Results received:</span>
-										<span class="ml-2">{aiProgress.resultsReceived}</span>
-									</div>
-									<div>
-										<span class="font-semibold">Successful (≥50%):</span>
-										<span class="ml-2 text-success">{aiProgress.resultsAboveThreshold}</span>
-									</div>
-									<div>
-										<span class="font-semibold">Current batch size:</span>
-										<span class="ml-2">{aiProgress.batchSize}</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-
-			<!-- Results Summary -->
-			{#if result}
-				<div class="alert alert-info">
-					<CheckCircle class="w-6 h-6" />
-					<div>
-						<div class="font-bold">Categorization complete!</div>
-						<div class="text-sm">
-							<p>• Keywords: {result.keywordMatches} matches</p>
-							<p>• IBAN: {result.ibanMatches} matches</p>
-							<p>• Merchant name: {result.merchantNameMatches || 0} matches</p>
-							{#if result.merchantNameReRunMatches !== undefined}
-								<p>• Herhaalde matches: {result.merchantNameReRunMatches} matches (na AI batches)</p>
-							{/if}
-							<p>• AI: {result.aiMatches} matches (≥50% confidence)</p>
-							{#if result.aiDebug}
-								<p class="mt-2 font-semibold">AI Details:</p>
-								<p class="ml-4">• {result.aiDebug.totalTransactionsProcessed} transactions processed with AI</p>
-								<p class="ml-4">• {result.aiDebug.resultsAboveThreshold} successfully categorized (≥50% confidence)</p>
-								{#if result.aiDebug.resultsBelowThreshold > 0}
-									<p class="ml-4">• {result.aiDebug.resultsBelowThreshold} below threshold (&lt;50% confidence)</p>
-								{/if}
-							{/if}
-							{#if result.keywordsAdded > 0}
-								<p>• {result.keywordsAdded} new keywords added</p>
-							{/if}
-						</div>
-					</div>
 				</div>
 				
-				<!-- AI Debug Info -->
-				{#if result.aiDebug}
-					<div class="bg-base-200 p-4 rounded-lg">
-						<h3 class="text-lg font-semibold mb-3">AI Debug Information</h3>
-						<div class="space-y-2 text-sm">
-							<div class="grid grid-cols-2 gap-4">
-								<div>
-									<span class="font-semibold">AI Available:</span>
-									<span class="ml-2">{result.aiAvailable ? '✅ Yes' : '❌ No'}</span>
-								</div>
-								<div>
-									<span class="font-semibold">Batches processed:</span>
-									<span class="ml-2">{result.aiDebug.batchesProcessed}</span>
-								</div>
-								<div>
-									<span class="font-semibold">Transactions processed:</span>
-									<span class="ml-2">{result.aiDebug.totalTransactionsProcessed}</span>
-								</div>
-								<div>
-									<span class="font-semibold">Results received:</span>
-									<span class="ml-2">{result.aiDebug.totalResultsReceived}</span>
-								</div>
-								<div>
-									<span class="font-semibold">Above threshold (≥50%):</span>
-									<span class="ml-2 text-success">{result.aiDebug.resultsAboveThreshold}</span>
-								</div>
-								<div>
-									<span class="font-semibold">Below threshold (&lt;50%):</span>
-									<span class="ml-2 text-warning">{result.aiDebug.resultsBelowThreshold}</span>
-								</div>
-							</div>
-							
-							{#if result.aiDebug.lastBatchDetails}
-								<div class="divider my-2"></div>
-								<div>
-									<span class="font-semibold">Last batch details:</span>
-									<ul class="list-disc list-inside mt-1 space-y-1">
-										<li>Batch size: {result.aiDebug.lastBatchDetails.batchSize} transactions</li>
-										<li>Results received: {result.aiDebug.lastBatchDetails.resultsReceived}</li>
-										<li>Above threshold: {result.aiDebug.lastBatchDetails.resultsAboveThreshold}</li>
-										<li>Below threshold: {result.aiDebug.lastBatchDetails.resultsBelowThreshold}</li>
-										{#if result.aiDebug.lastBatchDetails.tokensUsed}
-											<li>Tokens used: {result.aiDebug.lastBatchDetails.tokensUsed.total} (prompt: {result.aiDebug.lastBatchDetails.tokensUsed.prompt}, completion: {result.aiDebug.lastBatchDetails.tokensUsed.completion})</li>
-										{/if}
-									</ul>
-								</div>
-							{/if}
-							
-							{#if result.aiDebug.errors.length > 0}
-								<div class="divider my-2"></div>
-								<div>
-									<span class="font-semibold text-error">AI Errors:</span>
-									<ul class="list-disc list-inside mt-1 space-y-1">
-										{#each result.aiDebug.errors as error}
-											<li class="text-error">{error}</li>
-										{/each}
-									</ul>
-								</div>
-							{/if}
-							
-							{#if result.aiDebug.totalResultsReceived === 0 && result.aiAvailable}
-								<div class="alert alert-warning mt-4">
-									<AlertCircle class="w-6 h-6" />
-									<div>
-										<div class="font-bold">No AI results received</div>
-										<div class="text-sm">AI is available but returned no results. Check console logs for more details.</div>
-									</div>
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/if}
-			{/if}
-		</div>
-	{/if}
+				<div class="flex gap-2">
+					{#if categorizing}
+						<button class="btn btn-error w-full" onclick={stopCategorization}>
+							<SquareStop class="w-4 h-4 mr-2" />
+							Stop
+						</button>
+					{:else}
+						<button class="btn btn-primary w-full" onclick={startCategorization}>
+							<Play class="w-4 h-4 mr-2" />
+							Start categorization
+						</button>
+					{/if}
+				</div>
+			</div>
+		</DashboardWidget>
+	</div>
 
-	{#if error}
-		<div class="alert alert-error mb-6">
-			<AlertCircle class="w-6 h-6" />
-			<span>{error}</span>
-		</div>
-	{/if}
+	<!-- Content Section -->
+	<div class="col-span-full">
+		{#if error}
+			<DashboardWidget size="full">
+				<div class="alert alert-error">
+					<AlertCircle class="w-6 h-6" />
+					<span>{error}</span>
+				</div>
+			</DashboardWidget>
+		{/if}
 
 	<!-- Categorized Transactions Table -->
 	{#if categorizedTransactions.length > 0}
-		<div class="mb-6">
-			<h2 class="text-xl font-semibold mb-4">Categorized transactions</h2>
-			<div class="overflow-x-auto max-h-96 overflow-y-auto">
-				<table class="table table-zebra">
-					<thead class="sticky top-0 bg-base-200">
-						<tr>
-							<th>Date</th>
-							<th>Merchant</th>
-							<th>Amount</th>
-							<th>Category</th>
-							<th>Reason</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each categorizedTransactions as transaction}
-							<tr>
-								<td>
-									{new Date(transaction.date).toLocaleDateString('en-US', {
-										day: '2-digit',
-										month: '2-digit',
-										year: 'numeric'
-									})}
-								</td>
-								<td class="font-medium">
-									<span 
-										title={transaction.fullMerchantName !== transaction.merchantName
-											? transaction.fullMerchantName
-											: (transaction.originalMerchantName 
-												? (transaction.originalMerchantName !== transaction.fullMerchantName 
-													? `Original: ${transaction.originalMerchantName}` 
-													: transaction.originalMerchantName)
-												: '')}
+		<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
+			<div class="lg:col-span-2">
+				<DashboardWidget size="large" title="Categorized transactions">
+					<div class="relative overflow-x-auto max-h-96 overflow-y-auto">
+						<table class="table table-zebra">
+							<thead class="sticky top-0 bg-base-200">
+								<tr>
+									<th>Date</th>
+									<th>Merchant</th>
+									<th>Amount</th>
+									<th>Category</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each categorizedTransactions as transaction, index}
+									<tr
+										class="group relative"
+										onmouseenter={(e) => {
+											if (transaction.matchReason) {
+												const tooltip = document.getElementById(`tooltip-${index}`);
+												if (tooltip) {
+													const rect = e.currentTarget.getBoundingClientRect();
+													const tableRect = e.currentTarget.closest('table')?.getBoundingClientRect();
+													if (tableRect) {
+														tooltip.style.display = 'block';
+														tooltip.style.top = `${rect.top - tableRect.top - 120}px`;
+														tooltip.style.left = `${rect.left - tableRect.left + rect.width / 2}px`;
+													}
+												}
+											}
+										}}
+										onmouseleave={() => {
+											const tooltip = document.getElementById(`tooltip-${index}`);
+											if (tooltip) {
+												tooltip.style.display = 'none';
+											}
+										}}
 									>
-										{transaction.merchantName || transaction.fullMerchantName || transaction.originalMerchantName || '-'}
-									</span>
-								</td>
-								<td class="font-mono">
-									€{transaction.amount.toFixed(2)}
-								</td>
-								<td>
-									<span class="badge badge-primary">{transaction.categoryName}</span>
-								</td>
-								<td>
-									{#if transaction.matchReason}
-										<span class="badge badge-sm badge-outline">{transaction.matchReason}</span>
-									{:else}
-										<span class="text-base-content/50">-</span>
-									{/if}
-								</td>
-							</tr>
+										<td>
+											{new Date(transaction.date).toLocaleDateString('en-US', {
+												day: '2-digit',
+												month: '2-digit',
+												year: 'numeric'
+											})}
+										</td>
+										<td class="font-medium">
+											<span
+												title={transaction.fullMerchantName !== transaction.merchantName
+													? transaction.fullMerchantName
+													: (transaction.originalMerchantName
+															? (transaction.originalMerchantName !== transaction.fullMerchantName
+																	? `Original: ${transaction.originalMerchantName}`
+																	: transaction.originalMerchantName)
+															: '')}
+											>
+												{transaction.merchantName ||
+													transaction.fullMerchantName ||
+													transaction.originalMerchantName ||
+													'-'}
+											</span>
+										</td>
+										<td class="font-mono">€{transaction.amount.toFixed(2)}</td>
+										<td>
+											<span class="badge badge-primary">{transaction.categoryName}</span>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+						{#each categorizedTransactions as transaction, index}
+							{#if transaction.matchReason}
+								<div
+									id="tooltip-{index}"
+									class="absolute z-50 hidden pointer-events-none -translate-x-1/2"
+									style="display: none;"
+								>
+									<div
+										class="bg-base-200 border border-base-300 rounded-lg shadow-lg p-3 text-sm whitespace-nowrap"
+										style="min-width: 200px;"
+									>
+										<div class="font-semibold mb-1">Match reason:</div>
+										<div class="text-base-content/80">{transaction.matchReason}</div>
+										<div
+											class="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-base-300"
+										></div>
+									</div>
+								</div>
+							{/if}
 						{/each}
-					</tbody>
-				</table>
+					</div>
+				</DashboardWidget>
 			</div>
 		</div>
 	{/if}
-
-
+	</div>
+</div>

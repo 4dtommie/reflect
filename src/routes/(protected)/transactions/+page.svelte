@@ -22,6 +22,7 @@
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
+	import Amount from '$lib/components/Amount.svelte';
 
 	// Register Chart.js components
 	Chart.register(
@@ -1040,7 +1041,7 @@
 			{/if}
 
 			<!-- Transactions Widget -->
-			<DashboardWidget size="wide" title="Transaction list">
+			<DashboardWidget size="wide">
 				<div class="flex h-full flex-col justify-start">
 					{#if data.transactions.length === 0}
 						<p>No transactions found.</p>
@@ -1053,90 +1054,26 @@
 								<colgroup>
 									<col style="width: 70px;" />
 									<col />
-									<col style="width: 100px;" />
+									<col style="width: 150px;" />
 								</colgroup>
 								<tbody>
 									<!-- Group by month -->
 									{#each transactionsByMonth() as monthGroup}
-										{@const previousYear = monthGroup.year - 1}
-										{@const previousMonthKey = `${previousYear}-${monthGroup.month}`}
-										{@const previousYearData = monthlyStats().monthlyData.find(
+										{@const previousMonth = monthGroup.month === 0 ? 11 : monthGroup.month - 1}
+										{@const previousYear = monthGroup.month === 0 ? monthGroup.year - 1 : monthGroup.year}
+										{@const previousMonthKey = `${previousYear}-${previousMonth}`}
+										{@const previousMonthData = monthlyStats().monthlyData.find(
 											(m: any) => m.monthKey === previousMonthKey
 										)}
-										{@const previousYearDate = previousYearData
-											? new Date(previousYear, monthGroup.month, 1)
-											: null}
 										<!-- Month header row -->
 										<tr class="bg-base-300">
 											<td colspan="3" class="font-bold">
-												<div class="flex items-start justify-between">
-													<span>
-														{monthGroup.date.toLocaleDateString('en-US', { month: 'long' })}
-													</span>
-													{#if monthGroup.monthTotal > 0}
-														<div class="text-right">
-															<div class="flex justify-end">
-																<span class="text-right">Spent</span>
-																<span class="ml-1 text-right"
-																	>{formatAmountNoDecimals(monthGroup.monthTotal)}</span
-																>
-															</div>
-															{#if previousYearData && previousYearDate}
-																<div class="flex justify-end text-sm font-normal text-base-content/70">
-																	<span class="text-right"
-																		>Last {previousYearDate.toLocaleDateString('en-US', {
-																			month: 'long'
-																		})}</span
-																	>
-																	<span class="ml-1 text-right"
-																		>{formatAmountNoDecimals(previousYearData.total)}</span
-																	>
-																</div>
-															{:else}
-																<div class="flex justify-end text-sm font-normal text-base-content/70">
-																	<span class="text-right">Avg</span>
-																	<span class="ml-1 text-right"
-																		>{formatAmountNoDecimals(monthlyStats().averageMonthlySpending)}</span
-																	>
-																</div>
-															{/if}
-														</div>
-													{/if}
-												</div>
+												{monthGroup.date.toLocaleDateString('en-US', { month: 'long' })}
 											</td>
 										</tr>
 
 										<!-- Week groups within month -->
 										{#each monthGroup.weekGroups as weekGroup}
-											{@const avgForWeekNumber = weeklyAverages().get(weekGroup.weekNumber) || 0}
-											<!-- Week header row -->
-											<tr class="bg-base-100">
-												<td colspan="3" class="font-bold">
-													<div class="flex items-start justify-between">
-														<span>Week {weekGroup.weekNumber}</span>
-														{#if avgForWeekNumber > 0}
-															<div class="text-right">
-																<div class="flex justify-end">
-																	<span class="text-right">Spent</span>
-																	<span class="ml-1 text-right"
-																		>{formatAmountNoDecimals(weekGroup.totalSpending)}</span
-																	>
-																</div>
-																<div class="flex justify-end text-sm font-normal text-base-content/70">
-																	<span class="text-right">Avg</span>
-																	<span class="ml-1 text-right"
-																		>{formatAmountNoDecimals(avgForWeekNumber)}</span
-																	>
-																</div>
-															</div>
-														{:else}
-															<div class="text-right">
-																Spent {formatAmountNoDecimals(weekGroup.totalSpending)}
-															</div>
-														{/if}
-													</div>
-												</td>
-											</tr>
 											<!-- Day groups within week -->
 											{#each weekGroup.days as [dayKey, transactions]}
 												<!-- Transaction rows for this day -->
@@ -1166,27 +1103,17 @@
 																	<span class="font-medium" title={transaction.merchantName}>
 																		{transaction.merchant?.name ?? transaction.merchantName}
 																	</span>
-																	<span
-																		class="text-sm break-words whitespace-normal text-base-content/70"
-																		title="Original: {transaction.description}"
-																	>
-																		{transaction.normalized_description || transaction.description}
-																	</span>
 																</div>
 															</div>
 														</td>
-														<td class="text-right">
-															<div class="flex flex-col items-end">
-																<span
-																	class="font-medium {transaction.is_debit
-																		? 'text-error'
-																		: 'text-success'}"
-																>
-																	{transaction.is_debit ? '-' : '+'}{formatAmount(transaction.amount)}
-																</span>
-																<span class="text-xs text-base-content/70"
-																	>{transaction.type || 'Transfer'}</span
-																>
+														<td class="text-right align-top" style="padding-right: 1rem;">
+															<div class="flex justify-end">
+																<Amount
+																	value={transaction.amount}
+																	size="large"
+																	showDecimals={true}
+																	isDebit={transaction.is_debit}
+																/>
 															</div>
 														</td>
 													</tr>
