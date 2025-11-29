@@ -283,75 +283,74 @@
 			</div>
 		{/if}
 
-		<!-- Column Mapping Table -->
-		<fieldset class="fieldset rounded-box border border-base-300 bg-base-100 p-6">
-			<legend class="fieldset-legend">Column mapping</legend>
-
-			<div class="overflow-x-auto">
-				<table class="table w-full">
-					<thead>
-						<tr>
-							<th>CSV column</th>
-							<th class="w-20">Sample value</th>
-							<th>Map to field</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each parseResult.headers as header, index}
-							{@const currentMapping = mapping[index] || 'skip'}
-							{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
-							{@const isRequired =
-								TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
-							<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
-								<td>
-									<p class="font-medium">{header || '(empty header)'}</p>
-								</td>
-								<td class="w-20 max-w-20">
-									<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
-								</td>
-								<td>
-									<select
-										class="select-bordered select w-full"
-										value={currentMapping}
-										onchange={(e) =>
-											updateMapping(
-												index,
-												(e.target as HTMLSelectElement).value as TransactionField
-											)}
-									>
-										<option value="skip">-- (Skip column) --</option>
-										{#each TRANSACTION_FIELDS as field}
-											{@const alreadyMapped =
-												getMappedColumn(field.value) !== null &&
-												getMappedColumn(field.value) !== index}
-											<option
-												value={field.value}
-												disabled={alreadyMapped && field.value !== 'skip'}
-											>
-												{field.label}
-												{field.required ? '*' : ''}
-												{#if alreadyMapped && field.value !== 'skip'}
-													(already mapped){/if}
-											</option>
-										{/each}
-									</select>
-								</td>
-								<td>
-									{#if currentMapping === 'skip'}
-										<span class="badge badge-ghost">Skipped</span>
-									{:else if isRequired}
-										<span class="badge badge-success">Required</span>
-									{:else}
-										<span class="badge badge-info">Optional</span>
-									{/if}
-								</td>
+		<DashboardWidget size="wide" title="Column mapping">
+			<div class="flex h-full flex-col justify-center">
+				<div class="overflow-x-auto">
+					<table class="table w-full">
+						<thead>
+							<tr>
+								<th>CSV column</th>
+								<th class="w-20">Sample value</th>
+								<th>Map to field</th>
+								<th>Status</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</fieldset>
+						</thead>
+						<tbody>
+							{#each parseResult.headers as header, index}
+								{@const currentMapping = mapping[index] || 'skip'}
+								{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
+								{@const isRequired =
+									TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
+								<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
+									<td>
+										<p class="font-medium">{header || '(empty header)'}</p>
+									</td>
+									<td class="w-20 max-w-20">
+										<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
+									</td>
+									<td>
+										<select
+											class="select-bordered select w-full"
+											value={currentMapping}
+											onchange={(e) =>
+												updateMapping(
+													index,
+													(e.target as HTMLSelectElement).value as TransactionField
+												)}
+										>
+											<option value="skip">-- (Skip column) --</option>
+											{#each TRANSACTION_FIELDS as field}
+												{@const alreadyMapped =
+													getMappedColumn(field.value) !== null &&
+													getMappedColumn(field.value) !== index}
+												<option
+													value={field.value}
+													disabled={alreadyMapped && field.value !== 'skip'}
+												>
+													{field.label}
+													{field.required ? '*' : ''}
+													{#if alreadyMapped && field.value !== 'skip'}
+														(already mapped){/if}
+												</option>
+											{/each}
+										</select>
+									</td>
+									<td>
+										{#if currentMapping === 'skip'}
+											<span class="badge badge-ghost">Skipped</span>
+										{:else if isRequired}
+											<span class="badge badge-success">Required</span>
+										{:else}
+											<span class="badge badge-info">Optional</span>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div></DashboardWidget
+		>
 
 		<!-- Error Details (if any) -->
 		{#if errorCount > 0}
