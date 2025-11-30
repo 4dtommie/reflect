@@ -80,22 +80,9 @@
 		}).format(amount);
 	}
 
-	function getWeekOfMonth(date: Date | string): number {
-		const d = typeof date === 'string' ? new Date(date) : date;
-		const dayOfMonth = d.getDate();
-		// Week 1 = days 1-7, Week 2 = days 8-14, Week 3 = days 15-21, Week 4 = days 22-28, Week 5 = days 29+
-		return Math.ceil(dayOfMonth / 7);
-	}
-
 	function getMonthDayKey(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
 		return `${d.getMonth()}-${d.getDate()}`;
-	}
-
-	function getWeekKey(date: Date | string): string {
-		const d = typeof date === 'string' ? new Date(date) : date;
-		const weekNum = getWeekOfMonth(d);
-		return `${d.getFullYear()}-${d.getMonth()}-week${weekNum}`;
 	}
 
 	function getCategoryIcon(iconName: string | null | undefined) {
@@ -131,20 +118,13 @@
 		}
 	}
 
-	// Group transactions by week, then by day
+	// Group transactions by day
 	const groupedTransactions = $derived(() => {
-		// First group by week
-		const weekGroups: Map<string, Map<string, typeof data.transactions>> = new Map();
+		const dayGroups: Map<string, typeof data.transactions> = new Map();
 
 		for (const transaction of data.transactions) {
-			const weekKey = getWeekKey(transaction.date);
 			const dayKey = getMonthDayKey(transaction.date);
 
-			if (!weekGroups.has(weekKey)) {
-				weekGroups.set(weekKey, new Map());
-			}
-
-			const dayGroups = weekGroups.get(weekKey)!;
 			if (!dayGroups.has(dayKey)) {
 				dayGroups.set(dayKey, []);
 			}
@@ -152,52 +132,14 @@
 			dayGroups.get(dayKey)!.push(transaction);
 		}
 
-		// Convert to array structure: [weekKey, weekNumber, [dayKey, transactions][], totalSpending]
-		const result: Array<{
-			weekKey: string;
-			weekNumber: number;
-			days: Array<[string, typeof data.transactions]>;
-			totalSpending: number;
-		}> = [];
-
-		for (const [weekKey, dayGroups] of weekGroups.entries()) {
-			// Get week number from first transaction in first day
-			const firstDay = Array.from(dayGroups.values())[0];
-			const weekNumber = getWeekOfMonth(firstDay[0].date);
-
-			// Calculate total spending for the week (only debit transactions)
-			let totalSpending = 0;
-			for (const dayTransactions of dayGroups.values()) {
-				for (const transaction of dayTransactions) {
-					if (transaction.is_debit) {
-						totalSpending += transaction.amount;
-					}
-				}
-			}
-
-			// Sort days within week (newest first)
-			const sortedDays = Array.from(dayGroups.entries()).sort(([keyA], [keyB]) => {
-				const dateA = new Date(dayGroups.get(keyA)![0].date);
-				const dateB = new Date(dayGroups.get(keyB)![0].date);
-				return dateB.getTime() - dateA.getTime();
-			});
-
-			result.push({
-				weekKey,
-				weekNumber,
-				days: sortedDays,
-				totalSpending
-			});
-		}
-
-		// Sort weeks (newest first)
-		result.sort((a, b) => {
-			const dateA = new Date(a.days[0][1][0].date);
-			const dateB = new Date(b.days[0][1][0].date);
+		// Convert to array structure: [dayKey, transactions]
+		const sortedDays = Array.from(dayGroups.entries()).sort(([keyA], [keyB]) => {
+			const dateA = new Date(dayGroups.get(keyA)![0].date);
+			const dateB = new Date(dayGroups.get(keyB)![0].date);
 			return dateB.getTime() - dateA.getTime();
 		});
 
-		return result;
+		return sortedDays;
 	});
 
 	// Get monthly stats from server (all transactions) and structure by month
@@ -242,17 +184,6 @@
 			averageMonthlySpending: data.stats.averageMonthlySpending || avgSpending,
 			averageMonthlyIncome: avgIncome
 		};
-	});
-
-	// Get weekly averages from server (calculated from all transactions)
-	const weeklyAverages = $derived(() => {
-		if (!data.stats || !data.stats.weeklyAverages) {
-			return new Map<number, number>();
-		}
-		// Convert object to Map
-		return new Map(
-			Object.entries(data.stats.weeklyAverages).map(([k, v]) => [Number(k), v as number])
-		);
 	});
 
 	// Get last full month vs last year same month comparison
@@ -332,18 +263,12 @@
 
 	// Group transactions by month for display
 	const transactionsByMonth = $derived(() => {
-		type WeekGroup = {
-			weekKey: string;
-			weekNumber: number;
-			days: Array<[string, typeof data.transactions]>;
-			totalSpending: number;
-		};
-		const monthMap = new Map<string, WeekGroup[]>();
+		const monthMap = new Map<string, Array<[string, typeof data.transactions]>>();
 
-		for (const weekGroup of groupedTransactions()) {
-			if (weekGroup.days.length === 0) continue;
+		for (const [dayKey, transactions] of groupedTransactions()) {
+			if (transactions.length === 0) continue;
 
-			const firstTransaction = weekGroup.days[0][1][0];
+			const firstTransaction = transactions[0];
 			const d =
 				typeof firstTransaction.date === 'string'
 					? new Date(firstTransaction.date)
@@ -353,13 +278,13 @@
 			if (!monthMap.has(monthKey)) {
 				monthMap.set(monthKey, []);
 			}
-			monthMap.get(monthKey)!.push(weekGroup);
+			monthMap.get(monthKey)!.push([dayKey, transactions]);
 		}
 
 		// Convert to array and get month info
 		return Array.from(monthMap.entries())
-			.map(([monthKey, weekGroups]) => {
-				const firstTransaction = weekGroups[0].days[0][1][0];
+			.map(([monthKey, days]) => {
+				const firstTransaction = days[0][1][0];
 				const d =
 					typeof firstTransaction.date === 'string'
 						? new Date(firstTransaction.date)
@@ -371,7 +296,7 @@
 					year: d.getFullYear(),
 					month: d.getMonth(),
 					date: new Date(d.getFullYear(), d.getMonth(), 1),
-					weekGroups,
+					days,
 					monthTotal: monthTotal?.total || 0
 				};
 			})
@@ -1037,107 +962,91 @@
 				</DashboardWidget>
 			{/if}
 
-			<!-- Transactions Widget -->
-			<DashboardWidget size="wide">
-				<div class="flex h-full flex-col justify-start">
-					{#if data.transactions.length === 0}
-						<p>No transactions found.</p>
-					{:else}
-						<div class="overflow-x-auto" style="width: 100%; max-width: 100%;">
-							<table
-								class="table table-zebra"
-								style="width: 100%; min-width: 0; table-layout: fixed; max-width: 100%;"
-							>
-								<colgroup>
-									<col style="width: 70px;" />
-									<col />
-									<col style="width: 150px;" />
-								</colgroup>
-								<tbody>
-									<!-- Group by month -->
-									{#each transactionsByMonth() as monthGroup}
-										{@const previousMonth = monthGroup.month === 0 ? 11 : monthGroup.month - 1}
-										{@const previousYear =
-											monthGroup.month === 0 ? monthGroup.year - 1 : monthGroup.year}
-										{@const previousMonthKey = `${previousYear}-${previousMonth}`}
-										{@const previousMonthData = monthlyStats().monthlyData.find(
-											(m: any) => m.monthKey === previousMonthKey
-										)}
-										<!-- Month header row -->
-										<tr class="bg-base-300">
-											<td colspan="3" class="font-bold">
-												{monthGroup.date.toLocaleDateString('en-US', { month: 'long' })}
-											</td>
-										</tr>
-
-										<!-- Week groups within month -->
-										{#each monthGroup.weekGroups as weekGroup}
-											<!-- Day groups within week -->
-											{#each weekGroup.days as [dayKey, transactions]}
-												<!-- Transaction rows for this day -->
-												{#each transactions as transaction, index}
-													{@const CategoryIcon = transaction.category
-														? getCategoryIcon(transaction.category.icon)
-														: null}
-													<tr>
-														{#if index === 0}
-															<td rowspan={transactions.length} class="align-top">
-																<span class="text-sm">{formatDate(transaction.date)}</span>
-															</td>
-														{/if}
-														<td>
-															<div class="flex items-start gap-3">
-																<div class="mt-0.5 flex-shrink-0">
-																	{#if CategoryIcon}
-																		<CategoryIcon
-																			size={20}
-																			strokeWidth={1}
-																			style="color: black ;"
-																		/>
-																	{:else}
-																		<HelpCircle size={20} class="text-base-content/40" />
-																	{/if}
-																</div>
-																<div class="flex min-w-0 flex-1 flex-col gap-1">
-																	<span class="font-normal" title={transaction.merchantName}>
-																		{transaction.merchant?.name ?? transaction.merchantName}
-																	</span>
-																</div>
-															</div>
-														</td>
-														<td class="text-right align-top" style="padding-right: 1rem;">
-															<div class="flex justify-end">
-																<Amount
-																	value={transaction.amount}
-																	size="large"
-																	showDecimals={true}
-																	isDebit={transaction.is_debit}
+			<!-- Transactions by Month -->
+			{#if data.transactions.length === 0}
+				<DashboardWidget size="wide" enableHover={false}>
+					<p>No transactions found.</p>
+				</DashboardWidget>
+			{:else}
+				<!-- Group by month - each month in its own widget -->
+				{#each transactionsByMonth() as monthGroup}
+					<DashboardWidget
+						size="wide"
+						enableHover={false}
+						title={monthGroup.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+					>
+						<div class="flex h-full flex-col justify-start">
+							<!-- Day groups within month -->
+							<div class="flex flex-col gap-6">
+								{#each monthGroup.days as [dayKey, transactions]}
+									<!-- Day section -->
+									<div
+										class="flex flex-col overflow-hidden rounded-lg"
+									>
+										<!-- Date header -->
+										<div class="py-2 pt-4">
+											<span class="text-sm font-medium">
+												{formatDate(transactions[0].date)}
+											</span>
+										</div>
+										<!-- Transactions list -->
+										<div class="divide-y divide-base-200">
+											{#each transactions as transaction}
+												{@const CategoryIcon = transaction.category
+													? getCategoryIcon(transaction.category.icon)
+													: null}
+												<div
+													class="hover:bg-base-50 flex items-center justify-between gap-4 py-3"
+												>
+													<div class="flex min-w-0 flex-1 items-center gap-3">
+														<div class="flex-shrink-0">
+															{#if CategoryIcon}
+																<CategoryIcon
+																	size={20}
+																	strokeWidth={1}
+																	style="color: black ;"
 																/>
-															</div>
-														</td>
-													</tr>
-												{/each}
+															{:else}
+																<HelpCircle size={20} class="text-base-content/40" />
+															{/if}
+														</div>
+														<span class="truncate font-normal" title={transaction.merchantName}>
+															{transaction.merchant?.name ?? transaction.merchantName}
+														</span>
+													</div>
+													<div class="flex-shrink-0">
+														<Amount
+															value={transaction.amount}
+															size="medium"
+															showDecimals={true}
+															isDebit={transaction.is_debit}
+															hideEuro = {true}
+														/>
+													</div>
+												</div>
 											{/each}
-										{/each}
-									{/each}
-								</tbody>
-							</table>
+										</div>
+									</div>
+								{/each}
+							</div>
 						</div>
+					</DashboardWidget>
+				{/each}
 
-						<!-- Delete All Transactions Button -->
-						<div class="mt-8 flex justify-end">
-							<button
-								class="btn btn-outline btn-error"
-								onclick={() => (showDeleteConfirm = true)}
-								disabled={deleting}
-							>
-								<Trash2 size={20} />
-								Delete all transactions
-							</button>
-						</div>
-					{/if}
-				</div>
-			</DashboardWidget>
+				<!-- Delete All Transactions Button -->
+				<DashboardWidget size="small" enableHover={false}>
+					<div class="flex justify-end">
+						<button
+							class="btn btn-outline btn-error"
+							onclick={() => (showDeleteConfirm = true)}
+							disabled={deleting}
+						>
+							<Trash2 size={20} />
+							Delete all transactions
+						</button>
+					</div>
+				</DashboardWidget>
+			{/if}
 		</div>
 	</div>
 

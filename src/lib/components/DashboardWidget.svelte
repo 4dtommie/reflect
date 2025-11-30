@@ -6,12 +6,16 @@
 		icon,
 		size = 'medium',
 		variant = 'default',
+		enableHover = true,
+		bgColor,
 		children
 	}: {
 		title?: string;
 		icon?: Snippet;
 		size?: 'small' | 'medium' | 'large' | 'wide' | 'full';
 		variant?: 'default' | 'placeholder';
+		enableHover?: boolean;
+		bgColor?: string;
 		children: Snippet;
 	} = $props();
 
@@ -23,15 +27,29 @@
 		full: 'col-span-full min-h-[200px]'
 	};
 
-	const variantClasses = {
-		default: 'bg-base-100 shadow-xl hover:shadow-2xl',
-		placeholder:
-			'bg-transparent shadow-none border-2 border-dashed border-base-content/20 hover:border-base-content/40'
-	};
+	const variantClasses = $derived.by(() => {
+		const defaultBg = bgColor || 'bg-base-100';
+		const placeholderBg = bgColor || 'bg-transparent';
+		
+		const base = {
+			default: `${defaultBg} shadow-xl`,
+			placeholder:
+				`${placeholderBg} shadow-none border-2 border-dashed border-base-content/20`
+		};
+		
+		if (enableHover) {
+			return {
+				default: base.default + ' hover:shadow-2xl',
+				placeholder: base.placeholder + ' hover:border-base-content/40'
+			};
+		}
+		
+		return base;
+	});
 </script>
 
 <div
-	class="card break-inside-avoid rounded-3xl transition-all duration-300 hover:scale-[1.01] {sizeClasses[
+	class="card break-inside-avoid rounded-3xl transition-all duration-300 {enableHover ? 'hover:scale-[1.01]' : ''} {sizeClasses[
 		size
 	]} {variantClasses[variant]}"
 >
