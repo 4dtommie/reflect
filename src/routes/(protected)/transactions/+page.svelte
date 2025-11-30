@@ -933,7 +933,7 @@
 							<div class="grid grid-cols-2 gap-4">
 								<!-- This Month -->
 								<div class="flex flex-col">
-									<div class="text-xs text-base-content/70 mb-1">
+									<div class="mb-1 text-xs text-base-content/70">
 										{monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
 									</div>
 									<div class="text-2xl font-bold">
@@ -943,7 +943,7 @@
 
 								<!-- Same Month Last Year -->
 								<div class="flex flex-col">
-									<div class="text-xs text-base-content/70 mb-1">
+									<div class="mb-1 text-xs text-base-content/70">
 										{lastYearDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
 									</div>
 									<div class="text-2xl font-bold">
@@ -957,7 +957,7 @@
 								<!-- Difference -->
 								{#if comparison.lastYearMonthSpending > 0}
 									<div class="text-center">
-										<div class="text-xs text-base-content/70 mb-1">Difference</div>
+										<div class="mb-1 text-xs text-base-content/70">Difference</div>
 										<div
 											class="text-lg font-semibold {comparison.difference >= 0
 												? 'text-error'
@@ -977,7 +977,7 @@
 
 								<!-- Average -->
 								<div class="text-center">
-									<div class="text-xs text-base-content/70 mb-1">Average</div>
+									<div class="mb-1 text-xs text-base-content/70">Average</div>
 									<div class="text-lg font-semibold">
 										{formatAmountNoDecimals(comparison.averageMonthlySpending)}
 									</div>
@@ -991,8 +991,7 @@
 		</div>
 
 		<!-- Right Column: Chart, and Transactions -->
-		<div class="lg:col-span-2 flex flex-col gap-8">
-
+		<div class="flex flex-col gap-8 lg:col-span-2">
 			<!-- Chart Widget -->
 			{#if chartData() && chartData()!.labels.length > 0}
 				{@const chartDataValue = chartData()!}
@@ -1001,9 +1000,7 @@
 						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 						<div
-							class="chart-container relative w-full rounded {isDragging
-								? 'grabbing'
-								: 'grab'}"
+							class="chart-container relative w-full rounded {isDragging ? 'grabbing' : 'grab'}"
 							bind:this={chartContainer}
 							role="img"
 							tabindex="0"
@@ -1060,7 +1057,8 @@
 									<!-- Group by month -->
 									{#each transactionsByMonth() as monthGroup}
 										{@const previousMonth = monthGroup.month === 0 ? 11 : monthGroup.month - 1}
-										{@const previousYear = monthGroup.month === 0 ? monthGroup.year - 1 : monthGroup.year}
+										{@const previousYear =
+											monthGroup.month === 0 ? monthGroup.year - 1 : monthGroup.year}
 										{@const previousMonthKey = `${previousYear}-${previousMonth}`}
 										{@const previousMonthData = monthlyStats().monthlyData.find(
 											(m: any) => m.monthKey === previousMonthKey
@@ -1093,14 +1091,15 @@
 																	{#if CategoryIcon}
 																		<CategoryIcon
 																			size={20}
-																			style="color: {transaction.category.color || '#94a3b8'};"
+																			strokeWidth={1}
+																			style="color: black ;"
 																		/>
 																	{:else}
 																		<HelpCircle size={20} class="text-base-content/40" />
 																	{/if}
 																</div>
 																<div class="flex min-w-0 flex-1 flex-col gap-1">
-																	<span class="font-medium" title={transaction.merchantName}>
+																	<span class="font-normal" title={transaction.merchantName}>
 																		{transaction.merchant?.name ?? transaction.merchantName}
 																	</span>
 																</div>
@@ -1142,61 +1141,61 @@
 		</div>
 	</div>
 
-		<!-- Delete Confirmation Modal -->
-		{#if showDeleteConfirm}
-			<div class="modal-open modal">
-				<div class="modal-box">
-					<h3 class="mb-4 text-2xl font-bold">Delete all transactions</h3>
-					<p class="mb-6">
-						Are you sure you want to delete <strong>all transactions</strong>? This action cannot be
-						undone.
-					</p>
+	<!-- Delete Confirmation Modal -->
+	{#if showDeleteConfirm}
+		<div class="modal-open modal">
+			<div class="modal-box">
+				<h3 class="mb-4 text-2xl font-bold">Delete all transactions</h3>
+				<p class="mb-6">
+					Are you sure you want to delete <strong>all transactions</strong>? This action cannot be
+					undone.
+				</p>
 
-					{#if deleteError}
-						<div class="mb-4 alert alert-error">
-							<span>{deleteError}</span>
-						</div>
-					{/if}
-
-					<div class="modal-action">
-						<button
-							class="btn btn-ghost"
-							onclick={() => {
-								showDeleteConfirm = false;
-								deleteError = null;
-							}}
-							disabled={deleting}
-						>
-							Cancel
-						</button>
-						<button class="btn btn-error" onclick={deleteAllTransactions} disabled={deleting}>
-							{#if deleting}
-								<span class="loading loading-sm loading-spinner"></span>
-								Deleting...
-							{:else}
-								<Trash2 size={20} />
-								Delete all
-							{/if}
-						</button>
+				{#if deleteError}
+					<div class="mb-4 alert alert-error">
+						<span>{deleteError}</span>
 					</div>
+				{/if}
+
+				<div class="modal-action">
+					<button
+						class="btn btn-ghost"
+						onclick={() => {
+							showDeleteConfirm = false;
+							deleteError = null;
+						}}
+						disabled={deleting}
+					>
+						Cancel
+					</button>
+					<button class="btn btn-error" onclick={deleteAllTransactions} disabled={deleting}>
+						{#if deleting}
+							<span class="loading loading-sm loading-spinner"></span>
+							Deleting...
+						{:else}
+							<Trash2 size={20} />
+							Delete all
+						{/if}
+					</button>
 				</div>
-				<div
-					class="modal-backdrop"
-					role="button"
-					tabindex="0"
-					onclick={() => {
-						if (!deleting) {
-							showDeleteConfirm = false;
-							deleteError = null;
-						}
-					}}
-					onkeydown={(e) => {
-						if ((e.key === 'Enter' || e.key === ' ') && !deleting) {
-							showDeleteConfirm = false;
-							deleteError = null;
-						}
-					}}
-				></div>
 			</div>
-		{/if}
+			<div
+				class="modal-backdrop"
+				role="button"
+				tabindex="0"
+				onclick={() => {
+					if (!deleting) {
+						showDeleteConfirm = false;
+						deleteError = null;
+					}
+				}}
+				onkeydown={(e) => {
+					if ((e.key === 'Enter' || e.key === ' ') && !deleting) {
+						showDeleteConfirm = false;
+						deleteError = null;
+					}
+				}}
+			></div>
+		</div>
+	{/if}
 </div>
