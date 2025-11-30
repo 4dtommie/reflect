@@ -1,7 +1,8 @@
 <script lang="ts">
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
-	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
+	import { fade } from 'svelte/transition';
 	import { Settings, List, Activity, Play } from 'lucide-svelte';
+
 	const subtitles = [
 		'Elementary, my dear user.',
 		'Searching for clues in your bank statement...',
@@ -16,6 +17,26 @@
 	];
 
 	const randomSubtitle = subtitles[Math.floor(Math.random() * subtitles.length)];
+
+	let candidates: any[] = $state([]);
+	let loading = $state(false);
+	let hasSearched = $state(false);
+
+	async function startDetection() {
+		loading = true;
+		hasSearched = true;
+		try {
+			const res = await fetch('/api/recurring/detect', { method: 'POST' });
+			if (res.ok) {
+				const data = await res.json();
+				candidates = data.candidates;
+			}
+		} catch (e) {
+			console.error(e);
+		} finally {
+			loading = false;
+		}
+	}
 </script>
 
 <div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
@@ -32,40 +53,106 @@
 				</div>
 			</DashboardWidget>
 
-			<!-- Detection Settings Placeholder -->
-			<PlaceholderWidget
-				title="Detection settings"
-				description="Configure how we identify recurring transactions"
-				size="wide"
-				icon={Settings}
-			/>
-
-			<!-- Transaction List Placeholder -->
-			<PlaceholderWidget
-				title="Transaction analysis"
-				description="Review transactions that look like subscriptions"
-				size="wide"
-				icon={List}
-			/>
+			{#if !hasSearched}
+				<!-- Initial State: Call to Action -->
+				<DashboardWidget size="wide">
+					<div class="flex h-full flex-col items-center justify-center py-12 text-center">
+						<div class="mb-6 rounded-full bg-primary/10 p-6">
+							<Settings size={48} class="text-primary" />
+						</div>
+						<h2 class="mb-2 text-2xl font-bold">Ready to investigate?</h2>
+						<p class="mb-8 max-w-md opacity-70">
+							We'll scan your transaction history for subscriptions, bills, and salary patterns.
+						</p>
+						<button class="btn btn-lg btn-primary" onclick={startDetection}>
+							<Play class="mr-2 h-5 w-5" />
+							Start Investigation
+						</button>
+					</div>
+				</DashboardWidget>
+			{:else if loading}
+				<!-- Loading State -->
+				<DashboardWidget size="wide">
+					<div class="flex h-full flex-col items-center justify-center py-12 text-center">
+						<span class="loading mb-4 loading-lg loading-spinner text-primary"></span>
+						<h2 class="animate-pulse text-xl font-semibold">Scanning transactions...</h2>
+						<p class="opacity-70">Looking for patterns and known providers</p>
+					</div>
+				</DashboardWidget>
+			{:else if candidates.length > 0}
+				<!-- Results Widget -->
+				<DashboardWidget size="wide" title="Found in known list">
+					<div class="flex h-full flex-col justify-start">
+						<div class="space-y-3">
+							{#each candidates as candidate}
+								<div class="flex items-center justify-between rounded-lg bg-base-200 p-4">
+									<div class="flex items-center gap-4">
+										<div class="rounded-full bg-base-300 p-3">
+											{#if candidate.type === 'subscription'}
+												<Activity class="h-6 w-6 text-info" />
+											{:else}
+												<List class="h-6 w-6" />
+											{/if}
+										</div>
+										<div>
+											<h3 class="text-lg font-bold">{candidate.name}</h3>
+											<p class="text-sm opacity-70">
+												{candidate.interval} • {candidate.transactions.length} transaction{candidate
+													.transactions.length > 1
+													? 's'
+													: ''} found
+											</p>
+										</div>
+									</div>
+									<div class="text-right">
+										<div class="text-xl font-bold">
+											€{Number(candidate.amount).toFixed(2)}
+										</div>
+										<div
+											class="badge badge-sm {candidate.confidence > 0.8
+												? 'badge-success'
+												: 'badge-warning'}"
+										>
+											{Math.round(candidate.confidence * 100)}% confidence
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</DashboardWidget>
+			{:else}
+				<!-- No Results -->
+				<DashboardWidget size="wide">
+					<div class="flex h-full flex-col items-center justify-center py-12 text-center">
+						<h2 class="text-xl font-semibold">No recurring transactions found</h2>
+						<p class="opacity-70">We couldn't find any clear patterns in your history.</p>
+						<button class="btn mt-4 btn-ghost" onclick={() => (hasSearched = false)}
+							>Try Again</button
+						>
+					</div>
+				</DashboardWidget>
+			{/if}
 		</div>
 
 		<!-- Right Column: Summary and Actions -->
 		<div class="flex flex-col gap-8">
-			<!-- Summary Placeholder -->
-			<PlaceholderWidget
-				title="Detection summary"
-				description="Overview of potential subscriptions found"
-				size="small"
-				icon={Activity}
-			/>
-
-			<!-- Actions Placeholder -->
-			<PlaceholderWidget
-				title="Actions"
-				description="Start detection or save results"
-				size="small"
-				icon={Play}
-			/>
+			<!-- Summary Placeholder (only show when results exist) -->
+			{#if candidates.length > 0}
+				<DashboardWidget size="small" title="Detection summary">
+					<div class="flex h-full flex-col justify-center gap-4">
+						<div class="stat p-0">
+							<div class="stat-title">Total Monthly</div>
+							<div class="stat-value text-primary">
+								€{candidates
+									.reduce((sum, c) => sum + (c.interval === 'monthly' ? Number(c.amount) : 0), 0)
+									.toFixed(0)}
+							</div>
+							<div class="stat-desc">Estimated fixed costs</div>
+						</div>
+					</div>
+				</DashboardWidget>
+			{/if}
 		</div>
 	</div>
 </div>

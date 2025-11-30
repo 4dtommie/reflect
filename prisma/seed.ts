@@ -2101,6 +2101,135 @@ export async function seedDatabase() {
 		log('✅ Created all standalone expense categories');
 		log('✅ Created Uncategorized and Other system categories');
 
+		// ============================================
+		// RECURRING MERCHANTS
+		// ============================================
+		log('🏪 Creating recurring merchants...');
+
+		// Get category IDs for merchant associations
+		const entertainmentCategory = await prisma.categories.findFirst({
+			where: { name: 'Entertainment' }
+		});
+		const tvInternetCategory = await prisma.categories.findFirst({
+			where: { name: 'TV/internet/telefoon' }
+		});
+		const healthCategory = await prisma.categories.findFirst({
+			where: { name: 'Gezondheidszorg' }
+		});
+		const sportCategory = await prisma.categories.findFirst({
+			where: { name: 'Sport' }
+		});
+
+		// Streaming Services
+		const streamingMerchants = [
+			{ name: 'Spotify', keywords: ['spotify'] },
+			{ name: 'Netflix', keywords: ['netflix'] },
+			{ name: 'Disney+', keywords: ['disney+', 'disney plus'] },
+			{ name: 'Amazon Prime', keywords: ['amazon prime', 'prime video'] },
+			{ name: 'HBO Max', keywords: ['hbo max', 'hbo'] },
+			{ name: 'Videoland', keywords: ['videoland'] },
+			{ name: 'Viaplay', keywords: ['viaplay'] },
+			{ name: 'YouTube Premium', keywords: ['youtube premium', 'google *youtube'] },
+			{ name: 'Apple Services', keywords: ['apple.com/bill', 'itunes', 'apple tv'] }
+		];
+
+		for (const merchant of streamingMerchants) {
+			await prisma.merchants.create({
+				data: {
+					name: merchant.name,
+					keywords: [...merchant.keywords, merchant.name.toLowerCase()],
+					is_potential_recurring: true,
+					is_active: true,
+					default_category_id: entertainmentCategory?.id,
+					updated_at: new Date()
+				}
+			});
+		}
+		log(`   ✓ Created ${streamingMerchants.length} streaming service merchants`);
+
+		// Telecom & Internet
+		const telecomMerchants = [
+			{ name: 'Ziggo', keywords: ['ziggo'] },
+			{ name: 'KPN', keywords: ['kpn'] },
+			{ name: 'Odido', keywords: ['odido', 't-mobile'] },
+			{ name: 'Vodafone', keywords: ['vodafone'] },
+			{ name: 'Tele2', keywords: ['tele2'] },
+			{ name: 'Youfone', keywords: ['youfone'] },
+			{ name: 'Simyo', keywords: ['simyo'] },
+			{ name: 'HollandsNieuwe', keywords: ['hollandsnieuwe', 'hollands nieuwe'] },
+			{ name: 'Ben', keywords: ['ben'] },
+			{ name: 'Lebara', keywords: ['lebara'] }
+		];
+
+		for (const merchant of telecomMerchants) {
+			await prisma.merchants.create({
+				data: {
+					name: merchant.name,
+					keywords: [...merchant.keywords, merchant.name.toLowerCase()],
+					is_potential_recurring: true,
+					is_active: true,
+					default_category_id: tvInternetCategory?.id,
+					updated_at: new Date()
+				}
+			});
+		}
+		log(`   ✓ Created ${telecomMerchants.length} telecom merchants`);
+
+		// Health Insurance
+		const insuranceMerchants = [
+			{ name: 'Zilveren Kruis', keywords: ['zilveren kruis'] },
+			{ name: 'CZ', keywords: ['cz', 'cz zorgverzekering', 'cz groep'] },
+			{ name: 'VGZ', keywords: ['vgz'] },
+			{ name: 'Menzis', keywords: ['menzis'] },
+			{ name: 'Ditzo', keywords: ['ditzo'] },
+			{ name: 'Inshared', keywords: ['inshared'] },
+			{ name: 'Centraal Beheer', keywords: ['centraal beheer', 'centraalbeheer'] },
+			{ name: 'OHRA', keywords: ['ohra'] },
+			{ name: 'FBTO', keywords: ['fbto'] },
+			{ name: 'Nationale-Nederlanden', keywords: ['nationale nederlanden', 'nationale-nederlanden', 'nn'] },
+			{ name: 'Aegon', keywords: ['aegon'] },
+			{ name: 'ANWB', keywords: ['anwb'] }
+		];
+
+		for (const merchant of insuranceMerchants) {
+			await prisma.merchants.create({
+				data: {
+					name: merchant.name,
+					keywords: [...merchant.keywords, merchant.name.toLowerCase()],
+					is_potential_recurring: true,
+					is_active: true,
+					default_category_id: healthCategory?.id,
+					updated_at: new Date()
+				}
+			});
+		}
+		log(`   ✓ Created ${insuranceMerchants.length} insurance merchants`);
+
+		// Fitness
+		const fitnessMerchants = [
+			{ name: 'Basic-Fit', keywords: ['basic-fit', 'basic fit', 'basicfit'] },
+			{ name: 'Fit For Free', keywords: ['fit for free'] }
+		];
+
+		for (const merchant of fitnessMerchants) {
+			await prisma.merchants.create({
+				data: {
+					name: merchant.name,
+					keywords: [...merchant.keywords, merchant.name.toLowerCase()],
+					is_potential_recurring: true,
+					is_active: true,
+					default_category_id: sportCategory?.id,
+					updated_at: new Date()
+				}
+			});
+		}
+		log(`   ✓ Created ${fitnessMerchants.length} fitness merchants`);
+
+		log('✅ Created all recurring merchants');
+
+		log('✅ Created all standalone expense categories');
+		log('✅ Created Uncategorized and Other system categories');
+
 		log('📊 Seed completed successfully!');
 		log('   - 3 Income categories');
 		log('   - Expense categories: 4 parents + subcategories');

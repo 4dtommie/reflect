@@ -16,6 +16,7 @@ model User {
   categories      categories[]
   transactions    transactions[]
   user_categories user_categories[]
+  recurring_transactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -40,6 +41,7 @@ model categories {
   transactions     transactions[]
   user_categories  user_categories[]
   category_keywords category_keywords[]
+  recurring_transactions RecurringTransaction[]
 }
 
 model merchants {
@@ -50,10 +52,12 @@ model merchants {
   default_category_id Int?
   notes               String?
   is_active           Boolean        @default(true)
+  is_potential_recurring Boolean     @default(false)
   created_at          DateTime       @default(now())
   updated_at          DateTime
   categories          categories?    @relation(fields: [default_category_id], references: [id])
   transactions        transactions[]
+  recurring_transactions RecurringTransaction[]
 }
 
 model transactions {
@@ -81,11 +85,37 @@ model transactions {
   merchants          merchants?      @relation(fields: [merchant_id], references: [id])
   users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   category_keywords  category_keywords[]
+  recurring_transaction_id Int?
+  recurring_transaction    RecurringTransaction? @relation(fields: [recurring_transaction_id], references: [id])
 
   @@index([date])
   @@index([user_id, category_id])
   @@index([user_id, date])
   @@index([user_id, merchant_id])
+  @@index([recurring_transaction_id])
+}
+
+model RecurringTransaction {
+  id                 Int            @id @default(autoincrement())
+  user_id            Int
+  name               String
+  amount             Decimal        @db.Decimal(10, 2)
+  interval           String         // "monthly", "weekly", "quarterly", "yearly", "4-weekly"
+  status             String         @default("active") // "active", "inactive"
+  merchant_id        Int?
+  category_id        Int?
+  next_expected_date DateTime?
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+  
+  users              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  merchants          merchants?     @relation(fields: [merchant_id], references: [id])
+  categories         categories?    @relation(fields: [category_id], references: [id])
+  transactions       transactions[]
+
+  @@map("recurring_transactions")
+  @@index([user_id])
+  @@index([status])
 }
 
 model user_categories {
