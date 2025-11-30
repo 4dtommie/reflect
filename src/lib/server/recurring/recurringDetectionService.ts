@@ -1,6 +1,25 @@
 import { db } from '$lib/server/db';
 import type { transactions, merchants } from '@prisma/client';
 
+const SALARY_MIN_AMOUNT = 1000;
+const SALARY_KEYWORDS = [
+    'salary',
+    'salaris',
+    'loon',
+    'loonbetaling',
+    'loonstrook',
+    'loonverwerking',
+    'betaling salaris',
+    'salarisbetaling',
+    'payroll',
+    'inkomen',
+    'income',
+    'werkgever',
+    'wage',
+    'paycheck',
+    'stipend'
+];
+
 export interface RecurringCandidate {
     name: string;
     amount: number;
@@ -32,7 +51,8 @@ export class RecurringDetectionService {
         candidates.push(...knownCandidates);
 
         // 2. Detect Salary (Standard & Other)
-        // TODO: Implement salary detection
+        const salaryCandidates = this.detectSalary(transactions);
+        candidates.push(...salaryCandidates);
 
         // 3. Detect by Interval
         // TODO: Implement interval detection
@@ -101,33 +121,8 @@ export class RecurringDetectionService {
 
             if (txs.length === 0) continue;
 
-            // Calculate average amount
-            const totalAmount = txs.reduce((sum, t) => sum + Number(t.amount), 0);
-            const avgAmount = totalAmount / txs.length;
-
-            // Determine interval (rough estimation)
-            let interval: RecurringCandidate['interval'] = 'irregular';
-            if (txs.length >= 2) {
-                // Sort by date
-                const sorted = [...txs].sort((a, b) => a.date.getTime() - b.date.getTime());
-                const daysDiffs = [];
-                for (let i = 1; i < sorted.length; i++) {
-                    const diffTime = Math.abs(sorted[i].date.getTime() - sorted[i - 1].date.getTime());
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    daysDiffs.push(diffDays);
-                }
-
-                const avgDays = daysDiffs.reduce((a, b) => a + b, 0) / daysDiffs.length;
-
-                if (avgDays >= 25 && avgDays <= 35) interval = 'monthly';
-                else if (avgDays >= 6 && avgDays <= 8) interval = 'weekly';
-                else if (avgDays >= 85 && avgDays <= 95) interval = 'quarterly';
-                else if (avgDays >= 360 && avgDays <= 370) interval = 'yearly';
-                else if (avgDays >= 26 && avgDays <= 30) interval = '4-weekly';
-            } else {
-                // Default to monthly for common subs if only 1 found
-                interval = 'monthly';
-            }
+            const avgAmount = this.calculateAverageAmount(txs);
+            const interval = this.estimateIntervalFromTransactions(txs);
 
             candidates.push({
                 name: providerName,
@@ -143,5 +138,128 @@ export class RecurringDetectionService {
         }
 
         return candidates;
+    }
+
+    private detectSalary(transactions: transactions[]): RecurringCandidate[] {
+        const candidates: RecurringCandidate[] = [];
+        const grouped = new Map<string, transactions[]>();
+
+        for (const tx of transactions) {
+            if (tx.is_debit) continue;
+            const amount = Number(tx.amount);
+            if (amount < SALARY_MIN_AMOUNT) continue;
+            if (!this.containsSalaryKeyword(tx)) continue;
+
+            const key = this.getSalaryGroupKey(tx);
+            const list = grouped.get(key) ?? [];
+            list.push(tx);
+            grouped.set(key, list);
+        }
+
+        for (const txs of grouped.values()) {
+            if (txs.length < 2) continue;
+
+            const sorted = [...txs].sort((a, b) => b.date.getTime() - a.date.getTime());
+            const interval = this.estimateIntervalFromTransactions(sorted);
+            const averageAmount = this.calculateAverageAmount(sorted);
+            const relativeVariance = this.calculateRelativeVariance(sorted);
+
+            let confidence = sorted.length >= 3 ? 0.75 : 0.6;
+            if (interval === 'monthly' || interval === '4-weekly') confidence += 0.1;
+            if (relativeVariance < 0.05) confidence += 0.15;
+            else if (relativeVariance < 0.12) confidence += 0.08;
+            confidence = Math.min(0.95, confidence);
+
+            const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id;
+
+            candidates.push({
+                name: this.pickSalaryCandidateName(sorted),
+                amount: Number(sorted[0].amount),
+                averageAmount,
+                interval,
+                confidence,
+                type: 'salary',
+                source: 'salary_rule',
+                transactions: sorted,
+                merchantId
+            });
+        }
+
+        return candidates;
+    }
+
+    private containsSalaryKeyword(tx: transactions): boolean {
+        const fields = [
+            tx.description,
+            tx.cleaned_merchant_name,
+            tx.merchantName,
+            tx.normalized_description
+        ];
+        for (const raw of fields) {
+            if (!raw) continue;
+            const lower = raw.toLowerCase();
+            if (SALARY_KEYWORDS.some((keyword) => lower.includes(keyword))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private getSalaryGroupKey(tx: transactions): string {
+        if (tx.merchant_id) return `merchant-${tx.merchant_id}`;
+        if (tx.counterparty_iban) return `iban-${tx.counterparty_iban.toLowerCase()}`;
+        if (tx.cleaned_merchant_name) return `cleaned-${tx.cleaned_merchant_name.toLowerCase()}`;
+        if (tx.merchantName) return `merchant-${tx.merchantName.toLowerCase()}`;
+        return `description-${(tx.description || 'salary').toLowerCase()}`;
+    }
+
+    private pickSalaryCandidateName(txs: transactions[]): string {
+        const first = txs[0];
+        return (
+            first.cleaned_merchant_name ||
+            first.merchantName ||
+            first.description ||
+            first.counterparty_iban ||
+            'Salary'
+        );
+    }
+
+    private estimateIntervalFromTransactions(txs: transactions[]): RecurringCandidate['interval'] {
+        if (txs.length < 2) {
+            return 'monthly';
+        }
+
+        const sorted = [...txs].sort((a, b) => a.date.getTime() - b.date.getTime());
+        const daysDiffs: number[] = [];
+        for (let i = 1; i < sorted.length; i++) {
+            const diffTime = Math.abs(sorted[i].date.getTime() - sorted[i - 1].date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            daysDiffs.push(diffDays);
+        }
+
+        const avgDays = daysDiffs.reduce((a, b) => a + b, 0) / daysDiffs.length;
+
+        if (avgDays >= 25 && avgDays <= 35) return 'monthly';
+        if (avgDays >= 6 && avgDays <= 8) return 'weekly';
+        if (avgDays >= 85 && avgDays <= 95) return 'quarterly';
+        if (avgDays >= 360 && avgDays <= 370) return 'yearly';
+        if (avgDays >= 26 && avgDays <= 30) return '4-weekly';
+
+        return 'irregular';
+    }
+
+    private calculateAverageAmount(txs: transactions[]): number {
+        if (txs.length === 0) return 0;
+        const totalAmount = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+        return totalAmount / txs.length;
+    }
+
+    private calculateRelativeVariance(txs: transactions[]): number {
+        if (txs.length === 0) return 1;
+        const amounts = txs.map((t) => Math.abs(Number(t.amount)));
+        const mean = amounts.reduce((sum, value) => sum + value, 0) / amounts.length;
+        if (mean === 0) return 1;
+        const variance = amounts.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / amounts.length;
+        return Math.sqrt(variance) / mean;
     }
 }
