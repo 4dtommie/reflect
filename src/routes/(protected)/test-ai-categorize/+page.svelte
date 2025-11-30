@@ -563,9 +563,9 @@
 											>
 												{#if result.categoryName}
 													<div class="font-medium">{result.categoryName}</div>
-													<div class="text-xs text-base-content/50 font-mono">ID: {result.categoryId}</div>
+													<div class="text-xs text-base-content/50">ID: {result.categoryId}</div>
 												{:else if result.categoryId}
-													<div class="font-mono text-base-content/70">Category {result.categoryId}</div>
+													<div class="text-base-content/70">Category {result.categoryId}</div>
 												{:else}
 													<span class="text-base-content/50">null</span>
 												{/if}

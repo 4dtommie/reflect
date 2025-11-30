@@ -118,7 +118,7 @@
 	<!-- Large version with decimals aligned at top -->
 	<span class="inline-flex items-baseline gap-0.5 {colorClass}">
 		<span class="font-medium {sizeClasses[size].main}">{formatted.main}</span>
-		<span class="font-normal {sizeClasses[size].decimals}">{formatted.decimals}</span>
+		<span class="font-medium {sizeClasses[size].decimals}">{formatted.decimals}</span>
 	</span>
 {:else}
 	<!-- Small/Medium version or without decimals -->

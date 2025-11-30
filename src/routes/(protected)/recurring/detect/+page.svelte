@@ -95,13 +95,16 @@
 												<div>
 													<h3 class="text-lg font-bold">{candidate.name}</h3>
 													<p class="text-sm opacity-70">
-														{candidate.interval}
+														 <Amount
+															value={candidate.averageAmount}
+															size="small"
+															isDebit={true}
+														/>
+														average
 													</p>
-													<p class="text-xs opacity-50">
-														{candidate.transactions.length} transaction{candidate.transactions
-															.length > 1
-															? 's'
-															: ''} found
+													<p class="text-sm opacity-70">
+														In {candidate.transactions.length}
+														payments
 													</p>
 												</div>
 											</div>
@@ -110,14 +113,13 @@
 													<Amount value={candidate.amount} size="large" isDebit={true} />
 												</div>
 												{#if candidate.averageAmount && candidate.averageAmount !== candidate.amount}
-													<div class="flex justify-end gap-1 text-xs opacity-50">
-														avg <Amount
-															value={candidate.averageAmount}
-															size="small"
-															isDebit={true}
-														/>
+													<div class="flex justify-end gap-1 text-sm opacity-50">
+														
 													</div>
 												{/if}
+												<div class="mt-1 badge badge-sm badge-primary">
+													{candidate.interval}
+												</div>
 												<div
 													class="mt-1 badge badge-sm {candidate.confidence > 0.8
 														? 'badge-success'

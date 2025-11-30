@@ -176,7 +176,7 @@
 						<tbody>
 							{#each parseResult.rows.slice(0, 10) as row, rowIndex}
 								<tr>
-									<td class="font-mono text-sm">{rowIndex + 1}</td>
+									<td class="text-sm">{rowIndex + 1}</td>
 									{#each row as cell, cellIndex}
 										<td class="max-w-xs truncate" title={cell}>
 											{cell || '(empty)'}

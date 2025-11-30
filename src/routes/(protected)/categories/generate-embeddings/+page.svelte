@@ -284,14 +284,14 @@
 							
 							<div class="space-y-2">
 								<div class="text-sm font-semibold">First 10 values:</div>
-								<div class="font-mono text-xs bg-base-100 p-3 rounded overflow-x-auto">
+								<div class="text-xs bg-base-100 p-3 rounded overflow-x-auto">
 									[{sampleEmbedding.first10.map(v => v.toFixed(6)).join(', ')}]
 								</div>
 							</div>
 
 							<div class="space-y-2">
 								<div class="text-sm font-semibold">Last 10 values:</div>
-								<div class="font-mono text-xs bg-base-100 p-3 rounded overflow-x-auto">
+								<div class="text-xs bg-base-100 p-3 rounded overflow-x-auto">
 									[{sampleEmbedding.last10.map(v => v.toFixed(6)).join(', ')}]
 								</div>
 							</div>

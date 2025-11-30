@@ -217,7 +217,7 @@
 							<tbody>
 								{#each importResult.errors.slice(0, 100) as err, index}
 									<tr>
-										<td class="font-mono">{err.row || 'N/A'}</td>
+										<td>{err.row || 'N/A'}</td>
 										<td>{err.field || '—'}</td>
 										<td class="text-error">{err.message}</td>
 									</tr>
@@ -251,4 +251,3 @@
 		</DashboardWidget>
 	{/if}
 </div>
-

@@ -527,7 +527,7 @@
 													'-'}
 											</span>
 										</td>
-										<td class="font-mono">€{transaction.amount.toFixed(2)}</td>
+										<td>€{transaction.amount.toFixed(2)}</td>
 										<td>
 											<span class="badge badge-primary">{transaction.categoryName}</span>
 										</td>

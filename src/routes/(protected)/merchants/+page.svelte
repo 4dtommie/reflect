@@ -161,7 +161,7 @@
 						{#if merchant.ibans.length > 0}
 							<div class="flex flex-wrap gap-1">
 								{#each merchant.ibans as iban}
-									<span class="badge badge-outline text-xs font-mono">
+									<span class="badge badge-outline text-xs">
 										{formatIban(iban)}
 									</span>
 								{/each}
@@ -217,7 +217,7 @@
 				<div class="flex gap-2 mb-2">
 					<input
 						type="text"
-						class="input input-bordered flex-1 font-mono"
+						class="input input-bordered flex-1"
 						placeholder="NL91ABNA0417164300"
 						bind:value={newIban}
 						onkeydown={(e) => {
@@ -237,7 +237,7 @@
 				{#if editingIbans.length > 0}
 					<div class="flex flex-wrap gap-2">
 						{#each editingIbans as iban}
-							<div class="badge badge-outline gap-2 font-mono">
+							<div class="badge badge-outline gap-2">
 								{formatIban(iban)}
 								<button
 									class="btn btn-ghost btn-xs p-0 h-auto min-h-0"
