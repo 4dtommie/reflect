@@ -20,15 +20,25 @@ const SALARY_KEYWORDS = [
     'stipend'
 ];
 
+const TAX_KEYWORDS = [
+    'belastingdienst',
+    'toeslag',
+    'voorlopige aanslag',
+    'teruggave',
+    'fiscus',
+    'belasting'
+];
+
 export interface RecurringCandidate {
     name: string;
     amount: number;
     averageAmount?: number;
     interval: 'monthly' | 'weekly' | 'quarterly' | 'yearly' | '4-weekly' | 'irregular';
     confidence: number; // 0-1
-    type: 'subscription' | 'salary' | 'bill' | 'other';
+    type: 'subscription' | 'salary' | 'bill' | 'tax' | 'transfer' | 'other';
     source: 'known_list' | 'salary_rule' | 'interval_rule' | 'ai';
     transactions: transactions[];
+    nextPaymentDate?: Date;
     merchantId?: number;
 }
 
@@ -50,9 +60,9 @@ export class RecurringDetectionService {
         const knownCandidates = await this.detectByKnownList(transactions);
         candidates.push(...knownCandidates);
 
-        // 2. Detect Salary (Standard & Other)
-        const salaryCandidates = this.detectSalary(transactions);
-        candidates.push(...salaryCandidates);
+        // 2. Detect Income (Salary, Tax, Transfers)
+        const incomeCandidates = this.detectIncome(transactions);
+        candidates.push(...incomeCandidates);
 
         // 3. Detect by Interval
         // TODO: Implement interval detection
@@ -121,34 +131,38 @@ export class RecurringDetectionService {
 
             if (txs.length === 0) continue;
 
+            // Sort transactions by date descending (newest first)
+            txs.sort((a, b) => b.date.getTime() - a.date.getTime());
+
             const avgAmount = this.calculateAverageAmount(txs);
             const interval = this.estimateIntervalFromTransactions(txs);
+            const nextPaymentDate = this.calculateNextPaymentDate(txs[0].date, interval, 'subscription');
 
             candidates.push({
                 name: providerName,
-                amount: Number(txs[0].amount), // Latest amount (txs are sorted desc by date from query)
+                amount: Number(txs[0].amount), // Latest amount
                 averageAmount: avgAmount,
                 interval,
                 confidence: txs.length >= 3 ? 0.9 : txs.length === 2 ? 0.7 : 0.5,
                 type: 'subscription',
                 source: 'known_list',
                 transactions: txs,
-                merchantId
+                merchantId,
+                nextPaymentDate
             });
         }
 
         return candidates;
     }
 
-    private detectSalary(transactions: transactions[]): RecurringCandidate[] {
+    private detectIncome(transactions: transactions[]): RecurringCandidate[] {
         const candidates: RecurringCandidate[] = [];
         const grouped = new Map<string, transactions[]>();
 
         for (const tx of transactions) {
             if (tx.is_debit) continue;
             const amount = Number(tx.amount);
-            if (amount < SALARY_MIN_AMOUNT) continue;
-            if (!this.containsSalaryKeyword(tx)) continue;
+            if (amount < 10) continue; // Ignore very small incoming amounts
 
             const key = this.getSalaryGroupKey(tx);
             const list = grouped.get(key) ?? [];
@@ -164,6 +178,31 @@ export class RecurringDetectionService {
             const averageAmount = this.calculateAverageAmount(sorted);
             const relativeVariance = this.calculateRelativeVariance(sorted);
 
+            let type: RecurringCandidate['type'] = 'other';
+            let source: RecurringCandidate['source'] = 'ai';
+
+            const isSalary = this.containsKeywords(sorted[0], SALARY_KEYWORDS) && averageAmount >= SALARY_MIN_AMOUNT;
+            const isTax = this.containsKeywords(sorted[0], TAX_KEYWORDS);
+
+            if (isSalary) {
+                type = 'salary';
+                source = 'salary_rule';
+            } else if (isTax) {
+                type = 'tax';
+                source = 'ai';
+            } else {
+                // Regular transfer?
+                // Only if variance is low and interval is regular
+                if (relativeVariance < 0.1 && interval !== 'irregular') {
+                    type = 'transfer';
+                    source = 'interval_rule';
+                } else {
+                    continue; // Skip if it's just random incoming money
+                }
+            }
+
+            const nextPaymentDate = this.calculateNextPaymentDate(sorted[0].date, interval, type);
+
             let confidence = sorted.length >= 3 ? 0.75 : 0.6;
             if (interval === 'monthly' || interval === '4-weekly') confidence += 0.1;
             if (relativeVariance < 0.05) confidence += 0.15;
@@ -178,17 +217,18 @@ export class RecurringDetectionService {
                 averageAmount,
                 interval,
                 confidence,
-                type: 'salary',
-                source: 'salary_rule',
+                type,
+                source,
                 transactions: sorted,
-                merchantId
+                merchantId,
+                nextPaymentDate
             });
         }
 
         return candidates;
     }
 
-    private containsSalaryKeyword(tx: transactions): boolean {
+    private containsKeywords(tx: transactions, keywords: string[]): boolean {
         const fields = [
             tx.description,
             tx.cleaned_merchant_name,
@@ -198,7 +238,7 @@ export class RecurringDetectionService {
         for (const raw of fields) {
             if (!raw) continue;
             const lower = raw.toLowerCase();
-            if (SALARY_KEYWORDS.some((keyword) => lower.includes(keyword))) {
+            if (keywords.some((keyword) => lower.includes(keyword))) {
                 return true;
             }
         }
@@ -262,4 +302,40 @@ export class RecurringDetectionService {
         const variance = amounts.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / amounts.length;
         return Math.sqrt(variance) / mean;
     }
+
+    private calculateNextPaymentDate(lastDate: Date, interval: RecurringCandidate['interval'], type: RecurringCandidate['type']): Date | undefined {
+        const nextDate = new Date(lastDate);
+        switch (interval) {
+            case 'monthly':
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                break;
+            case 'weekly':
+                nextDate.setDate(nextDate.getDate() + 7);
+                break;
+            case '4-weekly':
+                nextDate.setDate(nextDate.getDate() + 28);
+                break;
+            case 'quarterly':
+                nextDate.setMonth(nextDate.getMonth() + 3);
+                break;
+            case 'yearly':
+                nextDate.setFullYear(nextDate.getFullYear() + 1);
+                break;
+            case 'irregular':
+                return undefined;
+        }
+
+        // Weekend adjustment for salary
+        if (type === 'salary') {
+            const day = nextDate.getDay();
+            if (day === 6) { // Saturday
+                nextDate.setDate(nextDate.getDate() - 1); // Move to Friday
+            } else if (day === 0) { // Sunday
+                nextDate.setDate(nextDate.getDate() - 2); // Move to Friday
+            }
+        }
+
+        return nextDate;
+    }
 }
+
