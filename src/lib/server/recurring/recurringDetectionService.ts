@@ -173,59 +173,102 @@ export class RecurringDetectionService {
         for (const txs of grouped.values()) {
             if (txs.length < 2) continue;
 
-            const sorted = [...txs].sort((a, b) => b.date.getTime() - a.date.getTime());
-            const interval = this.estimateIntervalFromTransactions(sorted);
-            const averageAmount = this.calculateAverageAmount(sorted);
-            const relativeVariance = this.calculateRelativeVariance(sorted);
+            // Cluster by amount - separate transactions with significantly different amounts
+            const amountClusters = this.clusterByAmount(txs);
 
-            let type: RecurringCandidate['type'] = 'other';
-            let source: RecurringCandidate['source'] = 'ai';
+            for (const cluster of amountClusters) {
+                if (cluster.length < 2) continue;
 
-            const isSalary = this.containsKeywords(sorted[0], SALARY_KEYWORDS) && averageAmount >= SALARY_MIN_AMOUNT;
-            const isTax = this.containsKeywords(sorted[0], TAX_KEYWORDS);
+                const sorted = [...cluster].sort((a, b) => b.date.getTime() - a.date.getTime());
+                const interval = this.estimateIntervalFromTransactions(sorted);
+                const averageAmount = this.calculateAverageAmount(sorted);
+                const relativeVariance = this.calculateRelativeVariance(sorted);
 
-            if (isSalary) {
-                type = 'salary';
-                source = 'salary_rule';
-            } else if (isTax) {
-                type = 'tax';
-                source = 'ai';
-            } else {
-                // Regular transfer?
-                // Only if variance is low and interval is regular
-                if (relativeVariance < 0.1 && interval !== 'irregular') {
-                    type = 'transfer';
-                    source = 'interval_rule';
+                let type: RecurringCandidate['type'] = 'other';
+                let source: RecurringCandidate['source'] = 'ai';
+
+                const isSalary = this.containsKeywords(sorted[0], SALARY_KEYWORDS) && averageAmount >= SALARY_MIN_AMOUNT;
+                const isTax = this.containsKeywords(sorted[0], TAX_KEYWORDS);
+
+                if (isSalary) {
+                    type = 'salary';
+                    source = 'salary_rule';
+                } else if (isTax) {
+                    type = 'tax';
+                    source = 'ai';
                 } else {
-                    continue; // Skip if it's just random incoming money
+                    // Regular transfer?
+                    // Only if variance is low and interval is regular
+                    if (relativeVariance < 0.1 && interval !== 'irregular') {
+                        type = 'transfer';
+                        source = 'interval_rule';
+                    } else {
+                        continue; // Skip if it's just random incoming money
+                    }
                 }
+
+                const nextPaymentDate = this.calculateNextPaymentDate(sorted[0].date, interval, type);
+
+                let confidence = sorted.length >= 3 ? 0.75 : 0.6;
+                if (interval === 'monthly' || interval === '4-weekly') confidence += 0.1;
+                if (relativeVariance < 0.05) confidence += 0.15;
+                else if (relativeVariance < 0.12) confidence += 0.08;
+                confidence = Math.min(0.95, confidence);
+
+                const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id;
+
+                // Add amount suffix if there are multiple clusters from the same source
+                let candidateName = this.pickSalaryCandidateName(sorted);
+                if (amountClusters.length > 1) {
+                    candidateName += ` (€${Math.round(averageAmount)})`;
+                }
+
+                candidates.push({
+                    name: candidateName,
+                    amount: Number(sorted[0].amount),
+                    averageAmount,
+                    interval,
+                    confidence,
+                    type,
+                    source,
+                    transactions: sorted,
+                    merchantId,
+                    nextPaymentDate
+                });
             }
-
-            const nextPaymentDate = this.calculateNextPaymentDate(sorted[0].date, interval, type);
-
-            let confidence = sorted.length >= 3 ? 0.75 : 0.6;
-            if (interval === 'monthly' || interval === '4-weekly') confidence += 0.1;
-            if (relativeVariance < 0.05) confidence += 0.15;
-            else if (relativeVariance < 0.12) confidence += 0.08;
-            confidence = Math.min(0.95, confidence);
-
-            const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id;
-
-            candidates.push({
-                name: this.pickSalaryCandidateName(sorted),
-                amount: Number(sorted[0].amount),
-                averageAmount,
-                interval,
-                confidence,
-                type,
-                source,
-                transactions: sorted,
-                merchantId,
-                nextPaymentDate
-            });
         }
 
         return candidates;
+    }
+
+    private clusterByAmount(transactions: transactions[]): transactions[][] {
+        if (transactions.length === 0) return [];
+
+        // Sort by amount
+        const sorted = [...transactions].sort((a, b) => Math.abs(Number(a.amount)) - Math.abs(Number(b.amount)));
+
+        const clusters: transactions[][] = [];
+        let currentCluster: transactions[] = [sorted[0]];
+
+        for (let i = 1; i < sorted.length; i++) {
+            const currentAmount = Math.abs(Number(sorted[i].amount));
+            const clusterAvg = Math.abs(this.calculateAverageAmount(currentCluster));
+
+            // If the amount is within 15% of the cluster average, add to current cluster
+            const threshold = 0.15;
+            if (Math.abs(currentAmount - clusterAvg) / clusterAvg <= threshold) {
+                currentCluster.push(sorted[i]);
+            } else {
+                // Start a new cluster
+                clusters.push(currentCluster);
+                currentCluster = [sorted[i]];
+            }
+        }
+
+        // Don't forget the last cluster
+        clusters.push(currentCluster);
+
+        return clusters;
     }
 
     private containsKeywords(tx: transactions, keywords: string[]): boolean {
