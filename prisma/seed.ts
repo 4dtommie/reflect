@@ -26,7 +26,7 @@ async function createCategoryWithKeywords(
 		try {
 			// Remove duplicates and empty strings
 			const uniqueKeywords = [...new Set(keywords.map((k) => k.trim()).filter((k) => k.length > 0))];
-			
+
 			if (uniqueKeywords.length > 0) {
 				await (prisma as any).category_keywords.createMany({
 					data: uniqueKeywords.map((keyword) => ({
@@ -58,29 +58,29 @@ export async function seedDatabase() {
 		// Drop all data - start with a clean database
 		// Order matters due to foreign key constraints
 		log('🗑️  Dropping all existing data...');
-		
+
 		// Delete transactions first (they reference categories, merchants, users)
 		const transactionCount = await prisma.transactions.deleteMany({});
 		log(`   ✓ Deleted ${transactionCount.count} transactions`);
-		
+
 		// Delete category_keywords (references categories)
 		const keywordCount = await (prisma as any).category_keywords.deleteMany({});
 		log(`   ✓ Deleted ${keywordCount.count} category keywords`);
-		
+
 		// Delete user_categories (references categories and users)
 		const userCategoryCount = await prisma.user_categories.deleteMany({});
 		log(`   ✓ Deleted ${userCategoryCount.count} user category preferences`);
-		
+
 		// Delete categories (references users for created_by)
 		const categoryCount = await prisma.categories.deleteMany({});
 		log(`   ✓ Deleted ${categoryCount.count} categories`);
-		
+
 		// Delete merchants (references categories)
 		const merchantCount = await prisma.merchants.deleteMany({});
 		log(`   ✓ Deleted ${merchantCount.count} merchants`);
-		
+
 		log('✅ Database cleared - all transactions and categories removed');
-		
+
 		// Verify category_keywords table is accessible
 		try {
 			const keywordCount = await (prisma as any).category_keywords.count();
@@ -142,37 +142,37 @@ export async function seedDatabase() {
 				tier: 'medium',
 				updated_at: new Date()
 			},
-		[
-			'belastingdienst',
-			'belasting',
-			'teruggave',
-			'belastingteruggave',
-			'voorlopige teruggave',
-			'voorlopige aanslag',
-			'rvo',
-			'subsidie',
-			'rijksoverheid',
-			'overheid',
-			'gemeente',
-			'toeslag',
-			'zorgtoeslag',
-			'kinderbijslag',
-			'svb',
-			'duo',
-			'studiefinanciering',
-			'belastingdienst.nl',
-			'rijksoverheid.nl',
-			'gemeente',
-			'provincie',
-			'waterschap',
-			'belastingaangifte',
-			'inkomstenbelasting',
-			'teruggaaf',
-			'belasting teruggaaf',
-			'toeslagen',
-			'overheidstoeslag',
-			'overheidsbijdrage'
-		]
+			[
+				'belastingdienst',
+				'belasting',
+				'teruggave',
+				'belastingteruggave',
+				'voorlopige teruggave',
+				'voorlopige aanslag',
+				'rvo',
+				'subsidie',
+				'rijksoverheid',
+				'overheid',
+				'gemeente',
+				'toeslag',
+				'zorgtoeslag',
+				'kinderbijslag',
+				'svb',
+				'duo',
+				'studiefinanciering',
+				'belastingdienst.nl',
+				'rijksoverheid.nl',
+				'gemeente',
+				'provincie',
+				'waterschap',
+				'belastingaangifte',
+				'inkomstenbelasting',
+				'teruggaaf',
+				'belasting teruggaaf',
+				'toeslagen',
+				'overheidstoeslag',
+				'overheidsbijdrage'
+			]
 		);
 
 		const otherIncome = await createCategoryWithKeywords(
@@ -309,28 +309,28 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'albert heijn',
-			'ah',
-			'jumbo',
-			'aldi',
-			'lidl',
-			'plus',
-			'coop',
-			'spar',
-			'vomar',
-			'dirk',
-			'hoogvliet',
-			'picnic',
-			'crisp',
-			'flink',
-			'supermarkt',
-			'boodschappen',
-			'deka markt',
-			'jan linders',
-			'poiesz',
-			'ekoplaza'
-		]
+			[
+				'albert heijn',
+				'ah',
+				'jumbo',
+				'aldi',
+				'lidl',
+				'plus',
+				'coop',
+				'spar',
+				'vomar',
+				'dirk',
+				'hoogvliet',
+				'picnic',
+				'crisp',
+				'flink',
+				'supermarkt',
+				'boodschappen',
+				'deka markt',
+				'jan linders',
+				'poiesz',
+				'ekoplaza'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -416,37 +416,37 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'marqt',
-			'natuurwinkel',
-			'biologisch',
-			'delicatessen',
-			'kaaswinkel',
-			'kaasboer',
-			'wijnhandel',
-			'boerenmarkt',
-			'speciaalzaak',
-			'toko',
-			'reformwinkel',
-			'notenbar',
-			'ekoplaza',
-			'odin',
-			'biowinkel',
-			'biologische winkel',
-			'natuurvoedingswinkel',
-			'kaasboerderij',
-			'kaashandel',
-			'wijnwinkel',
-			'wijnboer',
-			'viswinkel',
-			'visboer',
-			'visboerderij',
-			'zuivelboerderij',
-			'boerenwinkel',
-			'streekproducten',
-			'ambachtelijke winkel',
-			'ambachtelijke producten'
-		]
+			[
+				'marqt',
+				'natuurwinkel',
+				'biologisch',
+				'delicatessen',
+				'kaaswinkel',
+				'kaasboer',
+				'wijnhandel',
+				'boerenmarkt',
+				'speciaalzaak',
+				'toko',
+				'reformwinkel',
+				'notenbar',
+				'ekoplaza',
+				'odin',
+				'biowinkel',
+				'biologische winkel',
+				'natuurvoedingswinkel',
+				'kaasboerderij',
+				'kaashandel',
+				'wijnwinkel',
+				'wijnboer',
+				'viswinkel',
+				'visboer',
+				'visboerderij',
+				'zuivelboerderij',
+				'boerenwinkel',
+				'streekproducten',
+				'ambachtelijke winkel',
+				'ambachtelijke producten'
+			]
 		);
 
 		log('✅ Created Food & Groceries with 4 subcategories');
@@ -468,23 +468,23 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'starbucks',
-			'coffeecompany',
-			'coffee company',
-			'bagels & beans',
-			'koffie',
-			'cafe',
-			'café',
-			'espresso',
-			'barista',
-			'lebkov',
-			'anne & max',
-			'koffiebar',
-			'doppio',
-			'illy',
-			'nespresso'
-		]
+			[
+				'starbucks',
+				'coffeecompany',
+				'coffee company',
+				'bagels & beans',
+				'koffie',
+				'cafe',
+				'café',
+				'espresso',
+				'barista',
+				'lebkov',
+				'anne & max',
+				'koffiebar',
+				'doppio',
+				'illy',
+				'nespresso'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -500,20 +500,20 @@ export async function seedDatabase() {
 				tier: 'medium',
 				updated_at: new Date()
 			},
-		[
-			'lunch',
-			'broodje',
-			'broodjeszaak',
-			'subway',
-			'backwerk',
-			'la place',
-			'smullers',
-			'febo',
-			'kwalitaria',
-			'sandwich',
-			'saladebar',
-			'lunchroom'
-		]
+			[
+				'lunch',
+				'broodje',
+				'broodjeszaak',
+				'subway',
+				'backwerk',
+				'la place',
+				'smullers',
+				'febo',
+				'kwalitaria',
+				'sandwich',
+				'saladebar',
+				'lunchroom'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -629,21 +629,21 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'uitgaan',
-			'bar',
-			'kroeg',
-			'café',
-			'cafe',
-			'cocktailbar',
-			'wijnbar',
-			'brouwerij',
-			'discotheek',
-			'nachtclub',
-			'club',
-			'bier',
-			'borrel'
-		]
+			[
+				'uitgaan',
+				'bar',
+				'kroeg',
+				'café',
+				'cafe',
+				'cocktailbar',
+				'wijnbar',
+				'brouwerij',
+				'discotheek',
+				'nachtclub',
+				'club',
+				'bier',
+				'borrel'
+			]
 		);
 
 		log('✅ Created Restaurants & Dining with 5 subcategories');
@@ -665,19 +665,19 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'lease',
-			'leaseplan',
-			'ald automotive',
-			'arval',
-			'alphabet',
-			'autolening',
-			'autolease',
-			'leasebetaling',
-			'auto financiering',
-			'terberg',
-			'justlease'
-		]
+			[
+				'lease',
+				'leaseplan',
+				'ald automotive',
+				'arval',
+				'alphabet',
+				'autolening',
+				'autolease',
+				'leasebetaling',
+				'auto financiering',
+				'terberg',
+				'justlease'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -693,26 +693,26 @@ export async function seedDatabase() {
 				group: 'essential',
 				updated_at: new Date()
 			},
-		[
-			'shell',
-			'bp',
-			'esso',
-			'total',
-			'totalenergies',
-			'tinq',
-			'tango',
-			'avia',
-			'texaco',
-			'q8',
-			'gulf',
-			'tankstation',
-			'benzine',
-			'diesel',
-			'fastned',
-			'allego',
-			'laadpaal',
-			'laadstation'
-		]
+			[
+				'shell',
+				'bp',
+				'esso',
+				'total',
+				'totalenergies',
+				'tinq',
+				'tango',
+				'avia',
+				'texaco',
+				'q8',
+				'gulf',
+				'tankstation',
+				'benzine',
+				'diesel',
+				'fastned',
+				'allego',
+				'laadpaal',
+				'laadstation'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -728,26 +728,26 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'ns',
-			'nederlandse spoorwegen',
-			'ov-chipkaart',
-			'ov chipkaart',
-			'gvb',
-			'ret',
-			'htm',
-			'connexxion',
-			'arriva',
-			'keolis',
-			'qbuzz',
-			'flixbus',
-			'trein',
-			'bus',
-			'tram',
-			'metro',
-			'openbaar vervoer',
-			'ovpay'
-		]
+			[
+				'ns',
+				'nederlandse spoorwegen',
+				'ov-chipkaart',
+				'ov chipkaart',
+				'gvb',
+				'ret',
+				'htm',
+				'connexxion',
+				'arriva',
+				'keolis',
+				'qbuzz',
+				'flixbus',
+				'trein',
+				'bus',
+				'tram',
+				'metro',
+				'openbaar vervoer',
+				'ovpay'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -803,22 +803,22 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'apk',
-			'garage',
-			'autogarage',
-			'kwikfit',
-			'profile',
-			'euromaster',
-			'banden',
-			'onderhoud',
-			'reparatie',
-			'wasstraat',
-			'autowasstraat',
-			'carwash',
-			'autoschade',
-			'carglass'
-		]
+			[
+				'apk',
+				'garage',
+				'autogarage',
+				'kwikfit',
+				'profile',
+				'euromaster',
+				'banden',
+				'onderhoud',
+				'reparatie',
+				'wasstraat',
+				'autowasstraat',
+				'carwash',
+				'autoschade',
+				'carglass'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -834,22 +834,22 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'uber',
-			'bolt',
-			'taxi',
-			'taxicentrale',
-			'greenwheels',
-			'mywheels',
-			'snappcar',
-			'felyx',
-			'lime',
-			'go sharing',
-			'check',
-			'deelauto',
-			'deelscooter',
-			'sixt'
-		]
+			[
+				'uber',
+				'bolt',
+				'taxi',
+				'taxicentrale',
+				'greenwheels',
+				'mywheels',
+				'snappcar',
+				'felyx',
+				'lime',
+				'go sharing',
+				'check',
+				'deelauto',
+				'deelscooter',
+				'sixt'
+			]
 		);
 
 		log('✅ Created Transportation with 6 subcategories');
@@ -927,24 +927,24 @@ export async function seedDatabase() {
 				tier: 'less',
 				updated_at: new Date()
 			},
-		[
-			'mediamarkt',
-			'coolblue',
-			'bol.com',
-			'amazon',
-			'apple',
-			'samsung',
-			'alternate',
-			'azerty',
-			'belsimpel',
-			'elektronica',
-			'computer',
-			'telefoon',
-			'laptop',
-			'tablet',
-			'expert',
-			'bcc'
-		]
+			[
+				'mediamarkt',
+				'coolblue',
+				'bol.com',
+				'amazon',
+				'apple',
+				'samsung',
+				'alternate',
+				'azerty',
+				'belsimpel',
+				'elektronica',
+				'computer',
+				'telefoon',
+				'laptop',
+				'tablet',
+				'expert',
+				'bcc'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -1062,40 +1062,40 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'eneco',
-			'essent',
-			'vattenfall',
-			'greenchoice',
-			'budgetenergie',
-			'vandebron',
-			'engie',
-			'energiedirect',
-			'oxxio',
-			'pure energie',
-			'om | nieuwe energie',
-			'frank energie',
-			'anwb energie',
-			'energie van onbekend',
-			'energyswitch',
-			'energievergelijk',
-			'vitens',
-			'waternet',
-			'evides',
-			'brabant water',
-			'pwn',
-			'dunea',
-			'energie',
-			'water',
-			'gas',
-			'stroom',
-			'elektriciteit',
-			'nutstotaal',
-			'liander',
-			'stedin',
-			'een',
-			'westland infranet'
-		]
+			[
+				'eneco',
+				'essent',
+				'vattenfall',
+				'greenchoice',
+				'budgetenergie',
+				'vandebron',
+				'engie',
+				'energiedirect',
+				'oxxio',
+				'pure energie',
+				'om | nieuwe energie',
+				'frank energie',
+				'anwb energie',
+				'energie van onbekend',
+				'energyswitch',
+				'energievergelijk',
+				'vitens',
+				'waternet',
+				'evides',
+				'brabant water',
+				'pwn',
+				'dunea',
+				'energie',
+				'water',
+				'gas',
+				'stroom',
+				'elektriciteit',
+				'nutstotaal',
+				'liander',
+				'stedin',
+				'een',
+				'westland infranet'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -1110,24 +1110,24 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'ziggo',
-			'kpn',
-			'odido',
-			't-mobile',
-			'vodafone',
-			'tele2',
-			'youfone',
-			'simyo',
-			'hollandsnieuwe',
-			'ben',
-			'lebara',
-			'internet',
-			'telefoon',
-			'tv',
-			'glasvezel',
-			'mobiel'
-		]
+			[
+				'ziggo',
+				'kpn',
+				'odido',
+				't-mobile',
+				'vodafone',
+				'tele2',
+				'youfone',
+				'simyo',
+				'hollandsnieuwe',
+				'ben',
+				'lebara',
+				'internet',
+				'telefoon',
+				'tv',
+				'glasvezel',
+				'mobiel'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -1151,11 +1151,6 @@ export async function seedDatabase() {
 				'hypotheek',
 				'woning',
 				'onderhoud',
-				'rabobank',
-				'ing',
-				'abn amro',
-				'sns bank',
-				'asr',
 				'nationale nederlanden',
 				'nn',
 				'achmea',
@@ -1252,26 +1247,26 @@ export async function seedDatabase() {
 				tier: 'most',
 				updated_at: new Date()
 			},
-		[
-			'netflix',
-			'spotify',
-			'disney+',
-			'disney plus',
-			'hbo max',
-			'videoland',
-			'prime video',
-			'amazon prime',
-			'apple tv',
-			'youtube premium',
-			'playstation',
-			'xbox',
-			'nintendo',
-			'steam',
-			'pathe',
-			'bioscoop',
-			'streaming',
-			'gaming'
-		]
+			[
+				'netflix',
+				'spotify',
+				'disney+',
+				'disney plus',
+				'hbo max',
+				'videoland',
+				'prime video',
+				'amazon prime',
+				'apple tv',
+				'youtube premium',
+				'playstation',
+				'xbox',
+				'nintendo',
+				'steam',
+				'pathe',
+				'bioscoop',
+				'streaming',
+				'gaming'
+			]
 		);
 
 		await createCategoryWithKeywords(
@@ -1636,14 +1631,6 @@ export async function seedDatabase() {
 				'kosten',
 				'bankkosten',
 				'rabobank',
-				'ing',
-				'abn amro',
-				'sns bank',
-				'asn bank',
-				'knab',
-				'bunq',
-				'revolut',
-				'wise',
 				'bankkosten',
 				'bank kosten',
 				'servicekosten',
@@ -1875,7 +1862,6 @@ export async function seedDatabase() {
 				'notprovided',
 				'degiro',
 				'lynx',
-				'binck bank',
 				'bolero',
 				'brand new day',
 				'meesman',
@@ -2139,7 +2125,7 @@ async function main() {
 
 // Only run if called directly (not imported)
 // Check if this file is being run directly by checking if it's the main module
-const isMainModule = process.argv[1]?.endsWith('seed.ts') || 
+const isMainModule = process.argv[1]?.endsWith('seed.ts') ||
 	(import.meta.url && import.meta.url === `file://${process.argv[1]}`);
 
 if (isMainModule) {

@@ -1,45 +1,22 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
-	import {
-		ShoppingCart,
-		Coffee,
-		Home,
-		Car,
-		Utensils,
-		Zap,
-		Heart,
-		Briefcase,
-		Clock
-	} from 'lucide-svelte';
+	import Amount from './Amount.svelte';
+	import * as LucideIcons from 'lucide-svelte';
 
 	let { transactions }: { transactions: any[] } = $props();
 
-	// Map category to icon
-	const categoryIcons: Record<string, any> = {
-		Groceries: ShoppingCart,
-		Dining: Utensils,
-		Coffee: Coffee,
-		Housing: Home,
-		Transportation: Car,
-		Utilities: Zap,
-		Healthcare: Heart,
-		Business: Briefcase
-	};
+	// Get icon component from lucide-svelte by name
+	const getCategoryIcon = (iconName: string | null) => {
+		if (!iconName) return LucideIcons.ShoppingCart;
 
-	const getCategoryIcon = (category: string) => {
-		return categoryIcons[category] || ShoppingCart;
-	};
-
-	// Format amount with color
-	const formatAmount = (amount: number) => {
-		return new Intl.NumberFormat('en-US', {
-			style: 'currency',
-			currency: 'USD'
-		}).format(Math.abs(amount));
+		// Try to get the icon from lucide-svelte
+		const icon = (LucideIcons as any)[iconName];
+		return icon || LucideIcons.ShoppingCart;
 	};
 </script>
 
 {#if transactions.length === 0}
+	{@const Clock = LucideIcons.Clock}
 	<!-- Empty State -->
 	<DashboardWidget size="large" variant="placeholder">
 		<div class="flex h-full flex-col items-center justify-center text-center opacity-50">
@@ -56,6 +33,7 @@
 
 			<div class="space-y-2">
 				{#each transactions as transaction}
+					{@const Icon = getCategoryIcon(transaction.categoryIcon)}
 					<div
 						class="group flex cursor-pointer items-center gap-4 rounded-2xl bg-base-200/50 p-3 transition-all duration-200 hover:scale-[1.01] hover:bg-base-200"
 					>
@@ -64,11 +42,7 @@
 							<div
 								class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20"
 							>
-								<svelte:component
-									this={getCategoryIcon(transaction.category)}
-									size={20}
-									class="text-primary"
-								/>
+								<Icon size={20} class="text-primary" />
 							</div>
 						</div>
 
@@ -80,9 +54,7 @@
 
 						<!-- Amount -->
 						<div class="flex-shrink-0">
-							<p class="text-lg font-bold {transaction.amount < 0 ? 'text-error' : 'text-success'}">
-								{transaction.amount < 0 ? '-' : '+'}{formatAmount(transaction.amount)}
-							</p>
+							<Amount value={transaction.amount} size="medium" isDebit={transaction.isDebit} />
 						</div>
 					</div>
 				{/each}

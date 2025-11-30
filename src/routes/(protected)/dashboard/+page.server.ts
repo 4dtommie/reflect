@@ -33,7 +33,8 @@ export const load: PageServerLoad = async ({ locals }) => {
     const recentTransactions = await db.transactions.findMany({
         where: { user_id: userId },
         include: {
-            categories: true
+            categories: true,
+            merchants: true
         },
         orderBy: { date: 'desc' },
         take: 8
@@ -47,9 +48,11 @@ export const load: PageServerLoad = async ({ locals }) => {
         },
         recentTransactions: recentTransactions.map(t => ({
             id: t.id,
-            merchant: t.description || 'Unknown',
+            merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName || 'Unknown',
             amount: Number(t.amount),
+            isDebit: t.is_debit,
             category: t.categories?.name || 'Uncategorized',
+            categoryIcon: t.categories?.icon || null,
             date: t.date
         }))
     };
