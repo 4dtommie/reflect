@@ -4,16 +4,16 @@
 
 	let {
 		totalTransactions,
-		categorizedCount
+		uncategorizedCount
 	}: {
 		totalTransactions: number;
-		categorizedCount: number;
+		uncategorizedCount: number;
 	} = $props();
 </script>
 
-<DashboardWidget size="medium">
+<DashboardWidget size="extra-small">
 	<div class="space-y-6">
-		{#if categorizedCount === 0 && totalTransactions > 0}
+		{#if uncategorizedCount === totalTransactions && totalTransactions > 0}
 			<!-- CTA when no categorization -->
 			<div class="flex flex-col items-center justify-center gap-4 py-4">
 				<Sparkles size={48} class="text-primary opacity-50" />
@@ -24,7 +24,7 @@
 			<div class="flex items-center justify-between">
 				<div class="text-lg">
 					<span class="font-bold">{totalTransactions}</span> total transactions <br />
-					<span class="font-bold">{categorizedCount}</span> are categorized
+					<span class="font-bold">{uncategorizedCount}</span> are uncategorized
 				</div>
 				<TrendingUp size={40} class="opacity-30" />
 			</div>

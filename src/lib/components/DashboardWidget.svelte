@@ -12,7 +12,7 @@
 	}: {
 		title?: string;
 		icon?: Snippet;
-		size?: 'small' | 'medium' | 'large' | 'wide' | 'full';
+		size?: 'extra-small' | 'small' | 'medium' | 'large' | 'wide' | 'full';
 		variant?: 'default' | 'placeholder';
 		enableHover?: boolean;
 		bgColor?: string;
@@ -20,6 +20,7 @@
 	} = $props();
 
 	const sizeClasses = {
+		'extra-small': 'min-h-[150px]',
 		small: 'min-h-[200px]',
 		medium: 'min-h-[300px]',
 		large: 'min-h-[300px] h-full',
@@ -30,28 +31,27 @@
 	const variantClasses = $derived.by(() => {
 		const defaultBg = bgColor || 'bg-base-100';
 		const placeholderBg = bgColor || 'bg-transparent';
-		
+
 		const base = {
 			default: `${defaultBg} shadow-xl`,
-			placeholder:
-				`${placeholderBg} shadow-none border-2 border-dashed border-base-content/20`
+			placeholder: `${placeholderBg} shadow-none border-2 border-dashed border-base-content/20`
 		};
-		
+
 		if (enableHover) {
 			return {
 				default: base.default + ' hover:shadow-2xl',
 				placeholder: base.placeholder + ' hover:border-base-content/40'
 			};
 		}
-		
+
 		return base;
 	});
 </script>
 
 <div
-	class="card break-inside-avoid rounded-3xl transition-all duration-300 {enableHover ? 'hover:scale-[1.01]' : ''} {sizeClasses[
-		size
-	]} {variantClasses[variant]}"
+	class="card break-inside-avoid rounded-3xl transition-all duration-300 {enableHover
+		? 'hover:scale-[1.01]'
+		: ''} {sizeClasses[size]} {variantClasses[variant]}"
 >
 	<div class="card-body flex h-full flex-col justify-center">
 		{#if title || icon}

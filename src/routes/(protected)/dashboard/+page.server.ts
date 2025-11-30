@@ -40,10 +40,13 @@ export const load: PageServerLoad = async ({ locals }) => {
         take: 8
     });
 
+    const uncategorizedCount = totalTransactions - categorizedCount;
+
     return {
         stats: {
             totalTransactions,
             categorizedCount,
+            uncategorizedCount,
             categorizedPercentage
         },
         recentTransactions: recentTransactions.map(t => ({

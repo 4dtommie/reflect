@@ -22,8 +22,7 @@
 	{#if data.stats.totalTransactions > 0}
 		<TransactionStatsWidget
 			totalTransactions={data.stats.totalTransactions}
-			categorizedCount={data.stats.categorizedCount}
-			categorizedPercentage={data.stats.categorizedPercentage}
+			uncategorizedCount={data.stats.uncategorizedCount}
 		/>
 	{:else}
 		<PlaceholderWidget
