@@ -5,6 +5,7 @@
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
+	import Masonry from '$lib/components/Masonry.svelte';
 	import { Clock, TrendingUp, PieChart, Target, PiggyBank } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -14,10 +15,12 @@
 	<title>Dashboard - Reflect</title>
 </svelte:head>
 
-<div class="grid auto-rows-fr grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
+<Masonry stretchFirst={true} gridGap="2rem" colWidth="minmax(300px, 1fr)" stretchSpan="span 2">
 	<WelcomeWidget username={data.user.username} />
 
-	<UploadCTAWidget hasTransactions={data.stats.totalTransactions > 0} />
+	{#if data.stats.totalTransactions === 0}
+		<UploadCTAWidget hasTransactions={false} />
+	{/if}
 
 	{#if data.stats.totalTransactions > 0}
 		<TransactionStatsWidget
@@ -33,10 +36,6 @@
 		/>
 	{/if}
 
-	<div class="h-full lg:row-span-2">
-		<RecentTransactionsWidget transactions={data.recentTransactions} />
-	</div>
-
 	<PlaceholderWidget
 		title="Monthly spending"
 		description="Track your spending trends over time"
@@ -51,12 +50,7 @@
 		icon={PieChart}
 	/>
 
-	<PlaceholderWidget
-		title="Budget tracker"
-		description="Monitor your budget goals and progress"
-		size="small"
-		icon={Target}
-	/>
+	<RecentTransactionsWidget transactions={data.recentTransactions} />
 
 	<PlaceholderWidget
 		title="Savings goals"
@@ -64,4 +58,11 @@
 		size="small"
 		icon={PiggyBank}
 	/>
-</div>
+
+	<PlaceholderWidget
+		title="Budget tracker"
+		description="Monitor your budget goals and progress"
+		size="small"
+		icon={Target}
+	/>
+</Masonry>

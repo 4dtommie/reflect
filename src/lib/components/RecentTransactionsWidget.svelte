@@ -27,7 +27,7 @@
 	</DashboardWidget>
 {:else}
 	<!-- Transaction List -->
-	<DashboardWidget size="large">
+	<DashboardWidget size="medium">
 		<div class="space-y-1">
 			<h3 class="mb-4 text-lg font-semibold opacity-70">Recent transactions</h3>
 
