@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
+	import Amount from '$lib/components/Amount.svelte';
 	import { fade } from 'svelte/transition';
 	import { Settings, List, Activity, Play } from 'lucide-svelte';
 
@@ -46,7 +47,7 @@
 			<!-- Title Widget -->
 			<DashboardWidget size="wide">
 				<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
-					<h1 class="mb-4 text-7xl font-bold">Sub Detective 🕵️</h1>
+					<h1 class="mb-4 text-7xl font-bold">Subscriptions 🕵️</h1>
 					<p class="text-2xl opacity-70">
 						{randomSubtitle}
 					</p>
@@ -80,47 +81,60 @@
 					</div>
 				</DashboardWidget>
 			{:else if candidates.length > 0}
-				<!-- Results Widget -->
-				<DashboardWidget size="wide" title="Found in known list">
-					<div class="flex h-full flex-col justify-start">
-						<div class="space-y-3">
-							{#each candidates as candidate}
-								<div class="flex items-center justify-between rounded-lg bg-base-200 p-4">
-									<div class="flex items-center gap-4">
-										<div class="rounded-full bg-base-300 p-3">
-											{#if candidate.type === 'subscription'}
-												<Activity class="h-6 w-6 text-info" />
-											{:else}
-												<List class="h-6 w-6" />
-											{/if}
+				<!-- Results Grid -->
+				<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+					<!-- Left Column -->
+					<div class="flex flex-col gap-8">
+						<!-- Results Widget -->
+						<DashboardWidget size="large" title="Found in known list">
+							<div class="flex h-full flex-col justify-start">
+								<div class="space-y-3">
+									{#each candidates as candidate}
+										<div class="flex items-center justify-between rounded-lg bg-base-200 p-4">
+											<div class="flex items-center gap-4">
+												<div>
+													<h3 class="text-lg font-bold">{candidate.name}</h3>
+													<p class="text-sm opacity-70">
+														{candidate.interval}
+													</p>
+													<p class="text-xs opacity-50">
+														{candidate.transactions.length} transaction{candidate.transactions
+															.length > 1
+															? 's'
+															: ''} found
+													</p>
+												</div>
+											</div>
+											<div class="text-right">
+												<div class="text-xl font-bold">
+													<Amount value={candidate.amount} size="large" isDebit={true} />
+												</div>
+												{#if candidate.averageAmount && candidate.averageAmount !== candidate.amount}
+													<div class="flex justify-end gap-1 text-xs opacity-50">
+														avg <Amount
+															value={candidate.averageAmount}
+															size="small"
+															isDebit={true}
+														/>
+													</div>
+												{/if}
+												<div
+													class="mt-1 badge badge-sm {candidate.confidence > 0.8
+														? 'badge-success'
+														: 'badge-warning'}"
+												>
+													{Math.round(candidate.confidence * 100)}% sure
+												</div>
+											</div>
 										</div>
-										<div>
-											<h3 class="text-lg font-bold">{candidate.name}</h3>
-											<p class="text-sm opacity-70">
-												{candidate.interval} • {candidate.transactions.length} transaction{candidate
-													.transactions.length > 1
-													? 's'
-													: ''} found
-											</p>
-										</div>
-									</div>
-									<div class="text-right">
-										<div class="text-xl font-bold">
-											€{Number(candidate.amount).toFixed(2)}
-										</div>
-										<div
-											class="badge badge-sm {candidate.confidence > 0.8
-												? 'badge-success'
-												: 'badge-warning'}"
-										>
-											{Math.round(candidate.confidence * 100)}% confidence
-										</div>
-									</div>
+									{/each}
 								</div>
-							{/each}
-						</div>
+							</div>
+						</DashboardWidget>
 					</div>
-				</DashboardWidget>
+					<!-- Right Column (Empty for now) -->
+					<div class="flex flex-col gap-8"></div>
+				</div>
 			{:else}
 				<!-- No Results -->
 				<DashboardWidget size="wide">

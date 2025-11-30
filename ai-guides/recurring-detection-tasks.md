@@ -1,14 +1,14 @@
 # Recurring Transaction Detection Tasks
 
 - [ ] **Database Schema Updates** <!-- id: 0 -->
-    - [ ] Define `RecurringTransaction` model in `prisma/schema.prisma` <!-- id: 1 -->
-    - [ ] Add relation to `transactions` model <!-- id: 2 -->
-    - [ ] Run `npx prisma db push` (or migrate) <!-- id: 3 -->
+    - [x] Define `RecurringTransaction` model in `prisma/schema.prisma` <!-- id: 1 -->
+    - [x] Add relation to `transactions` model <!-- id: 2 -->
+    - [x] Run `npx prisma db push` (or migrate) <!-- id: 3 -->
 
 - [ ] **Backend Service & API (Basic)** <!-- id: 4 -->
-    - [ ] Create `src/lib/server/recurring/subscriptionProviders.ts` with known list <!-- id: 5 -->
-    - [ ] Create `src/lib/server/recurring/recurringDetectionService.ts` with `detectByKnownList` <!-- id: 6 -->
-    - [ ] Create `src/routes/api/recurring/detect/+server.ts` endpoint <!-- id: 7 -->
+    - [x] Create `src/lib/server/recurring/subscriptionProviders.ts` with known list <!-- id: 5 -->
+    - [x] Create `src/lib/server/recurring/recurringDetectionService.ts` with `detectByKnownList` <!-- id: 6 -->
+    - [x] Create `src/routes/api/recurring/detect/+server.ts` endpoint <!-- id: 7 -->
 
 - [ ] **Frontend Integration (Basic)** <!-- id: 8 -->
     - [ ] Connect "Start Detection" button in `recurring/detect/+page.svelte` to API <!-- id: 9 -->

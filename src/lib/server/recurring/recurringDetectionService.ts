@@ -1,29 +1,24 @@
 import { db } from '$lib/server/db';
-import { KNOWN_SUBSCRIPTION_PROVIDERS } from './subscriptionProviders';
-import type { transactions } from '@prisma/client';
+import type { transactions, merchants } from '@prisma/client';
 
 export interface RecurringCandidate {
     name: string;
     amount: number;
+    averageAmount?: number;
     interval: 'monthly' | 'weekly' | 'quarterly' | 'yearly' | '4-weekly' | 'irregular';
     confidence: number; // 0-1
     type: 'subscription' | 'salary' | 'bill' | 'other';
     source: 'known_list' | 'salary_rule' | 'interval_rule' | 'ai';
     transactions: transactions[];
+    merchantId?: number;
 }
 
 export class RecurringDetectionService {
     async detectRecurringTransactions(userId: number): Promise<RecurringCandidate[]> {
-        // Fetch last 6 months of transactions
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
+        // Fetch all transactions
         const transactions = await db.transactions.findMany({
             where: {
-                user_id: userId,
-                date: {
-                    gte: sixMonthsAgo
-                }
+                user_id: userId
             },
             orderBy: {
                 date: 'desc'
@@ -32,8 +27,8 @@ export class RecurringDetectionService {
 
         const candidates: RecurringCandidate[] = [];
 
-        // 1. Detect by Known List
-        const knownCandidates = this.detectByKnownList(transactions);
+        // 1. Detect by Known List (from DB)
+        const knownCandidates = await this.detectByKnownList(transactions);
         candidates.push(...knownCandidates);
 
         // 2. Detect Salary (Standard & Other)
@@ -47,11 +42,21 @@ export class RecurringDetectionService {
         return candidates;
     }
 
-    private detectByKnownList(transactions: transactions[]): RecurringCandidate[] {
+    private async detectByKnownList(transactions: transactions[]): Promise<RecurringCandidate[]> {
         const candidates: RecurringCandidate[] = [];
-        const groupedByProvider = new Map<string, transactions[]>();
+        const groupedByProvider = new Map<string, { txs: transactions[], merchantId: number }>();
 
         console.log(`[RecurringDetection] Scanning ${transactions.length} transactions`);
+
+        // Fetch known recurring merchants from DB
+        const knownMerchants = await db.merchants.findMany({
+            where: {
+                is_potential_recurring: true,
+                is_active: true
+            }
+        });
+
+        console.log(`[RecurringDetection] Loaded ${knownMerchants.length} known recurring merchants from DB`);
 
         // Group transactions by known providers
         for (const tx of transactions) {
@@ -59,8 +64,17 @@ export class RecurringDetectionService {
             const merchantName = (tx.merchantName || '').toLowerCase();
             const cleanedMerchant = (tx.cleaned_merchant_name || '').toLowerCase();
 
-            for (const provider of KNOWN_SUBSCRIPTION_PROVIDERS) {
-                const matches = provider.keywords.some(
+            for (const merchant of knownMerchants) {
+                // Check if transaction is already linked to this merchant
+                if (tx.merchant_id === merchant.id) {
+                    const existing = groupedByProvider.get(merchant.name) || { txs: [], merchantId: merchant.id };
+                    existing.txs.push(tx);
+                    groupedByProvider.set(merchant.name, existing);
+                    break;
+                }
+
+                // Otherwise check keywords
+                const matches = merchant.keywords.some(
                     (keyword) => {
                         const keywordLower = keyword.toLowerCase();
                         return description.includes(keywordLower) ||
@@ -70,10 +84,10 @@ export class RecurringDetectionService {
                 );
 
                 if (matches) {
-                    const existing = groupedByProvider.get(provider.name) || [];
-                    existing.push(tx);
-                    groupedByProvider.set(provider.name, existing);
-                    console.log(`[RecurringDetection] Matched "${provider.name}" for transaction: ${merchantName || description}`);
+                    const existing = groupedByProvider.get(merchant.name) || { txs: [], merchantId: merchant.id };
+                    existing.txs.push(tx);
+                    groupedByProvider.set(merchant.name, existing);
+                    console.log(`[RecurringDetection] Matched "${merchant.name}" for transaction: ${merchantName || description}`);
                     break; // Found a match, stop checking other providers
                 }
             }
@@ -82,10 +96,8 @@ export class RecurringDetectionService {
         console.log(`[RecurringDetection] Found ${groupedByProvider.size} unique providers`);
 
         // Analyze groups
-        for (const [providerName, txs] of groupedByProvider) {
-            // Need at least 2 transactions to consider it recurring? 
-            // Or even 1 if it's a very strong match like "Spotify"?
-            // Let's say 1 is enough for "Potential" but confidence depends on count
+        for (const [providerName, data] of groupedByProvider) {
+            const { txs, merchantId } = data;
 
             if (txs.length === 0) continue;
 
@@ -119,12 +131,14 @@ export class RecurringDetectionService {
 
             candidates.push({
                 name: providerName,
-                amount: avgAmount,
+                amount: Number(txs[0].amount), // Latest amount (txs are sorted desc by date from query)
+                averageAmount: avgAmount,
                 interval,
                 confidence: txs.length >= 3 ? 0.9 : txs.length === 2 ? 0.7 : 0.5,
                 type: 'subscription',
                 source: 'known_list',
-                transactions: txs
+                transactions: txs,
+                merchantId
             });
         }
 

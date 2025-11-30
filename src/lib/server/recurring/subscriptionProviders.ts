@@ -5,6 +5,10 @@ export interface SubscriptionProvider {
     expectedAmount?: number; // Optional: if it's a fixed price service
 }
 
+/**
+ * @deprecated This list is now replaced by the `merchants` table in the database with `is_potential_recurring = true`.
+ * Use `RecurringDetectionService.detectByKnownList` which fetches from the DB.
+ */
 export const KNOWN_SUBSCRIPTION_PROVIDERS: SubscriptionProvider[] = [
     // Streaming
     { name: 'Spotify', keywords: ['spotify'], category: 'Entertainment' },
