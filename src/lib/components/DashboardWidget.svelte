@@ -23,7 +23,7 @@
 		'extra-small': 'min-h-[150px]',
 		small: 'min-h-[200px]',
 		medium: 'min-h-[300px]',
-		large: 'min-h-[300px] h-full',
+		large: 'min-h-[300px]',
 		wide: 'md:col-span-2 min-h-[200px]',
 		full: 'col-span-full min-h-[200px]'
 	};
@@ -53,7 +53,7 @@
 		? 'hover:scale-[1.01]'
 		: ''} {sizeClasses[size]} {variantClasses[variant]}"
 >
-	<div class="card-body flex h-full flex-col justify-center">
+	<div class="card-body flex flex-col">
 		{#if title || icon}
 			<div class="mb-2 flex items-center gap-2">
 				{#if icon}

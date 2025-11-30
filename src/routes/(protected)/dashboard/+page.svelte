@@ -5,7 +5,6 @@
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
-	import Masonry from '$lib/components/Masonry.svelte';
 	import { Clock, TrendingUp, PieChart, Target, PiggyBank } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -15,7 +14,7 @@
 	<title>Dashboard - Reflect</title>
 </svelte:head>
 
-<Masonry stretchFirst={true} gridGap="2rem" colWidth="minmax(300px, 1fr)" stretchSpan="span 2">
+<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
 	<WelcomeWidget username={data.user.username} />
 
 	{#if data.stats.totalTransactions === 0}
@@ -65,4 +64,4 @@
 		size="small"
 		icon={Target}
 	/>
-</Masonry>
+</div>
