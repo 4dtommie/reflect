@@ -4,6 +4,7 @@
 	import UploadCTAWidget from '$lib/components/UploadCTAWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
 	import { Clock, TrendingUp, PieChart, Target, PiggyBank, RefreshCw } from 'lucide-svelte';
 
@@ -64,12 +65,14 @@
 			/>
 		{/if}
 
-		<PlaceholderWidget
-			title="Subscriptions"
-			description="Track your recurring payments"
-			size="small"
-			icon={RefreshCw}
-		/>
+		<DashboardWidget size="small" variant="placeholder">
+			<div class="flex w-full flex-col items-center justify-center text-center">
+				<RefreshCw size={48} class="mb-4 opacity-50" />
+				<h3 class="text-lg font-semibold opacity-50">Subscriptions</h3>
+				<p class="mb-4 text-sm opacity-50">Track your recurring payments</p>
+				<a href="/recurring/detect" class="btn btn-primary"> Detect subscriptions </a>
+			</div>
+		</DashboardWidget>
 
 		<PlaceholderWidget
 			title="Budget tracker"
