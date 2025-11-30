@@ -14,7 +14,7 @@
 	};
 </script>
 
-<nav class="mb-6 flex justify-center px-4">
+<nav class="mb-6 flex justify-center p-0">
 	<div class="flex flex-wrap justify-center gap-2 md:gap-3">
 		{#each navItems as item}
 			<a

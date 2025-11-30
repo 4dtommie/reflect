@@ -29,7 +29,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         ? (categorizedCount / totalTransactions) * 100
         : 0;
 
-    // Get 8 most recent transactions
+    // Get 6 most recent transactions
     const recentTransactions = await db.transactions.findMany({
         where: { user_id: userId },
         include: {
@@ -37,7 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
             merchants: true
         },
         orderBy: { date: 'desc' },
-        take: 8
+        take: 6
     });
 
     const uncategorizedCount = totalTransactions - categorizedCount;
