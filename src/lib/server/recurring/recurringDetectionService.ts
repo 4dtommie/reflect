@@ -65,11 +65,153 @@ export class RecurringDetectionService {
         candidates.push(...incomeCandidates);
 
         // 3. Detect by Interval
-        // TODO: Implement interval detection
+        // 3. Detect by Interval
+        const intervalCandidates = this.detectByInterval(transactions);
+        candidates.push(...intervalCandidates);
 
         // Deduplicate candidates (if multiple methods find the same one)
-        // For now, just return what we have
+        // We prioritize Known List > Income Rule > Interval Rule
+        const uniqueCandidates = new Map<string, RecurringCandidate>();
+
+        for (const candidate of candidates) {
+            // Create a unique key for deduplication
+            // We use a combination of name and amount (rounded) to identify duplicates
+            const key = `${candidate.name.toLowerCase()}-${Math.round(candidate.amount)}`;
+
+            if (!uniqueCandidates.has(key)) {
+                uniqueCandidates.set(key, candidate);
+            } else {
+                // If we already have this candidate, check if the new one is "better"
+                // For now, we just keep the first one (which respects our priority order)
+                const existing = uniqueCandidates.get(key)!;
+
+                // If the new one has higher confidence, take it
+                if (candidate.confidence > existing.confidence) {
+                    uniqueCandidates.set(key, candidate);
+                }
+            }
+        }
+
+        return Array.from(uniqueCandidates.values());
+    }
+
+    private detectByInterval(transactions: transactions[]): RecurringCandidate[] {
+        const candidates: RecurringCandidate[] = [];
+        const grouped = new Map<string, transactions[]>();
+
+        // 1. Group transactions
+        for (const tx of transactions) {
+            // We only care about expenses (debits) for this check
+            if (!tx.is_debit) continue;
+
+            const key = this.getGroupKey(tx);
+            const list = grouped.get(key) ?? [];
+            list.push(tx);
+            grouped.set(key, list);
+        }
+
+        // 2. Analyze groups
+        for (const [key, txs] of grouped) {
+            // Need at least 3 transactions to establish a pattern
+            if (txs.length < 3) continue;
+
+            // Cluster by amount to handle cases where a merchant has different charge types
+            const amountClusters = this.clusterByAmount(txs);
+
+            for (const cluster of amountClusters) {
+                if (cluster.length < 3) continue;
+
+                const sorted = [...cluster].sort((a, b) => b.date.getTime() - a.date.getTime());
+                const interval = this.estimateIntervalFromTransactions(sorted);
+                const averageAmount = this.calculateAverageAmount(sorted);
+                const relativeVariance = this.calculateRelativeVariance(sorted);
+
+                // Skip irregular intervals
+                if (interval === 'irregular') continue;
+
+                // Check recency: Last transaction should be within 2 intervals
+                // (e.g. if monthly, last tx should be < 60 days ago)
+                const lastDate = sorted[0].date;
+                const daysSinceLast = (new Date().getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+                let maxDaysGap = 35 * 2; // Default for monthly
+
+                if (interval === 'weekly') maxDaysGap = 10 * 2;
+                if (interval === 'quarterly') maxDaysGap = 95 * 2;
+                if (interval === 'yearly') maxDaysGap = 370 * 2;
+                if (interval === '4-weekly') maxDaysGap = 30 * 2;
+
+                if (daysSinceLast > maxDaysGap) continue;
+
+                // Skip small amounts (less than 10)
+                if (averageAmount < 10) continue;
+
+                // Check if it's likely groceries or shopping
+                const name = sorted[0].cleaned_merchant_name || sorted[0].merchantName || sorted[0].description || '';
+                const lowerName = name.toLowerCase();
+                const isGroceries = ['albert heijn', 'jumbo', 'lidl', 'aldi', 'plus', 'dirk', 'coop', 'hoogvliet', 'picnic'].some(s => lowerName.includes(s));
+
+                // Strictness rules
+                let isCandidate = false;
+                let confidence = 0.5;
+
+                // Rule 1: Very stable amount (Subscription-like)
+                // If it's groceries, we require EXACT amount stability (0 variance)
+                // to avoid flagging weekly grocery runs as subscriptions.
+                const varianceThreshold = isGroceries ? 0 : 0.05;
+
+                if (relativeVariance <= varianceThreshold) {
+                    isCandidate = true;
+                    confidence = 0.8;
+                }
+                // Rule 2: Somewhat stable amount, but very regular interval (Utility-like)
+                // We don't apply this to groceries, as they often have regular intervals but variable amounts
+                else if (!isGroceries && relativeVariance < 0.20) {
+                    isCandidate = true;
+                    confidence = 0.6;
+                }
+
+                if (isCandidate) {
+                    // Boost confidence for more transactions
+                    if (sorted.length > 5) confidence += 0.1;
+                    if (sorted.length > 12) confidence += 0.1;
+
+                    // Boost confidence for monthly/yearly (common subs)
+                    if (interval === 'monthly' || interval === 'yearly') confidence += 0.05;
+
+                    confidence = Math.min(0.95, confidence);
+
+                    const nextPaymentDate = this.calculateNextPaymentDate(sorted[0].date, interval, 'subscription');
+                    const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id || undefined;
+
+                    // Determine name
+                    const name = sorted[0].cleaned_merchant_name || sorted[0].merchantName || sorted[0].description;
+
+                    candidates.push({
+                        name: name,
+                        amount: Number(sorted[0].amount),
+                        averageAmount,
+                        interval,
+                        confidence,
+                        type: 'subscription', // Default to subscription, user can change
+                        source: 'interval_rule',
+                        transactions: sorted,
+                        merchantId,
+                        nextPaymentDate
+                    });
+                }
+            }
+        }
+
         return candidates;
+    }
+
+    private getGroupKey(tx: transactions): string {
+        if (tx.merchant_id) return `merchant-${tx.merchant_id}`;
+        if (tx.counterparty_iban) return `iban-${tx.counterparty_iban.toLowerCase()}`;
+        if (tx.cleaned_merchant_name) return `cleaned-${tx.cleaned_merchant_name.toLowerCase()}`;
+        if (tx.merchantName) return `merchant-${tx.merchantName.toLowerCase()}`;
+        // Fallback to normalized description, but be careful with generic ones
+        return `desc-${(tx.normalized_description || tx.description).toLowerCase()}`;
     }
 
     private async detectByKnownList(transactions: transactions[]): Promise<RecurringCandidate[]> {
@@ -215,7 +357,7 @@ export class RecurringDetectionService {
                 else if (relativeVariance < 0.12) confidence += 0.08;
                 confidence = Math.min(0.95, confidence);
 
-                const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id;
+                const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id || undefined;
 
                 // Add amount suffix if there are multiple clusters from the same source
                 let candidateName = this.pickSalaryCandidateName(sorted);
