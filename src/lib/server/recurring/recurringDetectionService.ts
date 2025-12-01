@@ -65,34 +65,115 @@ export class RecurringDetectionService {
         candidates.push(...incomeCandidates);
 
         // 3. Detect by Interval
-        // 3. Detect by Interval
         const intervalCandidates = this.detectByInterval(transactions);
         candidates.push(...intervalCandidates);
 
-        // Deduplicate candidates (if multiple methods find the same one)
-        // We prioritize Known List > Income Rule > Interval Rule
-        const uniqueCandidates = new Map<string, RecurringCandidate>();
+        // Deduplicate candidates
+        // Priority: Known List > Salary > Interval
+        // Sort by source priority
+        const sourcePriority: Record<string, number> = { 'known_list': 3, 'salary_rule': 2, 'interval_rule': 1, 'ai': 0 };
+        candidates.sort((a, b) => (sourcePriority[b.source] || 0) - (sourcePriority[a.source] || 0));
+
+        const uniqueCandidates: RecurringCandidate[] = [];
 
         for (const candidate of candidates) {
-            // Create a unique key for deduplication
-            // We use a combination of name and amount (rounded) to identify duplicates
-            const key = `${candidate.name.toLowerCase()}-${Math.round(candidate.amount)}`;
+            const duplicateIndex = uniqueCandidates.findIndex(existing => this.areCandidatesDuplicates(existing, candidate));
 
-            if (!uniqueCandidates.has(key)) {
-                uniqueCandidates.set(key, candidate);
+            if (duplicateIndex === -1) {
+                uniqueCandidates.push(candidate);
             } else {
-                // If we already have this candidate, check if the new one is "better"
-                // For now, we just keep the first one (which respects our priority order)
-                const existing = uniqueCandidates.get(key)!;
+                // We found a duplicate. Since we sorted by priority, 'existing' is the higher priority one.
+                const existing = uniqueCandidates[duplicateIndex];
 
-                // If the new one has higher confidence, take it
-                if (candidate.confidence > existing.confidence) {
-                    uniqueCandidates.set(key, candidate);
+                // MERGE TRANSACTIONS
+                // We want to combine the transactions found by both methods to get a complete picture.
+                // e.g. Known List found 10, Interval found 12 (maybe 2 were missed by regex but caught by interval)
+                const existingIds = new Set(existing.transactions.map(t => t.id));
+                for (const tx of candidate.transactions) {
+                    if (!existingIds.has(tx.id)) {
+                        existing.transactions.push(tx);
+                        existingIds.add(tx.id);
+                    }
                 }
+
+                // Re-sort transactions by date
+                existing.transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                // Update average amount based on merged transactions?
+                // Maybe better to stick with the "higher priority" average, as it might be cleaner.
+                // But let's update the count at least implicitly by having more transactions.
             }
         }
 
-        return Array.from(uniqueCandidates.values());
+        // Final filter: Remove small amounts (< 10)
+        // This applies to all sources (Known List, Interval, etc.)
+        return uniqueCandidates.filter(c => Math.abs(c.amount) >= 10);
+    }
+
+    private areCandidatesDuplicates(a: RecurringCandidate, b: RecurringCandidate): boolean {
+        // SPECIAL CASE: Income splitting
+        // If BOTH are income, we NEVER want to merge them here based on name similarity alone,
+        // because we trust that 'detectIncome' (and now 'detectByKnownList') has already correctly split them by amount.
+        // If we merge them now, we undo that work.
+        // Exception: If they are EXACTLY the same candidate (same amount, same name), we do want to deduplicate.
+        const isIncomeA = ['salary', 'tax', 'transfer'].includes(a.type);
+        const isIncomeB = ['salary', 'tax', 'transfer'].includes(b.type);
+
+        if (isIncomeA && isIncomeB) {
+            // Only merge if amounts are nearly identical (1% diff) to catch duplicates from different sources
+            // e.g. "Salary (€3000)" from KnownList vs "Salary (€3000)" from IncomeRule
+            const amountA = Math.abs(a.amount);
+            const amountB = Math.abs(b.amount);
+            const diff = Math.abs(amountA - amountB);
+            const avg = (amountA + amountB) / 2;
+
+            if (avg === 0) return true;
+            return diff / avg < 0.01;
+        }
+
+        // 1. If both have merchantId and it matches -> Duplicate
+        if (a.merchantId && b.merchantId && a.merchantId === b.merchantId) {
+            return true;
+        }
+
+        // 2. Name similarity
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+
+        // Check for token overlap or substring
+        const tokensA = nameA.split(/[\s-_]+/);
+        const tokensB = nameB.split(/[\s-_]+/);
+
+        // Filter out common useless words
+        const stopWords = ['bv', 'nv', 'gmbh', 'inc', 'corp', 'services', 'payments', 'pay', 'nl', 'com'];
+        const cleanTokensA = tokensA.filter(t => !stopWords.includes(t) && t.length > 2);
+        const cleanTokensB = tokensB.filter(t => !stopWords.includes(t) && t.length > 2);
+
+        const hasOverlap = cleanTokensA.some(ta => cleanTokensB.some(tb => tb.includes(ta) || ta.includes(tb)));
+
+        const hasNameMatch = (
+            nameA.includes(nameB) ||
+            nameB.includes(nameA) ||
+            hasOverlap
+        );
+
+        if (!hasNameMatch) return false;
+
+        // 3. Amount similarity
+        // If names match, amounts should be somewhat close.
+
+        const amountA = Math.abs(a.amount);
+        const amountB = Math.abs(b.amount);
+        const diff = Math.abs(amountA - amountB);
+        const avg = (amountA + amountB) / 2;
+
+        if (avg === 0) return true; // Both zero?
+
+        // For expenses, we allow a larger variance (e.g. 33%) because "Known List" might average ALL Ziggo transactions
+        // while "Interval" might have found just one specific stream.
+        if (diff / avg < 0.33) return true;
+
+        return false;
     }
 
     private detectByInterval(transactions: transactions[]): RecurringCandidate[] {
@@ -273,25 +354,42 @@ export class RecurringDetectionService {
 
             if (txs.length === 0) continue;
 
-            // Sort transactions by date descending (newest first)
-            txs.sort((a, b) => b.date.getTime() - a.date.getTime());
+            // Cluster by amount to separate different subscriptions from the same provider
+            // e.g. Ziggo Mobile (€20) vs Ziggo Internet (€60)
+            const amountClusters = this.clusterByAmount(txs);
 
-            const avgAmount = this.calculateAverageAmount(txs);
-            const interval = this.estimateIntervalFromTransactions(txs);
-            const nextPaymentDate = this.calculateNextPaymentDate(txs[0].date, interval, 'subscription');
+            for (const cluster of amountClusters) {
+                // Sort transactions by date descending (newest first)
+                cluster.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-            candidates.push({
-                name: providerName,
-                amount: Number(txs[0].amount), // Latest amount
-                averageAmount: avgAmount,
-                interval,
-                confidence: txs.length >= 3 ? 0.9 : txs.length === 2 ? 0.7 : 0.5,
-                type: 'subscription',
-                source: 'known_list',
-                transactions: txs,
-                merchantId,
-                nextPaymentDate
-            });
+                const avgAmount = this.calculateAverageAmount(cluster);
+                const interval = this.estimateIntervalFromTransactions(cluster);
+                const nextPaymentDate = this.calculateNextPaymentDate(cluster[0].date, interval, 'subscription');
+
+                // Determine confidence based on consistency
+                let confidence = 0.5;
+                if (cluster.length >= 3) confidence = 0.9;
+                else if (cluster.length === 2) confidence = 0.7;
+
+                // Add name suffix if multiple clusters
+                let displayName = providerName;
+                if (amountClusters.length > 1) {
+                    displayName += ` (€${Math.round(avgAmount)})`;
+                }
+
+                candidates.push({
+                    name: displayName,
+                    amount: Number(cluster[0].amount), // Latest amount
+                    averageAmount: avgAmount,
+                    interval,
+                    confidence,
+                    type: 'subscription',
+                    source: 'known_list',
+                    transactions: cluster,
+                    merchantId,
+                    nextPaymentDate
+                });
+            }
         }
 
         return candidates;

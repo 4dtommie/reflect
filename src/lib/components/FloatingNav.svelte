@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { LayoutDashboard, Receipt, FileText, BarChart3 } from 'lucide-svelte';
+	import { LayoutDashboard, List, FileText, BarChart3 } from 'lucide-svelte';
 
 	const navItems = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/transactions', label: 'Transactions', icon: Receipt },
+		{ href: '/transactions', label: 'Transactions', icon: List },
 		{ href: '/reports', label: 'Reports', icon: FileText },
 		{ href: '/statistics', label: 'Statistics', icon: BarChart3 }
 	];

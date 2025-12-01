@@ -2157,7 +2157,6 @@ export async function seedDatabase() {
 			{ name: 'Youfone', keywords: ['youfone'] },
 			{ name: 'Simyo', keywords: ['simyo'] },
 			{ name: 'HollandsNieuwe', keywords: ['hollandsnieuwe', 'hollands nieuwe'] },
-			{ name: 'Ben', keywords: ['ben'] },
 			{ name: 'Lebara', keywords: ['lebara'] }
 		];
 

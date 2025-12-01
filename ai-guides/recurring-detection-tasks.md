@@ -29,6 +29,7 @@
     - [x] Group results by type (Salary, Subscription, etc.) <!-- id: 19 -->
     - [ ] Add "Confirm" / "Ignore" actions <!-- id: 20 -->
     - [ ] Save confirmed items to `RecurringTransaction` table <!-- id: 21 -->
+    - [ ] *Enhancement: When confirming, update all linked transactions to use the same merchant/cleaned name* <!-- id: 26 -->
     - [x] Fix hero title encoding issue in `recurring/detect/+page.svelte` <!-- id: 23 -->
     - [ ] Surface API errors / empty states clearly in the detection view <!-- id: 24 -->
     - [x] Use the `Amount` component (or consistent currency formatting) for summary totals <!-- id: 25 -->
