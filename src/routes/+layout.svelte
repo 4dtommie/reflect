@@ -4,7 +4,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { User, LayoutDashboard, Receipt, FileText, BarChart3 } from 'lucide-svelte';
+	import { User, LayoutDashboard, List, FileText, BarChart3 } from 'lucide-svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
@@ -161,7 +161,7 @@
 
 	const navItems = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-		{ href: '/transactions', label: 'Transactions', icon: Receipt },
+		{ href: '/transactions', label: 'Transactions', icon: List },
 		{ href: '/reports', label: 'Reports', icon: FileText },
 		{ href: '/statistics', label: 'Statistics', icon: BarChart3 }
 	];

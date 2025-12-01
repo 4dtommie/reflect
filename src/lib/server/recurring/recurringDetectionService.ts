@@ -58,18 +58,25 @@ export class RecurringDetectionService {
 
         // 1. Detect by Known List (from DB)
         const knownCandidates = await this.detectByKnownList(transactions);
+        console.log(`[RecurringDetection] Known List found ${knownCandidates.length} candidates:`);
+        knownCandidates.forEach(c => console.log(`  - ${c.name}: €${c.amount.toFixed(2)} (${c.transactions.length} txs)`));
         candidates.push(...knownCandidates);
 
         // 2. Detect Income (Salary, Tax, Transfers)
         const incomeCandidates = this.detectIncome(transactions);
+        console.log(`[RecurringDetection] Income detection found ${incomeCandidates.length} candidates:`);
+        incomeCandidates.forEach(c => console.log(`  - ${c.name}: €${c.amount.toFixed(2)} (${c.transactions.length} txs, type: ${c.type})`));
         candidates.push(...incomeCandidates);
 
         // 3. Detect by Interval
         const intervalCandidates = this.detectByInterval(transactions);
+        console.log(`[RecurringDetection] Interval detection found ${intervalCandidates.length} candidates:`);
+        intervalCandidates.forEach(c => console.log(`  - ${c.name}: €${c.amount.toFixed(2)} (${c.transactions.length} txs)`));
         candidates.push(...intervalCandidates);
 
         // Deduplicate candidates
         // Priority: Known List > Salary > Interval
+        console.log(`[RecurringDetection] Starting deduplication with ${candidates.length} total candidates`);
         // Sort by source priority
         const sourcePriority: Record<string, number> = { 'known_list': 3, 'salary_rule': 2, 'interval_rule': 1, 'ai': 0 };
         candidates.sort((a, b) => (sourcePriority[b.source] || 0) - (sourcePriority[a.source] || 0));
@@ -84,6 +91,9 @@ export class RecurringDetectionService {
             } else {
                 // We found a duplicate. Since we sorted by priority, 'existing' is the higher priority one.
                 const existing = uniqueCandidates[duplicateIndex];
+                const beforeCount = existing.transactions.length;
+
+                console.log(`[RecurringDetection] MERGING: "${candidate.name}" (${candidate.source}, ${candidate.transactions.length} txs) -> "${existing.name}" (${existing.source}, ${beforeCount} txs)`);
 
                 // MERGE TRANSACTIONS
                 // We want to combine the transactions found by both methods to get a complete picture.
@@ -99,15 +109,21 @@ export class RecurringDetectionService {
                 // Re-sort transactions by date
                 existing.transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-                // Update average amount based on merged transactions?
-                // Maybe better to stick with the "higher priority" average, as it might be cleaner.
-                // But let's update the count at least implicitly by having more transactions.
+                const afterCount = existing.transactions.length;
+                console.log(`  → Result: ${afterCount} txs (added ${afterCount - beforeCount} new)`);
             }
         }
 
         // Final filter: Remove small amounts (< 10)
         // This applies to all sources (Known List, Interval, etc.)
-        return uniqueCandidates.filter(c => Math.abs(c.amount) >= 10);
+        const beforeFilter = uniqueCandidates.length;
+        const filtered = uniqueCandidates.filter(c => Math.abs(c.amount) >= 10);
+        const removed = beforeFilter - filtered.length;
+        if (removed > 0) {
+            console.log(`[RecurringDetection] Filtered out ${removed} candidates with amount < €10`);
+        }
+        console.log(`[RecurringDetection] Final result: ${filtered.length} unique candidates`);
+        return filtered;
     }
 
     private areCandidatesDuplicates(a: RecurringCandidate, b: RecurringCandidate): boolean {
@@ -133,6 +149,7 @@ export class RecurringDetectionService {
 
         // 1. If both have merchantId and it matches -> Duplicate
         if (a.merchantId && b.merchantId && a.merchantId === b.merchantId) {
+            console.log(`[DedupeCheck] "${a.name}" vs "${b.name}": MATCH on merchantId (${a.merchantId})`);
             return true;
         }
 
@@ -145,7 +162,7 @@ export class RecurringDetectionService {
         const tokensB = nameB.split(/[\s-_]+/);
 
         // Filter out common useless words
-        const stopWords = ['bv', 'nv', 'gmbh', 'inc', 'corp', 'services', 'payments', 'pay', 'nl', 'com'];
+        const stopWords = ['bv', 'nv', 'gmbh', 'inc', 'corp', 'services', 'payments', 'pay', 'nl', 'com', 'nederland', 'netherlands'];
         const cleanTokensA = tokensA.filter(t => !stopWords.includes(t) && t.length > 2);
         const cleanTokensB = tokensB.filter(t => !stopWords.includes(t) && t.length > 2);
 
@@ -169,10 +186,19 @@ export class RecurringDetectionService {
 
         if (avg === 0) return true; // Both zero?
 
+        const variance = diff / avg;
+        const threshold = 0.33;
+
+        console.log(`[DedupeCheck] "${a.name}" (€${amountA.toFixed(2)}) vs "${b.name}" (€${amountB.toFixed(2)}): variance=${(variance * 100).toFixed(1)}%, threshold=${(threshold * 100)}%`);
+
         // For expenses, we allow a larger variance (e.g. 33%) because "Known List" might average ALL Ziggo transactions
         // while "Interval" might have found just one specific stream.
-        if (diff / avg < 0.33) return true;
+        if (variance < threshold) {
+            console.log(`  → MATCH (variance < threshold)`);
+            return true;
+        }
 
+        console.log(`  → NO MATCH (variance >= threshold)`);
         return false;
     }
 
@@ -363,6 +389,10 @@ export class RecurringDetectionService {
                 cluster.sort((a, b) => b.date.getTime() - a.date.getTime());
 
                 const avgAmount = this.calculateAverageAmount(cluster);
+
+                if (amountClusters.length > 1) {
+                    console.log(`[RecurringDetection] Known List SPLIT: "${providerName}" into cluster with €${avgAmount.toFixed(2)} avg (${cluster.length} txs)`);
+                }
                 const interval = this.estimateIntervalFromTransactions(cluster);
                 const nextPaymentDate = this.calculateNextPaymentDate(cluster[0].date, interval, 'subscription');
 

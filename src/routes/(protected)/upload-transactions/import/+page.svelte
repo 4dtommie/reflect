@@ -142,8 +142,8 @@
 	{:else if importing}
 		<DashboardWidget size="wide">
 			<div class="flex h-full flex-col items-center justify-center px-6 pt-3 pb-6">
-				<LoaderCircle class="h-12 w-12 animate-spin text-primary mb-4" />
-				<p class="text-lg font-medium mb-2">Importing transactions...</p>
+				<LoaderCircle class="mb-4 h-12 w-12 animate-spin text-primary" />
+				<p class="mb-2 text-lg font-medium">Importing transactions...</p>
 				<p class="text-sm text-base-content/70">
 					{parseResult?.rows.length || 0} transactions being processed
 				</p>
@@ -180,20 +180,22 @@
 
 		<!-- Success Message -->
 		{#if importResult.success && importResult.imported > 0}
-			<DashboardWidget size="small" title="Success">
+			<DashboardWidget size="fullB" title="Success">
 				<div class="flex h-full flex-col justify-center">
 					<div class="alert alert-success">
 						<CheckCircle class="h-6 w-6" />
 						<div>
-							<p class="font-semibold">Successfully imported {importResult.imported} transaction(s)!</p>
+							<p class="font-semibold">
+								Successfully imported {importResult.imported} transaction(s)!
+							</p>
 							{#if importResult.duplicates > 0}
-								<p class="text-sm mt-1">
+								<p class="mt-1 text-sm">
 									{importResult.duplicates} duplicate transaction(s) were skipped.
 								</p>
 							{/if}
 						</div>
 					</div>
-					<button class="btn btn-ghost mt-4" onclick={startOver}>
+					<button class="btn mt-4 btn-ghost" onclick={startOver}>
 						<RefreshCw class="h-4 w-4" />
 						Upload Another File
 					</button>
@@ -206,7 +208,7 @@
 			<DashboardWidget size="full" title="Errors ({importResult.errors.length})">
 				<div class="flex h-full flex-col justify-center">
 					<div class="max-h-96 overflow-y-auto">
-						<table class="table table-zebra w-full text-sm">
+						<table class="table w-full table-zebra text-sm">
 							<thead>
 								<tr>
 									<th>Row</th>
@@ -225,7 +227,7 @@
 							</tbody>
 						</table>
 						{#if importResult.errors.length > 100}
-							<p class="text-sm text-base-content/70 mt-2">
+							<p class="mt-2 text-sm text-base-content/70">
 								Showing first 100 of {importResult.errors.length} errors
 							</p>
 						{/if}
