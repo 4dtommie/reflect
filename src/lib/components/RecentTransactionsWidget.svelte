@@ -59,6 +59,16 @@
 					</div>
 				{/each}
 			</div>
+
+			<div class="mt-4 border-t border-base-200 pt-2">
+				<a href="/transactions" class="group btn btn-block justify-between btn-ghost btn-sm">
+					Show all transactions
+					<LucideIcons.ArrowRight
+						size={16}
+						class="transition-transform group-hover:translate-x-1"
+					/>
+				</a>
+			</div>
 		</div>
 	</DashboardWidget>
 {/if}

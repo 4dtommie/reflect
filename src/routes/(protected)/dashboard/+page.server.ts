@@ -4,51 +4,43 @@ import { db } from '$lib/server/db';
 export const load: PageServerLoad = async ({ locals }) => {
     const userId = locals.user!.id;
 
-    // Get total transaction count
-    const totalTransactions = await db.transactions.count({
-        where: { user_id: userId }
-    });
-
-    // Get categorized transaction count (excluding "Uncategorized" and null)
-    const categorizedCount = await db.transactions.count({
-        where: {
-            user_id: userId,
-            category_id: {
-                not: null
-            },
-            categories: {
-                name: {
-                    not: 'Uncategorized'
-                }
+    const [recentTransactions, stats, recurringTransactions] = await Promise.all([
+        db.transactions.findMany({
+            where: { user_id: userId },
+            orderBy: { date: 'desc' },
+            take: 5,
+            include: {
+                categories: true,
+                merchants: true
             }
-        }
-    });
-
-    // Calculate percentage
-    const categorizedPercentage = totalTransactions > 0
-        ? (categorizedCount / totalTransactions) * 100
-        : 0;
-
-    // Get 6 most recent transactions
-    const recentTransactions = await db.transactions.findMany({
-        where: { user_id: userId },
-        include: {
-            categories: true,
-            merchants: true
-        },
-        orderBy: { date: 'desc' },
-        take: 6
-    });
-
-    const uncategorizedCount = totalTransactions - categorizedCount;
+        }),
+        db.transactions.aggregate({
+            where: { user_id: userId },
+            _count: {
+                id: true,
+                category_id: true
+            }
+        }),
+        db.recurringTransaction.findMany({
+            where: {
+                user_id: userId,
+                status: 'active'
+            },
+            orderBy: { next_expected_date: 'asc' }
+        })
+    ]);
 
     return {
-        stats: {
-            totalTransactions,
-            categorizedCount,
-            uncategorizedCount,
-            categorizedPercentage
-        },
+        recurringTransactions: recurringTransactions.map(t => ({
+            id: t.id,
+            name: t.name,
+            amount: Number(t.amount),
+            interval: t.interval,
+            status: t.status,
+            next_expected_date: t.next_expected_date,
+            merchant_id: t.merchant_id,
+            category_id: t.category_id
+        })),
         recentTransactions: recentTransactions.map(t => ({
             id: t.id,
             merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName || 'Unknown',
@@ -57,6 +49,12 @@ export const load: PageServerLoad = async ({ locals }) => {
             category: t.categories?.name || 'Uncategorized',
             categoryIcon: t.categories?.icon || null,
             date: t.date
-        }))
+        })),
+        stats: {
+            totalTransactions: stats._count.id,
+            categorizedCount: stats._count.category_id,
+            uncategorizedCount: stats._count.id - stats._count.category_id,
+            categorizedPercentage: stats._count.id > 0 ? (stats._count.category_id / stats._count.id) * 100 : 0
+        }
     };
 };

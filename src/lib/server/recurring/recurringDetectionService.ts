@@ -123,6 +123,10 @@ export class RecurringDetectionService {
             console.log(`[RecurringDetection] Filtered out ${removed} candidates with amount < €10`);
         }
         console.log(`[RecurringDetection] Final result: ${filtered.length} unique candidates`);
+
+        // Save to DB
+        await this.saveRecurringTransactions(userId, filtered);
+
         return filtered;
     }
 
@@ -649,6 +653,159 @@ export class RecurringDetectionService {
         }
 
         return nextDate;
+    }
+
+
+    private async saveRecurringTransactions(userId: number, candidates: RecurringCandidate[]) {
+        const highConfidence = candidates.filter(c => c.confidence >= 0.75);
+        console.log(`[RecurringDetection] Saving ${highConfidence.length} high-confidence candidates to DB...`);
+
+        for (const candidate of highConfidence) {
+            // 1. ALWAYS get merchant_id (find or create)
+            const merchantId = await this.findOrCreateMerchant(candidate);
+
+            // 2. Find existing recurring tx for this merchant
+            const existing = await db.recurringTransaction.findFirst({
+                where: {
+                    user_id: userId,
+                    merchant_id: merchantId,
+                    status: 'active'
+                }
+            });
+
+            if (existing) {
+                // 3. Update
+                console.log(`[RecurringDetection] Updating existing recurring tx for merchant ${merchantId}`);
+                await db.recurringTransaction.update({
+                    where: { id: existing.id },
+                    data: {
+                        amount: candidate.amount,
+                        interval: candidate.interval,
+                        next_expected_date: candidate.nextPaymentDate,
+                        updated_at: new Date()
+                    }
+                });
+
+                // 4. Link any new transactions
+                await db.transactions.updateMany({
+                    where: {
+                        id: { in: candidate.transactions.map(t => t.id) },
+                        recurring_transaction_id: null
+                    },
+                    data: { recurring_transaction_id: existing.id }
+                });
+
+            } else {
+                // 5. Create new
+                console.log(`[RecurringDetection] Creating new recurring tx for merchant ${merchantId}`);
+                const recurring = await db.recurringTransaction.create({
+                    data: {
+                        user_id: userId,
+                        name: candidate.name,
+                        amount: candidate.amount,
+                        interval: candidate.interval,
+                        merchant_id: merchantId,
+                        next_expected_date: candidate.nextPaymentDate,
+                        status: 'active'
+                    }
+                });
+
+                // 6. Link all transactions
+                await db.transactions.updateMany({
+                    where: { id: { in: candidate.transactions.map(t => t.id) } },
+                    data: {
+                        recurring_transaction_id: recurring.id,
+                        merchant_id: merchantId // Also update transaction's merchant!
+                    }
+                });
+            }
+        }
+    }
+
+    private async findOrCreateMerchant(candidate: RecurringCandidate): Promise<number> {
+        // Try to find existing merchant
+        if (candidate.merchantId) {
+            return candidate.merchantId;
+        }
+
+        // Extract clean merchant name
+        const cleanName = candidate.transactions[0].cleaned_merchant_name
+            || candidate.transactions[0].merchantName
+            || candidate.name;
+
+        // Fuzzy search existing merchants
+        const existingMerchant = await this.fuzzySearchMerchant(cleanName);
+
+        if (existingMerchant) {
+            return existingMerchant.id;
+        }
+
+        // Create new merchant
+        console.log(`[RecurringDetection] Creating new merchant: "${cleanName}"`);
+        const newMerchant = await db.merchants.create({
+            data: {
+                name: cleanName,
+                keywords: [cleanName.toLowerCase()],
+                ibans: [],
+                is_active: true,
+                is_potential_recurring: true,
+                notes: `Auto-created from recurring detection`,
+                updated_at: new Date()
+            }
+        });
+
+        return newMerchant.id;
+    }
+
+    private async fuzzySearchMerchant(name: string): Promise<merchants | null> {
+        const normalized = name.toLowerCase().trim();
+
+        // 1. Exact match
+        let merchant = await db.merchants.findFirst({
+            where: { name: { equals: normalized, mode: 'insensitive' } }
+        });
+
+        if (merchant) return merchant;
+
+        // 2. Keyword match
+        merchant = await db.merchants.findFirst({
+            where: {
+                keywords: { hasSome: [normalized] }
+            }
+        });
+
+        if (merchant) return merchant;
+
+        // 3. Fuzzy: Check if name contains any merchant name (or vice versa)
+        // Note: This might be slow if there are many merchants, but for now it's fine
+        const allMerchants = await db.merchants.findMany({
+            where: { is_active: true }
+        });
+
+        for (const m of allMerchants) {
+            const merchantNameLower = m.name.toLowerCase();
+            if (normalized.includes(merchantNameLower) || merchantNameLower.includes(normalized)) {
+                // If similarity is high enough
+                if (this.calculateSimilarity(normalized, merchantNameLower) > 0.7) {
+                    return m;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private calculateSimilarity(a: string, b: string): number {
+        // Simple token overlap similarity
+        const tokensA = new Set(a.split(/[\s-_]+/).filter(t => t.length > 2));
+        const tokensB = new Set(b.split(/[\s-_]+/).filter(t => t.length > 2));
+
+        if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+        const intersection = new Set([...tokensA].filter(x => tokensB.has(x)));
+        const union = new Set([...tokensA, ...tokensB]);
+
+        return intersection.size / union.size;
     }
 }
 

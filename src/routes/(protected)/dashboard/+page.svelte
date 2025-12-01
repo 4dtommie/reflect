@@ -6,6 +6,7 @@
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
+	import RecurringWidget from '$lib/components/RecurringWidget.svelte';
 	import { Clock, TrendingUp, PieChart, Target, PiggyBank, RefreshCw } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -65,15 +66,8 @@
 			/>
 		{/if}
 
-		{#if data.stats.totalTransactions > 0 && data.stats.categorizedCount > 0}
-			<DashboardWidget size="small" variant="placeholder">
-				<div class="flex w-full flex-col items-center justify-center text-center">
-					<RefreshCw size={48} class="mb-4 opacity-50" />
-					<h3 class="text-lg font-semibold opacity-50">Subscriptions</h3>
-					<p class="mb-4 text-sm opacity-50">Track your recurring payments</p>
-					<a href="/recurring/detect" class="btn btn-primary"> Detect subscriptions </a>
-				</div>
-			</DashboardWidget>
+		{#if data.stats.totalTransactions > 0}
+			<RecurringWidget recurringTransactions={data.recurringTransactions} />
 		{/if}
 
 		<PlaceholderWidget
