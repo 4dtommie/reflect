@@ -404,7 +404,7 @@
 			}
 
 			// Lowercase month name without year
-			labels.push(m.date.toLocaleDateString('en-US', { month: 'short' }).toLowerCase());
+			labels.push(m.date.toLocaleDateString('en-US', { month: 'short' }));
 		});
 
 		return {
@@ -442,234 +442,37 @@
 			const initialMin = Math.max(0, totalLabels - monthsToShow);
 			const initialMax = totalLabels - 1;
 
-			// Define year divider plugin
-			const yearDividerPlugin = {
-				id: 'yearDivider',
-				afterDraw: (chart: any) => {
-					const ctx = chart.ctx;
-					const chartArea = chart.chartArea;
-					const yearTransitions = chartDataValue.yearTransitions || [];
-
-					if (yearTransitions.length === 0) return;
-
-					const xScale = chart.scales.x;
-
-					yearTransitions.forEach((transitionIndex: number) => {
-						const x = xScale.getPixelForValue(transitionIndex);
-
-						if (x >= chartArea.left && x <= chartArea.right) {
-							ctx.save();
-							ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
-							ctx.lineWidth = 1;
-							ctx.setLineDash([5, 5]);
-							ctx.beginPath();
-							ctx.moveTo(x, chartArea.top);
-							ctx.lineTo(x, chartArea.bottom);
-							ctx.stroke();
-							ctx.restore();
-						}
-					});
-				}
-			};
-
-			// Define gradient fill plugin for both spending and income lines
-			const gradientFillPlugin = {
-				id: 'gradientFill',
-				beforeDatasetsDraw: (chart: any) => {
-					const ctx = chart.ctx;
-					const chartArea = chart.chartArea;
-
-					if (!chartArea) return;
-
-					// Handle spending dataset (purple-blue gradient)
-					const spendingDataset = chart.data.datasets[0];
-					if (spendingDataset && spendingDataset.fill) {
-						const spendingGradient = ctx.createLinearGradient(
-							chartArea.left, // x0 - same x
-							chartArea.top, // y0 - top (purple)
-							chartArea.left, // x1 - same x
-							chartArea.bottom // y1 - bottom (blue)
-						);
-
-						// Purple to blue gradient
-						spendingGradient.addColorStop(0, 'rgba(147, 51, 234, 0.3)'); // Purple at top
-						spendingGradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.25)'); // Indigo in middle
-						spendingGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)'); // Blue at bottom
-
-						spendingDataset.backgroundColor = spendingGradient;
-					}
-
-					// Handle income dataset (green-blue gradient)
-					const incomeDataset = chart.data.datasets[1];
-					if (incomeDataset && incomeDataset.fill) {
-						const incomeGradient = ctx.createLinearGradient(
-							chartArea.left, // x0 - same x
-							chartArea.top, // y0 - top (green)
-							chartArea.left, // x1 - same x
-							chartArea.bottom // y1 - bottom (blue)
-						);
-
-						// Green to blue gradient
-						incomeGradient.addColorStop(0, 'rgba(5, 150, 105, 0.3)'); // Emerald-600 at top
-						incomeGradient.addColorStop(0.5, 'rgba(14, 165, 233, 0.25)'); // Sky-500 in middle
-						incomeGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)'); // Blue-500 at bottom
-
-						incomeDataset.backgroundColor = incomeGradient;
-					}
-				}
-			};
-
-			// Define edge fade gradients plugin - draws only in chart area
-			const edgeFadePlugin = {
-				id: 'edgeFade',
-				afterDraw: (chart: any) => {
-					const ctx = chart.ctx;
-					const chartArea = chart.chartArea;
-					const xScale = chart.scales.x;
-
-					// Get current zoom/pan state
-					const minValue = xScale.min;
-					const maxValue = xScale.max;
-					const totalLabels = chartDataValue.labels.length;
-
-					// Calculate fade width
-					const fadeWidth = 64; // 16 * 4 = 64px
-
-					// Left fade - show if not at the beginning
-					if (minValue > 0) {
-						// Horizontal gradient: x changes, y stays the same
-						// createLinearGradient(x0, y0, x1, y1)
-						const y = chartArea.top; // Use same Y for both points
-						const gradientLeft = ctx.createLinearGradient(
-							chartArea.left, // x0 - left edge
-							y, // y0 - same y
-							chartArea.left + fadeWidth, // x1 - right edge of fade
-							y // y1 - same y (horizontal gradient)
-						);
-						gradientLeft.addColorStop(0, 'rgba(31, 41, 55, 0.08)'); // Very subtle at left
-						gradientLeft.addColorStop(1, 'rgba(31, 41, 55, 0)'); // Transparent at right
-
-						ctx.fillStyle = gradientLeft;
-						ctx.fillRect(
-							chartArea.left,
-							chartArea.top,
-							fadeWidth,
-							chartArea.bottom - chartArea.top
-						);
-					}
-
-					// Right fade - show if not at the end
-					if (maxValue < totalLabels - 1) {
-						// Horizontal gradient: x changes, y stays the same
-						// createLinearGradient(x0, y0, x1, y1)
-						const y = chartArea.top; // Use same Y for both points
-						const gradientRight = ctx.createLinearGradient(
-							chartArea.right - fadeWidth, // x0 - left edge of fade
-							y, // y0 - same y
-							chartArea.right, // x1 - right edge
-							y // y1 - same y (horizontal gradient)
-						);
-						gradientRight.addColorStop(0, 'rgba(31, 41, 55, 0)'); // Transparent at left
-						gradientRight.addColorStop(1, 'rgba(31, 41, 55, 0.08)'); // Very subtle at right
-
-						ctx.fillStyle = gradientRight;
-						ctx.fillRect(
-							chartArea.right - fadeWidth,
-							chartArea.top,
-							fadeWidth,
-							chartArea.bottom - chartArea.top
-						);
-					}
-				}
-			};
-
 			try {
 				console.log('Creating chart with data:', chartDataValue);
-				// Define and register year divider plugin
-				const yearDividerPlugin = {
-					id: 'yearDivider',
-					afterDraw: (chart: any) => {
-						const ctx = chart.ctx;
-						const chartArea = chart.chartArea;
-						const yearTransitions = (chart.data as any)._yearTransitions || [];
-
-						if (yearTransitions.length === 0) return;
-
-						const xScale = chart.scales.x;
-
-						yearTransitions.forEach((transitionIndex: number) => {
-							const x = xScale.getPixelForValue(transitionIndex);
-
-							if (x >= chartArea.left && x <= chartArea.right) {
-								ctx.save();
-								ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
-								ctx.lineWidth = 1;
-								ctx.setLineDash([5, 5]);
-								ctx.beginPath();
-								ctx.moveTo(x, chartArea.top);
-								ctx.lineTo(x, chartArea.bottom);
-								ctx.stroke();
-								ctx.restore();
-							}
-						});
-					}
-				};
-
-				// Register the plugins
-				Chart.register(yearDividerPlugin, gradientFillPlugin, edgeFadePlugin);
 
 				chartInstance = new Chart(canvas, {
-					type: 'line',
+					type: 'bar',
 					data: {
-						// No labels needed when using x/y coordinates
+						labels: chartDataValue.labels,
 						datasets: [
 							{
-								label: 'Monthly Spending',
-								data: chartDataValue.spending.map((value, index) => ({ x: index, y: value })),
-								borderColor: 'rgba(220, 38, 38, 1)', // red-600
-								backgroundColor: 'rgba(220, 38, 38, 0.05)', // Will be overridden by plugin
-								borderWidth: 1,
-								fill: true,
-								tension: 0.4,
-								pointRadius: 3,
-								pointHoverRadius: 5
-							},
-							{
 								label: 'Income',
-								data: chartDataValue.income.map((value, index) => ({ x: index, y: value })),
-								borderColor: 'rgba(5, 150, 105, 1)', // emerald-600
-								backgroundColor: 'rgba(5, 150, 105, 0.05)', // Will be overridden by plugin
+								data: chartDataValue.income,
+								backgroundColor: 'rgba(16, 185, 129, 0.8)',
+								borderColor: '#10B981',
 								borderWidth: 1,
-								fill: true,
-								tension: 0.4,
-								pointRadius: 3,
-								pointHoverRadius: 5
+								borderRadius: 4,
+								maxBarThickness: 40,
+								// @ts-ignore
+								categoryPercentage: 0.8,
+								barPercentage: 0.9
 							},
 							{
-								label: 'Avg Spending',
-								data: chartDataValue.spending.map((_, index) => ({
-									x: index,
-									y: chartDataValue.avgSpending
-								})),
-								borderColor: 'rgba(220, 38, 38, 1)', // red-600
+								label: 'Expenses',
+								data: chartDataValue.spending,
+								backgroundColor: 'rgba(244, 63, 94, 0.8)',
+								borderColor: '#F43F5E',
 								borderWidth: 1,
-								borderDash: [5, 5],
-								fill: false,
-								tension: 0,
-								pointRadius: 0
-							},
-							{
-								label: 'Avg Income',
-								data: chartDataValue.income.map((_, index) => ({
-									x: index,
-									y: chartDataValue.avgIncome
-								})),
-								borderColor: 'rgba(5, 150, 105, 1)', // emerald-600
-								borderWidth: 1,
-								borderDash: [5, 5],
-								fill: false,
-								tension: 0,
-								pointRadius: 0
+								borderRadius: 4,
+								maxBarThickness: 40,
+								// @ts-ignore
+								categoryPercentage: 0.8,
+								barPercentage: 0.9
 							}
 						]
 					},
@@ -679,9 +482,39 @@
 						layout: {
 							padding: 0
 						},
+						interaction: {
+							mode: 'index',
+							intersect: false
+						},
 						plugins: {
 							legend: {
-								display: false
+								display: true,
+								position: 'top',
+								labels: {
+									font: {
+										family:
+											"system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+									},
+									usePointStyle: true,
+									boxWidth: 8
+								}
+							},
+							tooltip: {
+								callbacks: {
+									label: function (context) {
+										let label = context.dataset.label || '';
+										if (label) {
+											label += ': ';
+										}
+										if (context.parsed.y !== null) {
+											label += new Intl.NumberFormat('en-US', {
+												style: 'currency',
+												currency: 'EUR'
+											}).format(context.parsed.y);
+										}
+										return label;
+									}
+								}
 							},
 							// @ts-ignore - zoom plugin options
 							zoom: {
@@ -690,11 +523,9 @@
 									mode: 'x',
 									threshold: 10,
 									onPan: function () {
-										// Force chart update after panning (triggers edgeFade plugin to redraw)
 										if (chartInstance) {
 											chartInstance.update('none');
 										}
-										// Hide hint on interaction
 										showHint = false;
 									}
 								},
@@ -708,11 +539,9 @@
 									},
 									mode: 'x',
 									onZoom: function () {
-										// Force chart update after zooming (triggers edgeFade plugin to redraw)
 										if (chartInstance) {
 											chartInstance.update('none');
 										}
-										// Hide hint on interaction
 										showHint = false;
 									}
 								}
@@ -720,59 +549,63 @@
 						},
 						scales: {
 							y: {
-								beginAtZero: false,
-								min: chartDataValue.yAxisMin,
-								max: chartDataValue.yAxisMax,
+								beginAtZero: true,
+								grid: {
+									color: 'rgba(0, 0, 0, 0.05)',
+									// @ts-ignore
+									borderDash: [5, 5]
+								},
 								ticks: {
 									callback: function (value: any) {
-										// Format currency without decimals
-										return '€' + Math.round(value).toLocaleString();
+										return new Intl.NumberFormat('en-US', {
+											style: 'currency',
+											currency: 'EUR',
+											maximumFractionDigits: 0
+										}).format(value);
+									},
+									font: {
+										family:
+											"system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 									}
+								},
+								border: {
+									display: false
 								}
 							},
 							x: {
-								type: 'linear',
-								position: 'bottom',
 								grid: {
 									display: false
 								},
-								min: initialMin, // Initial view - last 9 months
+								min: initialMin,
 								max: initialMax,
 								ticks: {
-									stepSize: 1,
-									callback: function (value: any) {
-										const index = Math.round(value);
-										const labels = chartDataValue.labels;
-										if (labels && labels[index] !== undefined) {
-											return labels[index];
-										}
-										return '';
+									font: {
+										family:
+											"system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 									}
+								},
+								border: {
+									display: false
 								}
 							}
 						},
 						animation: {
-							duration: 0
+							duration: 500
 						}
 					}
 				});
+
 				// Set initial zoom to show last 9 months after chart is created
 				setTimeout(() => {
 					if (chartInstance) {
 						try {
-							// For CategoryScale, use resetZoom and then zoom to specific range
 							const chart = chartInstance as any;
 							if (chart.zoomScale) {
-								// Reset first
-								chart.resetZoom();
-								// Then zoom to show last 9 months
-								setTimeout(() => {
-									chart.zoomScale('x', {
-										min: initialMin,
-										max: initialMax
-									});
-									chart.update('none'); // Update without animation
-								}, 50);
+								chart.zoomScale('x', {
+									min: initialMin,
+									max: initialMax
+								});
+								chart.update('none');
 							}
 						} catch (e) {
 							console.warn('Could not set initial zoom:', e);
@@ -780,12 +613,7 @@
 					}
 				}, 300);
 
-				console.log('Chart created successfully', {
-					labels: chartDataValue.labels.length,
-					spending: chartDataValue.spending.length,
-					income: chartDataValue.income.length,
-					initialView: { min: initialMin, max: initialMax }
-				});
+				console.log('Chart created successfully');
 			} catch (error) {
 				console.error('Error creating chart:', error);
 				chartInstance = null;
@@ -980,9 +808,7 @@
 							<div class="flex flex-col gap-6">
 								{#each monthGroup.days as [dayKey, transactions]}
 									<!-- Day section -->
-									<div
-										class="flex flex-col overflow-hidden rounded-lg"
-									>
+									<div class="flex flex-col overflow-hidden rounded-lg">
 										<!-- Date header -->
 										<div class="py-2 pt-4">
 											<span class="text-sm font-medium">
@@ -995,17 +821,11 @@
 												{@const CategoryIcon = transaction.category
 													? getCategoryIcon(transaction.category.icon)
 													: null}
-												<div
-													class="hover:bg-base-50 flex items-center justify-between gap-4 py-3"
-												>
+												<div class="hover:bg-base-50 flex items-center justify-between gap-4 py-3">
 													<div class="flex min-w-0 flex-1 items-center gap-3">
 														<div class="flex-shrink-0">
 															{#if CategoryIcon}
-																<CategoryIcon
-																	size={20}
-																	strokeWidth={1}
-																	style="color: black ;"
-																/>
+																<CategoryIcon size={20} strokeWidth={1} style="color: black ;" />
 															{:else}
 																<HelpCircle size={20} class="text-base-content/40" />
 															{/if}
@@ -1020,7 +840,7 @@
 															size="medium"
 															showDecimals={true}
 															isDebit={transaction.is_debit}
-															hideEuro = {true}
+															hideEuro={true}
 														/>
 													</div>
 												</div>

@@ -53,7 +53,7 @@
 								<Calendar size={18} />
 							</div>
 							<div>
-								<p class="line-clamp-1 font-medium">{tx.name}</p>
+								<p class="line-clamp-1 max-w-[120px] font-medium">{tx.name}</p>
 								<p class="text-xs text-base-content/60">
 									{formatDate(tx.next_expected_date)} • {getDaysUntil(tx.next_expected_date)}
 								</p>
