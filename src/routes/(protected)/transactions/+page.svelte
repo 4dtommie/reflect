@@ -47,7 +47,7 @@
 		});
 	}
 
-	let { data }: { data: { transactions: any[]; stats: any | null } } = $props();
+	let { data }: { data: { transactions: any[]; stats: any | null; categories: any[] } } = $props();
 	let chartCanvas: HTMLCanvasElement | null = $state(null);
 	let chartInstance: Chart | null = $state(null);
 	let chartContainer: HTMLDivElement | null = $state(null);
@@ -56,6 +56,29 @@
 	let showDeleteConfirm = $state(false);
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
+
+	// Filters
+	let selectedCategory = $state<string>('all');
+	let showUncategorizedOnly = $state(false);
+
+	// Calculate active categories with counts
+	const activeCategories = $derived(() => {
+		const categoryCounts = new Map<string, number>();
+
+		for (const t of data.transactions) {
+			if (t.category?.id) {
+				categoryCounts.set(t.category.id, (categoryCounts.get(t.category.id) || 0) + 1);
+			}
+		}
+
+		return data.categories
+			.filter((c) => categoryCounts.has(c.id))
+			.map((c) => ({
+				...c,
+				count: categoryCounts.get(c.id) || 0
+			}))
+			.sort((a, b) => b.count - a.count); // Sort by count descending
+	});
 
 	function formatDate(date: Date | string): string {
 		const d = typeof date === 'string' ? new Date(date) : date;
@@ -68,15 +91,6 @@
 		return new Intl.NumberFormat('en-US', {
 			style: 'currency',
 			currency: 'EUR'
-		}).format(amount);
-	}
-
-	function formatAmountNoDecimals(amount: number): string {
-		return new Intl.NumberFormat('en-US', {
-			style: 'currency',
-			currency: 'EUR',
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0
 		}).format(amount);
 	}
 
@@ -122,7 +136,17 @@
 	const groupedTransactions = $derived(() => {
 		const dayGroups: Map<string, typeof data.transactions> = new Map();
 
-		for (const transaction of data.transactions) {
+		const filtered = data.transactions.filter((t) => {
+			if (showUncategorizedOnly) {
+				return !t.category || t.category.name === 'Niet gecategoriseerd';
+			}
+			if (selectedCategory !== 'all') {
+				return t.category?.id === selectedCategory;
+			}
+			return true;
+		});
+
+		for (const transaction of filtered) {
 			const dayKey = getMonthDayKey(transaction.date);
 
 			if (!dayGroups.has(dayKey)) {
@@ -160,12 +184,14 @@
 				const spending =
 					typeof m.spending === 'number' ? m.spending : typeof m.total === 'number' ? m.total : 0;
 				const income = typeof m.income === 'number' ? m.income : 0;
+				const savings = typeof m.savings === 'number' ? m.savings : 0;
 
 				return {
 					monthKey: `${year}-${month}`,
 					total: spending, // For backward compatibility
 					spending: Number(spending),
 					income: Number(income),
+					savings: Number(savings),
 					date,
 					year,
 					month
@@ -183,81 +209,6 @@
 			monthlyData,
 			averageMonthlySpending: data.stats.averageMonthlySpending || avgSpending,
 			averageMonthlyIncome: avgIncome
-		};
-	});
-
-	// Get last full month vs last year same month comparison
-	const lastFullMonthComparison = $derived(() => {
-		if (!data.stats || !monthlyStats().monthlyData.length) {
-			return {
-				month: null,
-				year: null,
-				monthSpending: 0,
-				lastYearMonthSpending: 0,
-				difference: 0,
-				percentageChange: 0,
-				averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
-			};
-		}
-
-		const now = new Date();
-		const currentYear = now.getFullYear();
-		const currentMonth = now.getMonth();
-
-		// Find the last full month (not the current month if we're still in it)
-		// Get all months sorted by date (newest first)
-		const sortedMonths = [...monthlyStats().monthlyData].sort(
-			(a: any, b: any) => b.date.getTime() - a.date.getTime()
-		);
-
-		// Find the last complete month (exclude current month if we're still in it)
-		let lastFullMonth = sortedMonths.find((m: any) => {
-			// If the month is before the current month, it's complete
-			if (m.year < currentYear) return true;
-			if (m.year === currentYear && m.month < currentMonth) return true;
-			return false;
-		});
-
-		// If no month found before current, use the most recent month in data
-		if (!lastFullMonth && sortedMonths.length > 0) {
-			lastFullMonth = sortedMonths[0];
-		}
-
-		if (!lastFullMonth) {
-			return {
-				month: null,
-				year: null,
-				monthSpending: 0,
-				lastYearMonthSpending: 0,
-				difference: 0,
-				percentageChange: 0,
-				averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
-			};
-		}
-
-		const monthYear = lastFullMonth.year;
-		const monthMonth = lastFullMonth.month;
-		const monthSpending = lastFullMonth.spending || 0;
-
-		// Find last year same month spending
-		const lastYearMonthData = monthlyStats().monthlyData.find(
-			(m: any) => m.year === monthYear - 1 && m.month === monthMonth
-		);
-		const lastYearMonthSpending = lastYearMonthData?.spending || 0;
-
-		// Calculate difference and percentage change
-		const difference = monthSpending - lastYearMonthSpending;
-		const percentageChange =
-			lastYearMonthSpending > 0 ? (difference / lastYearMonthSpending) * 100 : 0;
-
-		return {
-			month: monthMonth,
-			year: monthYear,
-			monthSpending,
-			lastYearMonthSpending,
-			difference,
-			percentageChange,
-			averageMonthlySpending: monthlyStats().averageMonthlySpending || 0
 		};
 	});
 
@@ -320,9 +271,12 @@
 
 		const spending = months.map((m: any) => m.spending || 0);
 		const income = months.map((m: any) => m.income || 0);
+		const savings = months.map((m: any) => m.savings || 0);
 
-		// Calculate min and max values for Y-axis, excluding extremes
-		const allValues = [...spending, ...income].filter((v) => v !== null && v !== undefined);
+		// Calculate min and max values for Y-axis
+		// For max, we need to consider the stacked height of spending + savings
+		const totalOutflow = spending.map((v, i) => v + savings[i]);
+		const allValues = [...totalOutflow, ...income].filter((v) => v !== null && v !== undefined);
 		const avgValues = [
 			monthlyStats().averageMonthlySpending,
 			monthlyStats().averageMonthlyIncome
@@ -412,6 +366,7 @@
 			yearTransitions, // Store transition points for visual dividers
 			spending,
 			income,
+			savings,
 			avgSpending: monthlyStats().averageMonthlySpending,
 			avgIncome: monthlyStats().averageMonthlyIncome,
 			yAxisMin,
@@ -460,7 +415,8 @@
 								maxBarThickness: 40,
 								// @ts-ignore
 								categoryPercentage: 0.8,
-								barPercentage: 0.9
+								barPercentage: 0.9,
+								stack: 'income'
 							},
 							{
 								label: 'Expenses',
@@ -472,7 +428,21 @@
 								maxBarThickness: 40,
 								// @ts-ignore
 								categoryPercentage: 0.8,
-								barPercentage: 0.9
+								barPercentage: 0.9,
+								stack: 'outflow'
+							},
+							{
+								label: 'Savings',
+								data: chartDataValue.savings,
+								backgroundColor: 'rgba(250, 204, 21, 0.8)', // Yellow-400
+								borderColor: '#FACC15',
+								borderWidth: 1,
+								borderRadius: 4,
+								maxBarThickness: 40,
+								// @ts-ignore
+								categoryPercentage: 0.8,
+								barPercentage: 0.9,
+								stack: 'outflow'
 							}
 						]
 					},
@@ -549,6 +519,7 @@
 						},
 						scales: {
 							y: {
+								stacked: true,
 								beginAtZero: true,
 								grid: {
 									color: 'rgba(0, 0, 0, 0.05)',
@@ -573,6 +544,7 @@
 								}
 							},
 							x: {
+								stacked: true,
 								grid: {
 									display: false
 								},
@@ -672,74 +644,10 @@
 			{#if data.stats}
 				<TransactionStatsWidget
 					totalTransactions={data.stats.totalTransactions}
-					categorizedCount={data.stats.categorizedCount}
+					uncategorizedCount={data.stats.totalTransactions - data.stats.categorizedCount}
 					categorizedPercentage={data.stats.categorizedPercentage}
+					topUncategorizedMerchants={data.stats.topUncategorizedMerchants}
 				/>
-
-				<!-- Last Full Month vs Last Year Widget -->
-				{@const comparison = lastFullMonthComparison()}
-				{#if comparison.month !== null}
-					{@const monthDate = new Date(comparison.year, comparison.month, 1)}
-					{@const lastYearDate = new Date(comparison.year - 1, comparison.month, 1)}
-					<DashboardWidget size="small">
-						<div class="flex h-full flex-col justify-center">
-							<div class="grid grid-cols-2 gap-4">
-								<!-- This Month -->
-								<div class="flex flex-col">
-									<div class="mb-1 text-xs text-base-content/70">
-										{monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-									</div>
-									<div class="text-2xl font-bold">
-										{formatAmountNoDecimals(comparison.monthSpending)}
-									</div>
-								</div>
-
-								<!-- Same Month Last Year -->
-								<div class="flex flex-col">
-									<div class="mb-1 text-xs text-base-content/70">
-										{lastYearDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-									</div>
-									<div class="text-2xl font-bold">
-										{formatAmountNoDecimals(comparison.lastYearMonthSpending)}
-									</div>
-								</div>
-							</div>
-
-							<div class="divider my-3"></div>
-							<div class="grid grid-cols-2 gap-4">
-								<!-- Difference -->
-								{#if comparison.lastYearMonthSpending > 0}
-									<div class="text-center">
-										<div class="mb-1 text-xs text-base-content/70">Difference</div>
-										<div
-											class="text-lg font-semibold {comparison.difference >= 0
-												? 'text-error'
-												: 'text-success'}"
-										>
-											{comparison.difference >= 0 ? '+' : ''}
-											{formatAmountNoDecimals(comparison.difference)}
-										</div>
-										<div
-											class="text-xs {comparison.difference >= 0 ? 'text-error' : 'text-success'}"
-										>
-											({comparison.difference >= 0 ? '+' : ''}
-											{comparison.percentageChange.toFixed(1)}%)
-										</div>
-									</div>
-								{/if}
-
-								<!-- Average -->
-								<div class="text-center">
-									<div class="mb-1 text-xs text-base-content/70">Average</div>
-									<div class="text-lg font-semibold">
-										{formatAmountNoDecimals(comparison.averageMonthlySpending)}
-									</div>
-									<div class="text-xs text-base-content/70">All months</div>
-								</div>
-							</div>
-						</div>
-					</DashboardWidget>
-				{/if}
 			{/if}
 		</div>
 
@@ -790,78 +698,133 @@
 				</DashboardWidget>
 			{/if}
 
-			<!-- Transactions by Month -->
-			{#if data.transactions.length === 0}
-				<DashboardWidget size="wide" enableHover={false}>
-					<p>No transactions found.</p>
-				</DashboardWidget>
-			{:else}
-				<!-- Group by month - each month in its own widget -->
-				{#each transactionsByMonth() as monthGroup}
-					<DashboardWidget
-						size="wide"
-						enableHover={false}
-						title={monthGroup.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-					>
-						<div class="flex h-full flex-col justify-start">
-							<!-- Day groups within month -->
-							<div class="flex flex-col gap-6">
-								{#each monthGroup.days as [dayKey, transactions]}
-									<!-- Day section -->
-									<div class="flex flex-col overflow-hidden rounded-lg">
-										<!-- Date header -->
-										<div class="py-2 pt-4">
-											<span class="text-sm font-medium">
-												{formatDate(transactions[0].date)}
+			<!-- Transaction List Snippet -->
+			{#snippet transactionList(days: any[])}
+				<div class="flex flex-col gap-6 border-l-2 border-base-200/50 pl-2">
+					{#each days as [dayKey, transactions]}
+						<!-- Day section -->
+						<div class="flex flex-col overflow-hidden rounded-lg">
+							<!-- Date header -->
+							<div class="py-2 pt-0">
+								<span class="text-sm font-medium opacity-70">
+									{formatDate(transactions[0].date)}
+								</span>
+							</div>
+							<!-- Transactions list -->
+							<div class="divide-y divide-base-200">
+								{#each transactions as transaction}
+									{@const CategoryIcon = transaction.category
+										? getCategoryIcon(transaction.category.icon)
+										: null}
+									<div
+										class="-mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-2 transition-colors hover:bg-base-100"
+									>
+										<div class="flex min-w-0 flex-1 items-center gap-3">
+											<div class="flex-shrink-0">
+												{#if CategoryIcon}
+													<CategoryIcon size={18} strokeWidth={1.5} class="text-primary" />
+												{:else}
+													<HelpCircle size={18} class="text-base-content/30" />
+												{/if}
+											</div>
+											<span class="truncate text-sm font-normal" title={transaction.merchantName}>
+												{transaction.merchant?.name ?? transaction.merchantName}
 											</span>
 										</div>
-										<!-- Transactions list -->
-										<div class="divide-y divide-base-200">
-											{#each transactions as transaction}
-												{@const CategoryIcon = transaction.category
-													? getCategoryIcon(transaction.category.icon)
-													: null}
-												<div class="hover:bg-base-50 flex items-center justify-between gap-4 py-3">
-													<div class="flex min-w-0 flex-1 items-center gap-3">
-														<div class="flex-shrink-0">
-															{#if CategoryIcon}
-																<CategoryIcon size={20} strokeWidth={1} style="color: black ;" />
-															{:else}
-																<HelpCircle size={20} class="text-base-content/40" />
-															{/if}
-														</div>
-														<span class="truncate font-normal" title={transaction.merchantName}>
-															{transaction.merchant?.name ?? transaction.merchantName}
-														</span>
-													</div>
-													<div class="flex-shrink-0">
-														<Amount
-															value={transaction.amount}
-															size="medium"
-															showDecimals={true}
-															isDebit={transaction.is_debit}
-															hideEuro={true}
-														/>
-													</div>
-												</div>
-											{/each}
+										<div class="flex-shrink-0">
+											<Amount
+												value={transaction.amount}
+												size="small"
+												showDecimals={true}
+												isDebit={transaction.is_debit}
+												hideEuro={true}
+											/>
 										</div>
 									</div>
 								{/each}
 							</div>
 						</div>
+					{/each}
+				</div>
+			{/snippet}
+
+			<!-- First Widget: Filters + First Month -->
+			<DashboardWidget size="wide" enableHover={false}>
+				<!-- Header with Filters -->
+				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+					<h2 class="card-title">Transactions</h2>
+
+					{#if data.transactions.length > 0}
+						<div class="flex items-center gap-4">
+							<select
+								class="select-bordered select w-48 select-sm"
+								bind:value={selectedCategory}
+								disabled={showUncategorizedOnly}
+							>
+								<option value="all">All Categories</option>
+								{#each activeCategories() as category}
+									<option value={category.id}>{category.name} ({category.count})</option>
+								{/each}
+							</select>
+
+							<label
+								class="label cursor-pointer gap-2 rounded-lg border border-base-200 px-2 py-1 transition-colors hover:bg-base-200/50"
+							>
+								<span class="label-text text-sm">Uncategorized only</span>
+								<input
+									type="checkbox"
+									class="toggle toggle-sm toggle-warning"
+									bind:checked={showUncategorizedOnly}
+								/>
+							</label>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Content -->
+				{#if data.transactions.length === 0}
+					<div class="py-8 text-center opacity-70">
+						<p>No transactions found.</p>
+					</div>
+				{:else if transactionsByMonth().length === 0}
+					<div class="py-8 text-center opacity-70">
+						<p>No transactions match your filters.</p>
+					</div>
+				{:else}
+					{@const firstMonth = transactionsByMonth()[0]}
+					<div class="flex flex-col">
+						<!-- Month Header -->
+						<h3 class="mb-4 text-lg font-bold opacity-50">
+							{firstMonth.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+						</h3>
+						{@render transactionList(firstMonth.days)}
+					</div>
+				{/if}
+			</DashboardWidget>
+
+			<!-- Subsequent Widgets -->
+			{#if transactionsByMonth().length > 1}
+				{#each transactionsByMonth().slice(1) as monthGroup}
+					<DashboardWidget
+						size="wide"
+						enableHover={false}
+						title={monthGroup.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+					>
+						{@render transactionList(monthGroup.days)}
 					</DashboardWidget>
 				{/each}
+			{/if}
 
-				<!-- Delete All Transactions Button -->
+			<!-- Delete All Transactions Button -->
+			{#if data.transactions.length > 0}
 				<DashboardWidget size="small" enableHover={false}>
 					<div class="flex justify-end">
 						<button
-							class="btn btn-outline btn-error"
+							class="btn btn-outline btn-sm btn-error"
 							onclick={() => (showDeleteConfirm = true)}
 							disabled={deleting}
 						>
-							<Trash2 size={20} />
+							<Trash2 size={16} />
 							Delete all transactions
 						</button>
 					</div>

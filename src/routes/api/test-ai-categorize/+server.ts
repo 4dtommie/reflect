@@ -223,10 +223,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw err; // Re-throw SvelteKit errors
 		}
 
-		throw error(500, {
+		return json({
 			message: 'Failed to test AI categorization',
 			details: err.message || 'Unknown error'
-		});
+		}, { status: 500 });
 	}
 };
 

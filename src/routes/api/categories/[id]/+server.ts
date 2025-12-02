@@ -96,10 +96,10 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		// Validate request body
 		const validationResult = CategoryUpdateSchema.safeParse(body);
 		if (!validationResult.success) {
-			throw error(400, {
+			return json({
 				message: 'Validation failed',
 				errors: validationResult.error.errors
-			});
+			}, { status: 400 });
 		}
 
 		const data = validationResult.data;
@@ -191,9 +191,9 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 
 		const responseCategory = updatedCategory
 			? {
-					...updatedCategory,
-					keywords: updatedCategory.category_keywords.map((ck) => ck.keyword)
-				}
+				...updatedCategory,
+				keywords: updatedCategory.category_keywords.map((ck) => ck.keyword)
+			}
 			: null;
 
 		return json({
@@ -272,10 +272,10 @@ export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 		let reassignedCount = 0;
 		if (transactionCount > 0) {
 			if (reassignToCategoryId === null) {
-				throw error(400, {
+				return json({
 					message: 'Cannot delete category with transactions',
 					transactionCount
-				});
+				}, { status: 400 });
 			}
 
 			// Verify reassign category exists and is accessible

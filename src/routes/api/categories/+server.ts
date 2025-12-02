@@ -61,10 +61,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		// Validate request body
 		const validationResult = CategoryCreateSchema.safeParse(body);
 		if (!validationResult.success) {
-			throw error(400, {
+			return json({
 				message: 'Validation failed',
 				errors: validationResult.error.errors
-			});
+			}, { status: 400 });
 		}
 
 		const data = validationResult.data;
@@ -110,9 +110,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		const responseCategory = categoryWithKeywords
 			? {
-					...categoryWithKeywords,
-					keywords: categoryWithKeywords.category_keywords.map((ck) => ck.keyword)
-				}
+				...categoryWithKeywords,
+				keywords: categoryWithKeywords.category_keywords.map((ck) => ck.keyword)
+			}
 			: { ...category, keywords: [] };
 
 		return json({

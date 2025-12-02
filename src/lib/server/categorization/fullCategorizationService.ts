@@ -510,6 +510,7 @@ export async function categorizeAllTransactions(
 			uncategorizedCount: 0,
 			keywordMatched: 0,
 			ibanMatched: 0,
+			merchantNameMatched: 0,
 			aiMatched: 0,
 			keywordsAdded: 0,
 			message: `Iteration ${iteration}`,
@@ -751,6 +752,7 @@ export async function categorizeAllTransactions(
 						keywordsAdded: 0,
 						message: `Processing AI batch ${batchNumber} (${uncategorizedForBatch.length} remaining)`,
 						matchReasons,
+						merchantNameMatched: merchantNameMatched,
 						aiProgress: {
 							currentBatch: batchNumber,
 							totalBatches: totalBatchesEstimate,
@@ -867,10 +869,10 @@ export async function categorizeAllTransactions(
 						const stillUncategorized = currentRemaining.filter(t => currentUncategorizedIds.has(t.id));
 
 						// Also include transactions from current batch that AI couldn't categorize
-						// Create map of batch transactions for lookup
-						const batchTransactionMap = new Map(batch.map(t => [t.id, t]));
+						// Create map of batch transactions for lookup - use currentRemaining to get original TransactionForMatching objects
+						const currentRemainingMap = new Map(currentRemaining.map(t => [t.id, t]));
 						const aiFailedFromBatch = batchResult.invalidResults
-							.map(r => batchTransactionMap.get(r.transactionId))
+							.map(r => currentRemainingMap.get(r.transactionId))
 							.filter((t): t is TransactionForMatching => t !== undefined && currentUncategorizedIds.has(t.id));
 
 						// Combine for re-matching - only include transactions that are still uncategorized
@@ -1159,6 +1161,7 @@ export async function categorizeAllTransactions(
 		totalCategorized,
 		keywordMatches: totalKeywordMatches,
 		ibanMatches: totalIBANMatches,
+		vectorMatches: 0,
 		merchantNameMatches: totalMerchantNameMatches,
 		merchantNameReRunMatches: totalMerchantNameReRunMatches,
 		aiMatches: totalAIMatches,

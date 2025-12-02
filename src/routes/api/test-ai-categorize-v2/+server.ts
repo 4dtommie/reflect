@@ -19,37 +19,37 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		throw error(401, 'Not authenticated');
 	}
 
-		// Check if at least one provider is available
-		const openaiAvailable = isAIAvailable();
-		const geminiAvailable = isGeminiAvailable();
-		
-		console.log(`🔍 Provider availability check:`, {
-			openaiAvailable,
-			geminiAvailable,
-			openaiApiKeySet: !!process.env.OPENAI_API_KEY,
-			geminiApiKeySet: !!process.env.GEMINI_API_KEY
-		});
-		
-		if (!openaiAvailable && !geminiAvailable) {
-			return json({
-				success: false,
-				results: [],
-				errors: [],
-				error: 'No AI provider is configured. Please set OPENAI_API_KEY or GEMINI_API_KEY environment variable in your .env file.',
-				details: 'Set at least one API key to enable AI categorization'
-			}, { status: 400 });
-		}
+	// Check if at least one provider is available
+	const openaiAvailable = isAIAvailable();
+	const geminiAvailable = isGeminiAvailable();
+
+	console.log(`🔍 Provider availability check:`, {
+		openaiAvailable,
+		geminiAvailable,
+		openaiApiKeySet: !!process.env.OPENAI_API_KEY,
+		geminiApiKeySet: !!process.env.GEMINI_API_KEY
+	});
+
+	if (!openaiAvailable && !geminiAvailable) {
+		return json({
+			success: false,
+			results: [],
+			errors: [],
+			error: 'No AI provider is configured. Please set OPENAI_API_KEY or GEMINI_API_KEY environment variable in your .env file.',
+			details: 'Set at least one API key to enable AI categorization'
+		}, { status: 400 });
+	}
 
 	const userId = locals.user.id;
 
 	try {
 		const body = await request.json();
-		const { 
-			transactionCount, 
+		const {
+			transactionCount,
 			openaiModel,
 			geminiModel,
-			temperature, 
-			maxTokens, 
+			temperature,
+			maxTokens,
 			includeReasoning,
 			reasoningEffort,
 			verbosity,
@@ -116,8 +116,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		// Load categories and create prompt for display (using same settings as actual categorization)
 		const categories = await loadCategoriesForAI(userId);
 		const prompt = createCategorizationPrompt(
-			categories, 
-			transactionsForAI, 
+			categories,
+			transactionsForAI,
 			includeReasoning ?? true,
 			enableMerchantNameCleaning ?? false,
 			useCategoryNames ?? false
@@ -132,7 +132,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		// Run both providers in parallel if both are available
 		const [openaiResult, geminiResult] = await Promise.allSettled([
-			openaiAvailable 
+			openaiAvailable
 				? (async () => {
 					openaiStartTime = Date.now();
 					const result = await categorizeBatchWithAI(userId, transactionsForAI, openaiModel || aiConfig.model, {
@@ -189,7 +189,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		// Use the first available result (or OpenAI if both available)
 		const batchResult = openaiBatchResult || geminiBatchResult;
-		
+
 		if (!batchResult) {
 			return json({
 				success: false,
@@ -224,9 +224,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		}
 
 		// Create a map of transaction IDs to original data
-		const transactionDataMap = new Map<number, { 
-			merchantName: string; 
-			description: string; 
+		const transactionDataMap = new Map<number, {
+			merchantName: string;
+			description: string;
 			amount: number;
 			date: string;
 		}>();
@@ -263,7 +263,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		// Calculate total time taken
 		const totalTimeTaken = Date.now() - startTime;
-		const providerTimeTaken = openaiBatchResult 
+		const providerTimeTaken = openaiBatchResult
 			? (openaiEndTime > 0 ? openaiEndTime - openaiStartTime : totalTimeTaken)
 			: (geminiEndTime > 0 ? geminiEndTime - geminiStartTime : totalTimeTaken);
 
@@ -285,7 +285,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			hasGeminiResult: !!geminiBatchResult,
 			willCreateComparison: !!(openaiBatchResult && geminiBatchResult)
 		});
-		
+
 		if (openaiBatchResult && geminiBatchResult) {
 			// Map Gemini results with category names
 			const geminiResultsWithNames = geminiBatchResult.results.map(result => {
@@ -294,7 +294,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 				// Don't use "Category X" format - if originalCategoryName is "Category X", ignore it
 				const originalCatName = (result as any).originalCategoryName;
 				const categoryName = originalCatName && !originalCatName.match(/^Category\s+\d+$/i)
-					? originalCatName 
+					? originalCatName
 					: (result.categoryId ? categoryMap.get(result.categoryId) || null : null);
 				return {
 					...result,
@@ -335,10 +335,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw err; // Re-throw SvelteKit errors
 		}
 
-		throw error(500, {
+		return json({
 			message: 'Failed to test AI categorization',
 			details: err.message || 'Unknown error'
-		});
+		}, { status: 500 });
 	}
 };
 

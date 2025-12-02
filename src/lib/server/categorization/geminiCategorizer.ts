@@ -5,9 +5,9 @@
  * Similar interface to OpenAI categorizer for easy comparison.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { geminiConfig, isGeminiAvailable, systemPrompt } from './config';
-import { 
+import {
 	createCategorizationPrompt,
 	loadCategoriesForAI,
 	type TransactionForAI,
@@ -31,10 +31,10 @@ async function retryWithBackoff<T>(
 			return await fn();
 		} catch (error: any) {
 			// Check if it's a rate limit error (429) or server error (5xx)
-			const isRetryable = error?.status === 429 || 
-			                    (error?.status >= 500 && error?.status < 600) ||
-			                    error?.code === 'ECONNRESET' ||
-			                    error?.code === 'ETIMEDOUT';
+			const isRetryable = error?.status === 429 ||
+				(error?.status >= 500 && error?.status < 600) ||
+				error?.code === 'ECONNRESET' ||
+				error?.code === 'ETIMEDOUT';
 
 			if (!isRetryable || attempt === maxRetries - 1) {
 				throw error; // Don't retry non-retryable errors or on last attempt
@@ -98,39 +98,39 @@ export async function categorizeBatchWithGemini(
 		// Build generation config
 		// For Gemini 3 Pro, increase max tokens since it uses thinking tokens
 		const defaultMaxTokens = isGemini3Pro ? 4000 : (options?.maxTokens || geminiConfig.maxTokens);
-		
+
 		const generationConfig: any = {
 			// For Gemini 3 Pro, use default temperature of 1.0 (recommended)
 			// For other models, use the configured temperature
-			temperature: isGemini3Pro 
-				? 1.0 
-				: (options?.temperature !== undefined 
-					? options.temperature 
+			temperature: isGemini3Pro
+				? 1.0
+				: (options?.temperature !== undefined
+					? options.temperature
 					: geminiConfig.temperature),
 			maxOutputTokens: options?.maxTokens || defaultMaxTokens,
 			responseMimeType: 'application/json' // Force JSON response
 		};
 
 		// Get the model
-		const model = genAI.getGenerativeModel({ 
+		const model = genAI.getGenerativeModel({
 			model: modelToUse,
 			generationConfig: isGemini3Pro ? undefined : generationConfig, // Don't set thinkingConfig in model config for Gemini 3 Pro
 			safetySettings: [
 				{
-					category: 'HARM_CATEGORY_HARASSMENT',
-					threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+					category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+					threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
 				},
 				{
-					category: 'HARM_CATEGORY_HATE_SPEECH',
-					threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+					category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+					threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
 				},
 				{
-					category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-					threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+					category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+					threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
 				},
 				{
-					category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-					threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+					category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+					threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
 				}
 			]
 		});
@@ -149,7 +149,7 @@ export async function categorizeBatchWithGemini(
 
 		// For Gemini 3 Pro, pass thinkingConfig in generateContent call
 		// For other models, use the generationConfig from model initialization
-		const generateContentOptions = isGemini3Pro 
+		const generateContentOptions = isGemini3Pro
 			? {
 				generationConfig: {
 					...generationConfig,
@@ -163,14 +163,14 @@ export async function categorizeBatchWithGemini(
 
 		// Call Gemini API with retry logic
 		const response = await retryWithBackoff(
-			() => model.generateContent(fullPrompt, generateContentOptions),
+			() => model.generateContent(fullPrompt, generateContentOptions as any),
 			3, // maxRetries
 			1000 // retryDelay
 		);
 
 		// Parse response - try multiple methods to get text
 		let responseText: string = '';
-		
+
 		// Method 1: Try the standard text() method
 		try {
 			responseText = response.response.text();
@@ -188,7 +188,7 @@ export async function categorizeBatchWithGemini(
 						.filter((part: any) => part.text)
 						.map((part: any) => part.text)
 						.join('');
-					
+
 					if (textParts && textParts.trim().length > 0) {
 						responseText = textParts;
 						console.log('✅ Extracted text from candidate content parts');
@@ -205,7 +205,7 @@ export async function categorizeBatchWithGemini(
 				const finishReason = candidate.finishReason;
 				const safetyRatings = candidate.safetyRatings;
 				const content = candidate.content;
-				
+
 				console.error('❌ Gemini response has no text content:', {
 					model: modelToUse,
 					finishReason,
@@ -214,7 +214,7 @@ export async function categorizeBatchWithGemini(
 					candidate: JSON.stringify(candidate, null, 2),
 					usageMetadata: response.response.usageMetadata
 				});
-				
+
 				if (finishReason === 'SAFETY') {
 					throw new Error('Gemini blocked the response due to safety concerns. Try adjusting your prompt.');
 				} else if (finishReason === 'RECITATION') {
@@ -229,7 +229,7 @@ export async function categorizeBatchWithGemini(
 							.filter((part: any) => part.text)
 							.map((part: any) => part.text)
 							.join('');
-						
+
 						if (textParts && textParts.trim().length > 0) {
 							responseText = textParts;
 							console.log('✅ Found text in content parts');
@@ -247,7 +247,7 @@ export async function categorizeBatchWithGemini(
 							.filter((part: any) => part.text)
 							.map((part: any) => part.text)
 							.join('');
-						
+
 						if (textParts && textParts.trim().length > 0) {
 							responseText = textParts;
 							console.log('⚠️ Response was cut off (MAX_TOKENS), but extracted partial content');
@@ -278,14 +278,14 @@ export async function categorizeBatchWithGemini(
 			console.error('   Response preview:', responseText.substring(0, 200));
 			console.error('   Response end:', responseText.substring(Math.max(0, responseText.length - 200)));
 			console.error('   Finish reason:', response.response.candidates?.[0]?.finishReason);
-			
+
 			// Check if response was cut off due to token limit
 			const finishReason = response.response.candidates?.[0]?.finishReason;
 			if (finishReason === 'MAX_TOKENS' || responseText.trim().endsWith('...') || !responseText.trim().endsWith('}')) {
 				const currentMaxTokens = options?.maxTokens || defaultMaxTokens;
 				throw new Error(`Gemini response was cut off due to token limit (${currentMaxTokens} tokens). Response length: ${responseText.length} chars. Try increasing max tokens (current: ${currentMaxTokens}) or reducing batch size.`);
 			}
-			
+
 			throw new Error(`Invalid JSON response from Gemini: ${parseError instanceof Error ? parseError.message : 'Unknown error'}. Response preview: ${responseText.substring(0, 100)}...`);
 		}
 
@@ -308,7 +308,7 @@ export async function categorizeBatchWithGemini(
 				categoryName: result.categoryName,
 				useCategoryNames: options?.useCategoryNames
 			});
-			
+
 			// Validate required fields
 			if (typeof result.transactionId !== 'number') {
 				errors.push({
@@ -329,55 +329,55 @@ export async function categorizeBatchWithGemini(
 
 			// Handle category ID or category name
 			let categoryId: number | null = null;
-			
+
 			if (options?.useCategoryNames) {
 				// If using category names, look up the ID from the category name
 				// Gemini might put the category name in categoryId field (as string) or in categoryName field
 				let categoryNameToMatch: string | null = null;
-				
+
 				if (result.categoryName && typeof result.categoryName === 'string') {
 					categoryNameToMatch = result.categoryName;
 				} else if (result.categoryId && typeof result.categoryId === 'string') {
 					// Gemini put the category name in categoryId field
 					categoryNameToMatch = result.categoryId;
 					// Check if it's a "Category X" format - this is wrong, should be actual name
-					if (categoryNameToMatch.match(/^Category\s+\d+$/i)) {
+					if (categoryNameToMatch && categoryNameToMatch.match(/^Category\s+\d+$/i)) {
 						console.warn(`⚠️ Gemini returned "Category X" format instead of actual category name: "${categoryNameToMatch}"`);
 						categoryNameToMatch = null; // Don't try to match this
 					} else {
 						console.log(`⚠️ Gemini returned category name "${categoryNameToMatch}" in categoryId field instead of categoryName`);
 					}
 				}
-				
+
 				if (categoryNameToMatch) {
 					const searchName = categoryNameToMatch.toLowerCase().trim();
 					// Normalize: remove extra spaces, handle slashes consistently
 					const normalizedSearchName = searchName.replace(/\s+/g, ' ').trim();
-					
+
 					// Try exact match first
 					let matchedCategory = categories.find(cat => {
 						const catName = cat.name.toLowerCase().trim().replace(/\s+/g, ' ');
 						return catName === normalizedSearchName;
 					});
-					
+
 					// If no exact match, try case-insensitive match with normalized spaces
 					if (!matchedCategory) {
 						matchedCategory = categories.find(cat => {
 							const catName = cat.name.toLowerCase().trim().replace(/\s+/g, ' ');
-							return catName === normalizedSearchName || 
-								   catName.replace(/\//g, '/') === normalizedSearchName.replace(/\//g, '/');
+							return catName === normalizedSearchName ||
+								catName.replace(/\//g, '/') === normalizedSearchName.replace(/\//g, '/');
 						});
 					}
-					
+
 					// If still no match, try partial match (contains)
 					if (!matchedCategory) {
 						matchedCategory = categories.find(cat => {
 							const catName = cat.name.toLowerCase().trim();
 							return catName.includes(normalizedSearchName) ||
-								   normalizedSearchName.includes(catName);
+								normalizedSearchName.includes(catName);
 						});
 					}
-					
+
 					if (matchedCategory) {
 						categoryId = matchedCategory.id;
 						console.log(`✅ Matched category name "${categoryNameToMatch}" to ID ${categoryId} (${matchedCategory.name})`);
@@ -396,7 +396,7 @@ export async function categorizeBatchWithGemini(
 				}
 			} else {
 				// Using category IDs (original method)
-				categoryId = result.categoryId !== null && result.categoryId !== undefined 
+				categoryId = result.categoryId !== null && result.categoryId !== undefined
 					? (typeof result.categoryId === 'number' ? result.categoryId : null)
 					: null;
 			}
@@ -404,18 +404,18 @@ export async function categorizeBatchWithGemini(
 			// Validate and normalize result
 			// Store original categoryName from response if it exists (for debugging/display)
 			// Gemini might put it in categoryName or categoryId field
-			const originalCategoryName = options?.useCategoryNames 
-				? (result.categoryName && typeof result.categoryName === 'string' 
-					? result.categoryName 
-					: (result.categoryId && typeof result.categoryId === 'string' 
-						? result.categoryId 
+			const originalCategoryName = options?.useCategoryNames
+				? (result.categoryName && typeof result.categoryName === 'string'
+					? result.categoryName
+					: (result.categoryId && typeof result.categoryId === 'string'
+						? result.categoryId
 						: undefined))
 				: undefined;
 
 			const normalizedResult: AICategorizationResult & { originalCategoryName?: string } = {
 				transactionId: result.transactionId,
 				categoryId,
-				confidence: typeof result.confidence === 'number' 
+				confidence: typeof result.confidence === 'number'
 					? Math.max(0, Math.min(1, result.confidence)) // Clamp between 0 and 1
 					: 0.5, // Default confidence if missing
 				suggestedKeywords: Array.isArray(result.suggestedKeywords)
@@ -425,8 +425,8 @@ export async function categorizeBatchWithGemini(
 						.filter((k: string) => k.length > 0)
 						.slice(0, 2) // Max 2 keywords
 					: [],
-				cleanedMerchantName: typeof result.cleanedMerchantName === 'string' 
-					? result.cleanedMerchantName.trim() 
+				cleanedMerchantName: typeof result.cleanedMerchantName === 'string'
+					? result.cleanedMerchantName.trim()
 					: undefined,
 				reasoning: typeof result.reasoning === 'string' ? result.reasoning : undefined,
 				// Include original categoryName if provided by AI (even if matching failed)
@@ -441,7 +441,7 @@ export async function categorizeBatchWithGemini(
 			const missingIds = transactions
 				.filter(t => !results.some(r => r.transactionId === t.id))
 				.map(t => t.id);
-			
+
 			for (const id of missingIds) {
 				errors.push({
 					transactionId: id,

@@ -472,8 +472,9 @@ export async function categorizeBatchWithAI(
 			if (options?.useCategoryNames) {
 				// If using category names, look up the ID from the category name
 				if (result.categoryName && typeof result.categoryName === 'string') {
+					const categoryNameToMatch = result.categoryName;
 					const matchedCategory = categories.find(cat =>
-						cat.name.toLowerCase().trim() === result.categoryName.toLowerCase().trim()
+						cat.name.toLowerCase().trim() === categoryNameToMatch.toLowerCase().trim()
 					);
 					if (matchedCategory) {
 						categoryId = matchedCategory.id;

@@ -26,10 +26,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		// Get pagination parameters from URL
 		const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
-		const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20')));
+		const pageSize = Math.min(5000, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20')));
 		const skip = (page - 1) * pageSize;
 		const uncategorizedOnly = url.searchParams.get('uncategorized') === 'true';
 		const recentOnly = url.searchParams.get('recent') === 'true';
+		const startDate = url.searchParams.get('startDate');
 
 		// Build where clause
 		const whereClause: any = { user_id: userId };
@@ -42,9 +43,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			whereClause.updated_at = { gte: fiveMinutesAgo };
 			whereClause.category_id = { not: null };
 		}
+		if (startDate) {
+			whereClause.date = { gte: new Date(startDate) };
+		}
 
-		// Get total count
-		const totalCount = await (db as any).transactions.count({
+		// Get total count (filtered)
+		const filteredTotalCount = await (db as any).transactions.count({
 			where: whereClause
 		});
 
@@ -122,7 +126,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			select: {
 				date: true,
 				amount: true,
-				is_debit: true
+				is_debit: true,
+				categories: {
+					select: {
+						name: true
+					}
+				}
 			}
 		});
 
@@ -131,9 +140,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			return Math.ceil(date.getDate() / 7);
 		}
 
-		// Group by month and calculate totals (both spending and income)
+		// Group by month and calculate totals (spending, income, and savings)
 		const monthSpendingGroups = new Map<string, number>();
 		const monthIncomeGroups = new Map<string, number>();
+		const monthSavingsGroups = new Map<string, number>();
 
 		// Group transactions by actual week (year-month-weekNumber) and sum
 		const actualWeeks = new Map<string, number>();
@@ -147,8 +157,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 			// is_debit = true means expense (spending), is_debit = false means income
 			if (transaction.is_debit) {
-				// Monthly spending totals (debit transactions)
-				monthSpendingGroups.set(monthKey, (monthSpendingGroups.get(monthKey) || 0) + amount);
+				const categoryName = transaction.categories?.name;
+
+				if (categoryName === 'Sparen & beleggen') {
+					// Savings totals
+					monthSavingsGroups.set(monthKey, (monthSavingsGroups.get(monthKey) || 0) + amount);
+				} else {
+					// Monthly spending totals (debit transactions excluding savings)
+					monthSpendingGroups.set(monthKey, (monthSpendingGroups.get(monthKey) || 0) + amount);
+				}
 
 				// Weekly totals by actual week (year-month-weekNumber) - only for spending
 				const weekNumber = getWeekOfMonth(d);
@@ -178,19 +195,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			weeklyAverages.set(weekNum, data.count > 0 ? data.total / data.count : 0);
 		}
 
-		// Combine spending and income by month
-		const allMonthKeys = new Set([...monthSpendingGroups.keys(), ...monthIncomeGroups.keys()]);
+		// Combine spending, income, and savings by month
+		const allMonthKeys = new Set([...monthSpendingGroups.keys(), ...monthIncomeGroups.keys(), ...monthSavingsGroups.keys()]);
 		const monthlyTotals = Array.from(allMonthKeys).map((key) => {
 			const [year, month] = key.split('-').map(Number);
 			const spending = monthSpendingGroups.get(key) || 0;
 			const income = monthIncomeGroups.get(key) || 0;
+			const savings = monthSavingsGroups.get(key) || 0;
 
 			return {
 				year,
 				month,
-				total: spending, // Keep 'total' for backward compatibility (spending)
+				total: spending + savings, // Total outflow (spending + savings)
 				spending: Number(spending),
 				income: Number(income),
+				savings: Number(savings),
 				date: new Date(year, month, 1).toISOString()
 			};
 		});
@@ -198,15 +217,26 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const totalMonthlySpending = monthlyTotals.reduce((sum, m) => sum + m.total, 0);
 		const averageMonthlySpending = monthlyTotals.length > 0 ? totalMonthlySpending / monthlyTotals.length : 0;
 
+		// Calculate global stats from the already fetched allTransactionsForStats
+		// This avoids 3 extra database COUNT queries
+		const globalTotalTransactions = allTransactionsForStats.length;
+		const globalCategorizedCount = allTransactionsForStats.filter((t: any) =>
+			t.categories &&
+			!['Uncategorized', 'Niet gecategoriseerd'].includes(t.categories.name)
+		).length;
+		const globalCategorizedPercentage = globalTotalTransactions > 0
+			? (globalCategorizedCount / globalTotalTransactions) * 100
+			: 0;
+
 		return json({
 			transactions,
-			total: Number(totalCount),
+			total: Number(filteredTotalCount),
 			pagination: {
 				page,
 				pageSize,
-				totalCount: Number(totalCount),
-				totalPages: Math.ceil(Number(totalCount) / pageSize),
-				hasNextPage: page * pageSize < totalCount,
+				totalCount: Number(filteredTotalCount),
+				totalPages: Math.ceil(Number(filteredTotalCount) / pageSize),
+				hasNextPage: page * pageSize < filteredTotalCount,
 				hasPreviousPage: page > 1
 			},
 			stats: {
@@ -214,23 +244,31 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				totalMonthlySpending,
 				averageMonthlySpending,
 				weeklyAverages: Object.fromEntries(weeklyAverages),
-				categorizedCount: await (db as any).transactions.count({
+				categorizedCount: globalCategorizedCount,
+				categorizedPercentage: globalCategorizedPercentage,
+				totalTransactions: globalTotalTransactions,
+				topUncategorizedMerchants: await (db as any).transactions.groupBy({
+					by: ['merchantName'],
 					where: {
 						user_id: userId,
-						category_id: { not: null },
-						categories: { name: { not: 'Uncategorized' } }
-					}
-				}),
-				categorizedPercentage: totalCount > 0 ? (await (db as any).transactions.count({
-					where: {
-						user_id: userId,
-						category_id: { not: null },
-						categories: { name: { not: 'Uncategorized' } }
-					}
-				}) / Number(totalCount)) * 100 : 0,
-				totalTransactions: await (db as any).transactions.count({
-					where: { user_id: userId }
-				})
+						OR: [
+							{ category_id: null },
+							{ categories: { name: { in: ['Uncategorized', 'Niet gecategoriseerd'] } } }
+						]
+					},
+					_count: {
+						_all: true
+					},
+					orderBy: {
+						_count: {
+							merchantName: 'desc'
+						}
+					},
+					take: 3
+				}).then((results: any[]) => results.map(r => ({
+					name: r.merchantName,
+					count: r._count._all
+				})))
 			}
 		});
 	} catch (err: any) {

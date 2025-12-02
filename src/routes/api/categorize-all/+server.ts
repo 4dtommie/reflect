@@ -64,10 +64,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			throw err; // Re-throw SvelteKit errors
 		}
 
-		throw error(500, {
+		return json({
 			message: 'Failed to categorize transactions',
 			details: err.message || 'Unknown error'
-		});
+		}, { status: 500 });
 	}
 };
 
@@ -84,17 +84,17 @@ export const DELETE: RequestHandler = async ({ locals }) => {
 	try {
 		console.log(`⏹️  Stopping categorization for user ${userId}...`);
 		setCancellation(userId, true);
-		
+
 		return json({
 			success: true,
 			message: 'Categorization stop requested'
 		});
 	} catch (err: any) {
 		console.error('❌ Error stopping categorization:', err);
-		throw error(500, {
+		return json({
 			message: 'Failed to stop categorization',
 			details: err.message || 'Unknown error'
-		});
+		}, { status: 500 });
 	}
 };
 

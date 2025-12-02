@@ -93,10 +93,10 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		// Validate request body
 		const validationResult = MerchantUpdateSchema.safeParse(body);
 		if (!validationResult.success) {
-			throw error(400, {
+			return json({
 				message: 'Validation failed',
 				errors: validationResult.error.errors
-			});
+			}, { status: 400 });
 		}
 
 		const data = validationResult.data;

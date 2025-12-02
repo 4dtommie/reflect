@@ -39,10 +39,10 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		// Validate request body
 		const validationResult = CategoryPreferencesSchema.safeParse(body);
 		if (!validationResult.success) {
-			throw error(400, {
+			return json({
 				message: 'Validation failed',
 				errors: validationResult.error.errors
-			});
+			}, { status: 400 });
 		}
 
 		const data = validationResult.data;
@@ -64,7 +64,8 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 				user_id: userId,
 				category_id: categoryId,
 				is_active: data.isActive,
-				sort_order: data.sortOrder
+				sort_order: data.sortOrder,
+				updated_at: new Date()
 			}
 		});
 

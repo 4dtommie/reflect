@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 export const load: PageServerLoad = async ({ locals }) => {
     const userId = locals.user!.id;
 
-    const [recentTransactions, stats, recurringTransactions] = await Promise.all([
+    const [recentTransactions, totalCount, categorizedCount, recurringTransactions, topUncategorizedMerchants] = await Promise.all([
         db.transactions.findMany({
             where: { user_id: userId },
             orderBy: { date: 'desc' },
@@ -14,11 +14,16 @@ export const load: PageServerLoad = async ({ locals }) => {
                 merchants: true
             }
         }),
-        db.transactions.aggregate({
-            where: { user_id: userId },
-            _count: {
-                id: true,
-                category_id: true
+        db.transactions.count({
+            where: { user_id: userId }
+        }),
+        db.transactions.count({
+            where: {
+                user_id: userId,
+                category_id: { not: null },
+                categories: {
+                    name: { notIn: ['Niet gecategoriseerd', 'Uncategorized'] }
+                }
             }
         }),
         db.recurringTransaction.findMany({
@@ -27,6 +32,25 @@ export const load: PageServerLoad = async ({ locals }) => {
                 status: 'active'
             },
             orderBy: { next_expected_date: 'asc' }
+        }),
+        db.transactions.groupBy({
+            by: ['merchantName'],
+            where: {
+                user_id: userId,
+                OR: [
+                    { category_id: null },
+                    { categories: { name: { in: ['Uncategorized', 'Niet gecategoriseerd'] } } }
+                ]
+            },
+            _count: {
+                _all: true
+            },
+            orderBy: {
+                _count: {
+                    merchantName: 'desc'
+                }
+            },
+            take: 3
         })
     ]);
 
@@ -51,10 +75,14 @@ export const load: PageServerLoad = async ({ locals }) => {
             date: t.date
         })),
         stats: {
-            totalTransactions: stats._count.id,
-            categorizedCount: stats._count.category_id,
-            uncategorizedCount: stats._count.id - stats._count.category_id,
-            categorizedPercentage: stats._count.id > 0 ? (stats._count.category_id / stats._count.id) * 100 : 0
+            totalTransactions: totalCount,
+            categorizedCount: categorizedCount,
+            uncategorizedCount: totalCount - categorizedCount,
+            categorizedPercentage: totalCount > 0 ? (categorizedCount / totalCount) * 100 : 0,
+            topUncategorizedMerchants: topUncategorizedMerchants.map(r => ({
+                name: r.merchantName,
+                count: r._count._all
+            }))
         }
     };
 };

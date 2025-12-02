@@ -56,6 +56,8 @@
 			<TransactionStatsWidget
 				totalTransactions={data.stats.totalTransactions}
 				uncategorizedCount={data.stats.uncategorizedCount}
+				categorizedPercentage={data.stats.categorizedPercentage}
+				topUncategorizedMerchants={data.stats.topUncategorizedMerchants}
 			/>
 		{:else}
 			<PlaceholderWidget

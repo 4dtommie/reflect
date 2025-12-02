@@ -1,35 +1,51 @@
 export async function load({ fetch, parent }: { fetch: typeof globalThis.fetch; parent: () => Promise<any> }) {
 	const { user } = await parent();
-	
+
 	if (!user) {
-		return { transactions: [] };
+		return { transactions: [], categories: [] };
 	}
 
 	try {
-		// Use the API endpoint instead of direct DB access
-		const response = await fetch('/api/transactions?page=1&pageSize=100');
-		if (!response.ok) {
-			return { transactions: [], stats: null };
+		// Calculate date 6 months ago
+		const sixMonthsAgo = new Date();
+		sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+		const startDate = sixMonthsAgo.toISOString();
+
+		// Fetch transactions and categories in parallel
+		const [transactionsResponse, categoriesResponse] = await Promise.all([
+			fetch(`/api/transactions?page=1&pageSize=5000&startDate=${startDate}`),
+			fetch('/api/categories')
+		]);
+
+		let transactionsData: any = { transactions: [], stats: null };
+		let categoriesData: any = { categories: [] };
+
+		if (transactionsResponse.ok) {
+			transactionsData = await transactionsResponse.json();
 		}
-		const data = await response.json();
-		
+
+		if (categoriesResponse.ok) {
+			categoriesData = await categoriesResponse.json();
+		}
+
 		// Map monthlyTotals dates for client-side use and ensure weeklyAverages is included
-		const mappedStats = data.stats ? {
-			...data.stats,
-			monthlyTotals: data.stats.monthlyTotals.map((m: any) => ({
+		const mappedStats = transactionsData.stats ? {
+			...transactionsData.stats,
+			monthlyTotals: transactionsData.stats.monthlyTotals.map((m: any) => ({
 				...m,
 				date: new Date(m.year, m.month, 1)
 			})),
-			weeklyAverages: data.stats.weeklyAverages || {}
+			weeklyAverages: transactionsData.stats.weeklyAverages || {}
 		} : null;
 
-		return { 
-			transactions: data.transactions || [],
-			stats: mappedStats
+		return {
+			transactions: transactionsData.transactions || [],
+			stats: mappedStats,
+			categories: categoriesData.categories || []
 		};
 	} catch (error) {
-		console.error('Error loading transactions:', error);
-		return { transactions: [], stats: null };
+		console.error('Error loading transactions data:', error);
+		return { transactions: [], stats: null, categories: [] };
 	}
 }
 
