@@ -53,6 +53,20 @@ export const GET: RequestHandler = async ({ locals }) => {
 
         const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
 
+        // Helper to determine if a subscription is income based on transactions
+        const checkIsIncome = (sub: typeof subscriptions[0]): boolean => {
+            // Check category group first
+            if (sub.categories?.group === 'income') return true;
+            
+            // Check linked transactions - if most are NOT debits, it's income
+            if (sub.transactions.length > 0) {
+                const nonDebitCount = sub.transactions.filter(tx => !tx.is_debit).length;
+                return nonDebitCount > sub.transactions.length / 2;
+            }
+            
+            return false;
+        };
+
         for (const sub of subscriptions) {
             if (sub.status === 'active') {
                 totalActive++;
@@ -89,8 +103,7 @@ export const GET: RequestHandler = async ({ locals }) => {
                 }
 
                 // Check if it's an expense (not income)
-                // Assuming income categories have group 'income'
-                const isIncome = sub.categories?.group === 'income';
+                const isIncome = checkIsIncome(sub);
 
                 if (!isIncome) {
                     monthlyTotal += monthlyAmount;
@@ -126,7 +139,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
         for (const sub of activeSubscriptions) {
             // Only expenses for now in the breakdown
-            if (sub.categories?.group !== 'income') {
+            if (!checkIsIncome(sub)) {
                 const catName = sub.categories?.name || 'Uncategorized';
                 const current = categoryMap.get(catName) || { name: catName, total: 0, count: 0 };
 
@@ -155,9 +168,24 @@ export const GET: RequestHandler = async ({ locals }) => {
             }))
             .sort((a, b) => b.total - a.total);
 
+        // Helper to determine if a subscription is income based on transactions
+        const isIncomeSubscription = (sub: typeof subscriptions[0]): boolean => {
+            // Check category group first
+            if (sub.categories?.group === 'income') return true;
+            
+            // Check linked transactions - if most are NOT debits, it's income
+            if (sub.transactions.length > 0) {
+                const nonDebitCount = sub.transactions.filter(tx => !tx.is_debit).length;
+                return nonDebitCount > sub.transactions.length / 2;
+            }
+            
+            return false;
+        };
+
         const serializedSubscriptions = subscriptions.map(sub => ({
             ...sub,
             amount: Number(sub.amount),
+            isIncome: isIncomeSubscription(sub),
             transactions: sub.transactions.map(tx => ({
                 ...tx,
                 amount: Number(tx.amount)
