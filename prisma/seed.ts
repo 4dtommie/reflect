@@ -59,9 +59,13 @@ export async function seedDatabase() {
 		// Order matters due to foreign key constraints
 		log('🗑️  Dropping all existing data...');
 
-		// Delete transactions first (they reference categories, merchants, users)
+		// Delete transactions first (they reference recurring_transactions, categories, merchants, users)
 		const transactionCount = await prisma.transactions.deleteMany({});
 		log(`   ✓ Deleted ${transactionCount.count} transactions`);
+
+		// Delete recurring_transactions (references merchants, categories, users)
+		const recurringCount = await prisma.recurringTransaction.deleteMany({});
+		log(`   ✓ Deleted ${recurringCount.count} recurring transactions`);
 
 		// Delete category_keywords (references categories)
 		const keywordCount = await (prisma as any).category_keywords.deleteMany({});
