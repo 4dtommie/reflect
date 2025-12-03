@@ -44,7 +44,8 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
             }
         });
 
-        // Get variable spending categories
+        // Get variable spending categories from two sources:
+        // 1. Categories marked as variable spending in DB
         const variableCategories = await db.categories.findMany({
             where: {
                 is_variable_spending: true
@@ -54,6 +55,17 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
             }
         });
         const variableCategoryIds = new Set(variableCategories.map(c => c.id));
+        
+        // 2. Categories from detected variable spending patterns (more accurate - includes detected patterns)
+        if (variableData.patterns && Array.isArray(variableData.patterns)) {
+            for (const pattern of variableData.patterns) {
+                if (pattern.categoryId) {
+                    variableCategoryIds.add(pattern.categoryId);
+                }
+            }
+        }
+        
+        console.log(`[Monthly Spending] Variable category IDs: ${Array.from(variableCategoryIds).join(', ')}`);
 
         // Group by month and type
         const monthMap = new Map<string, { recurring: number; variable: number; remaining: number; total: number }>();
@@ -92,6 +104,14 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
                 remaining: data.remaining 
             }))
             .sort((a, b) => a.month.localeCompare(b.month));
+        
+        // Debug logging
+        if (monthlySpending.length > 0) {
+            const avgVariable = monthlySpending.reduce((sum, m) => sum + m.variable, 0) / monthlySpending.length;
+            const avgRecurring = monthlySpending.reduce((sum, m) => sum + m.recurring, 0) / monthlySpending.length;
+            const avgRemaining = monthlySpending.reduce((sum, m) => sum + m.remaining, 0) / monthlySpending.length;
+            console.log(`[Monthly Spending] Averages - Recurring: €${avgRecurring.toFixed(2)}, Variable: €${avgVariable.toFixed(2)}, Remaining: €${avgRemaining.toFixed(2)}`);
+        }
     }
 
     return {

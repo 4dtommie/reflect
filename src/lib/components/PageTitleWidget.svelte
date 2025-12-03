@@ -18,6 +18,7 @@
 
 	let chartCanvas: HTMLCanvasElement;
 	let chartInstance: Chart | null = null;
+	let dataRef: { chartData: typeof chartData; monthlySpending: typeof monthlySpending } | null = null;
 
 	// Process monthly spending data for chart
 	const chartData = $derived.by(() => {
@@ -46,7 +47,11 @@
 			labels: monthLabels,
 			recurring: recurringValues,
 			variable: stackedVariable,
-			remaining: stackedRemaining
+			remaining: stackedRemaining,
+			// Keep raw values for tooltips
+			rawRecurring: recurringValues,
+			rawVariable: variableValues,
+			rawRemaining: remainingValues
 		};
 	});
 
@@ -56,6 +61,9 @@
 		// Dark purple: rgb(139, 92, 246) - #8B5CF6 (recurring)
 		// Light purple: rgb(196, 181, 253) - #C4B5FD (variable)
 		// Light blue: rgb(14, 165, 233) - #0EA5E9 (remaining, matching sky-600)
+		
+		// Store reference to data for tooltip callbacks
+		dataRef = { chartData, monthlySpending };
 		
 		chartInstance = new Chart(chartCanvas, {
 			type: 'line',
@@ -109,7 +117,66 @@
 						display: false
 					},
 					tooltip: {
-						enabled: false
+						enabled: true,
+						mode: 'index',
+						intersect: false,
+						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						padding: 12,
+						titleFont: {
+							size: 12,
+							weight: 'bold'
+						},
+						bodyFont: {
+							size: 11
+						},
+						callbacks: {
+							title: (tooltipItems) => {
+								if (!dataRef.chartData || !dataRef.monthlySpending) return '';
+								const index = tooltipItems[0].dataIndex;
+								const [year, monthNum] = dataRef.monthlySpending[index].month.split('-');
+								const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+								return date.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+							},
+							label: (context) => {
+								if (!dataRef.chartData) return '';
+								const index = context.dataIndex;
+								const datasetIndex = context.datasetIndex;
+								let label = context.dataset.label || '';
+								let value = 0;
+								
+								if (datasetIndex === 0) {
+									// Recurring
+									value = dataRef.chartData.rawRecurring[index];
+								} else if (datasetIndex === 1) {
+									// Variable
+									value = dataRef.chartData.rawVariable[index];
+								} else if (datasetIndex === 2) {
+									// Remaining
+									value = dataRef.chartData.rawRemaining[index];
+								}
+								
+								const formatted = new Intl.NumberFormat('nl-NL', {
+									style: 'currency',
+									currency: 'EUR',
+									minimumFractionDigits: 0,
+									maximumFractionDigits: 0
+								}).format(value);
+								
+								return `${label}: ${formatted}`;
+							},
+							footer: (tooltipItems) => {
+								if (!dataRef.chartData) return '';
+								const index = tooltipItems[0].dataIndex;
+								const total = dataRef.chartData.rawRecurring[index] + dataRef.chartData.rawVariable[index] + dataRef.chartData.rawRemaining[index];
+								const formatted = new Intl.NumberFormat('nl-NL', {
+									style: 'currency',
+									currency: 'EUR',
+									minimumFractionDigits: 0,
+									maximumFractionDigits: 0
+								}).format(total);
+								return `Total: ${formatted}`;
+							}
+						}
 					}
 				},
 				scales: {
@@ -146,6 +213,11 @@
 			chartInstance.data.datasets[0].data = chartData.recurring;
 			chartInstance.data.datasets[1].data = chartData.variable;
 			chartInstance.data.datasets[2].data = chartData.remaining;
+			// Update data reference for tooltips
+			if (dataRef) {
+				dataRef.chartData = chartData;
+				dataRef.monthlySpending = monthlySpending;
+			}
 			chartInstance.update('none');
 		}
 	});
