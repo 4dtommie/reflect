@@ -150,11 +150,18 @@
 		<!-- Row 1: Title (2 cols) + Net Balance (1 col) -->
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 			<div class="lg:col-span-2">
-				<PageTitleWidget title="Spending patterns" subtitle={randomSubtitle} class="h-full" />
+				<PageTitleWidget 
+					title="Spending patterns" 
+					subtitle={randomSubtitle} 
+					monthlySpending={data.monthlySpending || []}
+					class="h-full" 
+				/>
 			</div>
 			<NetBalanceWidget
 				monthlyIncome={incomeStats.monthlyTotal}
 				monthlyExpenses={(data.stats?.monthlyTotal || 0) + (variableStats?.totalMonthlyAverage || 0)}
+				recurringExpenses={data.stats?.monthlyTotal || 0}
+				variableExpenses={variableStats?.totalMonthlyAverage || 0}
 			/>
 		</div>
 
@@ -162,14 +169,17 @@
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 			<!-- Recurring income -->
 			<DashboardWidget size="small" enableHover={false}>
-				<div class="mb-3 flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<TrendingUp size={18} class="text-success" />
-						<h2 class="font-semibold">Income</h2>
+				<div class="mb-3">
+					<div class="mb-1.5 flex items-center justify-between">
+						<div class="flex items-center gap-2">
+							<TrendingUp size={18} class="text-success" />
+							<h2 class="font-semibold">Income</h2>
+						</div>
+						<span class="text-lg font-bold text-success">
+							<Amount value={incomeStats.monthlyTotal} size="medium" showDecimals={false} isDebit={false} locale="NL" />
+						</span>
 					</div>
-					<span class="text-lg font-bold text-success">
-						<Amount value={incomeStats.monthlyTotal} size="medium" showDecimals={false} isDebit={false} locale="NL" />
-					</span>
+					<div class="h-0.5 w-full rounded-full bg-success"></div>
 				</div>
 
 				{#if incomeSubscriptions.length > 0}
@@ -185,14 +195,17 @@
 
 			<!-- Recurring expenses -->
 			<DashboardWidget size="small" enableHover={false}>
-				<div class="mb-3 flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<TrendingDown size={18} class="text-error" />
-						<h2 class="font-semibold">Recurring expenses</h2>
+				<div class="mb-3">
+					<div class="mb-1.5 flex items-center justify-between">
+						<div class="flex items-center gap-2">
+							<TrendingDown size={18} class="text-error" />
+							<h2 class="font-semibold">Recurring expenses</h2>
+						</div>
+						<span class="text-lg font-bold text-error">
+							<Amount value={data.stats?.monthlyTotal || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+						</span>
 					</div>
-					<span class="text-lg font-bold text-error">
-						<Amount value={data.stats?.monthlyTotal || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
-					</span>
+					<div class="h-0.5 w-full rounded-full" style="background-color: rgb(139, 92, 246);"></div>
 				</div>
 
 				{#if subscriptions.length > 0}
@@ -208,14 +221,17 @@
 
 			<!-- Variable spending -->
 			<DashboardWidget size="small" enableHover={false}>
-				<div class="mb-3 flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<ShoppingCart size={18} class="text-warning" />
-						<h2 class="font-semibold">Variable expenses</h2>
+				<div class="mb-3">
+					<div class="mb-1.5 flex items-center justify-between">
+						<div class="flex items-center gap-2">
+							<ShoppingCart size={18} class="text-warning" />
+							<h2 class="font-semibold">Variable expenses</h2>
+						</div>
+						<span class="text-lg font-bold text-warning">
+							<Amount value={variableStats?.totalMonthlyAverage || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+						</span>
 					</div>
-					<span class="text-lg font-bold text-warning">
-						<Amount value={variableStats?.totalMonthlyAverage || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
-					</span>
+					<div class="h-0.5 w-full rounded-full" style="background-color: rgb(196, 181, 253);"></div>
 				</div>
 
 				{#if variableSpending.length > 0}

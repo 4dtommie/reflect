@@ -1,13 +1,18 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
 	import Amount from './Amount.svelte';
+	import { formatNumber } from '$lib/utils/locale';
 
 	let {
 		monthlyIncome = 0,
-		monthlyExpenses = 0
+		monthlyExpenses = 0,
+		recurringExpenses = 0,
+		variableExpenses = 0
 	}: {
 		monthlyIncome?: number;
 		monthlyExpenses?: number;
+		recurringExpenses?: number;
+		variableExpenses?: number;
 	} = $props();
 
 	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses));
@@ -18,6 +23,10 @@
 	const incomeBarWidth = $derived(100); // Income is always full width as reference
 	const expenseBarWidth = $derived(monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 0);
 	const freeBarWidth = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
+	
+	// Calculate recurring and variable bar widths
+	const recurringBarWidth = $derived(monthlyIncome > 0 && monthlyExpenses > 0 ? (recurringExpenses / monthlyIncome) * 100 : 0);
+	const variableBarWidth = $derived(monthlyIncome > 0 && monthlyExpenses > 0 ? (variableExpenses / monthlyIncome) * 100 : 0);
 </script>
 
 <DashboardWidget size="small" title="Income you can spend">
@@ -26,7 +35,7 @@
 		<div class="text-center">
 			<div class="mb-1">
 				<span class="text-3xl font-bold text-sky-600">
-					€ {Math.round(freeToSpend).toLocaleString()}
+					€ {formatNumber(Math.round(freeToSpend))}
 				</span>
 			</div>
 			<span class="text-sm opacity-50">
@@ -49,29 +58,50 @@
 						style="width: {incomeBarWidth}%"
 					>
 						<span class="text-xs font-medium text-success-content">
-							€ {Math.round(monthlyIncome).toLocaleString()}
+							€ {formatNumber(Math.round(monthlyIncome))}
 						</span>
 					</div>
 				</div>
 			</div>
 
-			<!-- Expenses bar -->
+			<!-- Expenses bar (split into recurring and variable) -->
 			<div class="flex items-center gap-2">
 				<span class="w-16 text-right text-xs opacity-50">Expenses</span>
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
-					<div
-						class="absolute inset-y-0 left-0 flex items-center justify-end rounded bg-error/70 px-2 transition-all duration-500"
-						style="width: {Math.min(expenseBarWidth, 100)}%"
-					>
-						{#if expenseBarWidth > 20}
-							<span class="text-xs font-medium text-error-content">
-								€ {Math.round(monthlyExpenses).toLocaleString()}
-							</span>
-						{/if}
-					</div>
+					<!-- Recurring expenses (dark purple - matching chart) -->
+					{#if recurringBarWidth > 0}
+						<div
+							class="absolute inset-y-0 left-0 flex items-center justify-end rounded-l px-2 transition-all duration-500"
+							style="width: {Math.min(recurringBarWidth, 100)}%; background-color: rgba(139, 92, 246, 0.8);"
+						>
+							{#if recurringBarWidth > 20}
+								<span class="text-xs font-medium text-white">
+									€ {formatNumber(Math.round(recurringExpenses))}
+								</span>
+							{/if}
+						</div>
+					{/if}
+					<!-- Variable expenses (light purple - matching chart) -->
+					{#if variableBarWidth > 0}
+						<div
+							class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
+							style="left: {Math.min(recurringBarWidth, 100)}%; width: {Math.min(variableBarWidth, 100 - Math.min(recurringBarWidth, 100))}%; background-color: rgba(196, 181, 253, 0.7);"
+						>
+							{#if variableBarWidth > 20 && recurringBarWidth <= 20}
+								<span class="text-xs font-medium text-purple-900">
+									€ {formatNumber(Math.round(variableExpenses))}
+								</span>
+							{/if}
+						</div>
+					{/if}
+					<!-- Total label if bars are too small or at the end if both visible -->
 					{#if expenseBarWidth <= 20}
 						<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium">
-							€ {Math.round(monthlyExpenses).toLocaleString()}
+							€ {formatNumber(Math.round(monthlyExpenses))}
+						</span>
+					{:else if expenseBarWidth > 20 && recurringBarWidth > 20 && variableBarWidth > 20}
+						<span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-error-content">
+							€ {formatNumber(Math.round(monthlyExpenses))}
 						</span>
 					{/if}
 				</div>
@@ -85,15 +115,15 @@
 						class="absolute inset-y-0 left-0 flex items-center justify-end rounded bg-sky-600/80 px-2 transition-all duration-500"
 						style="width: {freeBarWidth}%"
 					>
-						{#if freeBarWidth > 20}
-							<span class="text-xs font-medium text-white">
-								€ {Math.round(freeToSpend).toLocaleString()}
-							</span>
-						{/if}
+					{#if freeBarWidth > 20}
+						<span class="text-xs font-medium text-white">
+							€ {formatNumber(Math.round(freeToSpend))}
+						</span>
+					{/if}
 					</div>
 					{#if freeBarWidth <= 20 && freeToSpend > 0}
 						<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium">
-							€ {Math.round(freeToSpend).toLocaleString()}
+							€ {formatNumber(Math.round(freeToSpend))}
 						</span>
 					{/if}
 				</div>
@@ -104,7 +134,7 @@
 		<div class="border-t border-base-200 pt-3 text-center text-sm">
 			<span class="opacity-50">Yearly savings potential: </span>
 			<span class="font-semibold text-sky-600">
-				€ {Math.round(freeToSpend * 12).toLocaleString()}
+				€ {formatNumber(Math.round(freeToSpend * 12))}
 			</span>
 		</div>
 	</div>
