@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
-import type { transactions, merchants } from '@prisma/client';
+import type { transactions, merchants, categories } from '@prisma/client';
+import { getCategoryRecurringBehavior } from './categoryConfig';
 
 const SALARY_MIN_AMOUNT = 1000;
 const SALARY_KEYWORDS = [
@@ -29,13 +30,23 @@ const TAX_KEYWORDS = [
     'belasting'
 ];
 
+const SAVINGS_KEYWORDS = [
+    'spaarrekening',
+    'savings account',
+    'savings',
+    'spaarre',
+    'sparen',
+    'save',
+    'saving'
+];
+
 export interface RecurringCandidate {
     name: string;
     amount: number;
     averageAmount?: number;
     interval: 'monthly' | 'weekly' | 'quarterly' | 'yearly' | '4-weekly' | 'irregular';
     confidence: number; // 0-1
-    type: 'subscription' | 'salary' | 'bill' | 'tax' | 'transfer' | 'other';
+    type: 'subscription' | 'variable_cost' | 'salary' | 'bill' | 'tax' | 'transfer' | 'other';
     source: 'known_list' | 'salary_rule' | 'interval_rule' | 'ai';
     transactions: transactions[];
     nextPaymentDate?: Date;
@@ -44,10 +55,13 @@ export interface RecurringCandidate {
 
 export class RecurringDetectionService {
     async detectRecurringTransactions(userId: number): Promise<RecurringCandidate[]> {
-        // Fetch all transactions
+        // Fetch all transactions WITH category data for Phase 3
         const transactions = await db.transactions.findMany({
             where: {
                 user_id: userId
+            },
+            include: {
+                categories: true // Include category for category-aware detection
             },
             orderBy: {
                 date: 'desc'
@@ -151,32 +165,34 @@ export class RecurringDetectionService {
             return diff / avg < 0.01;
         }
 
-        // 1. If both have merchantId and it matches -> Duplicate
+        // 1. Check for name match OR merchant match
+        let hasNameMatch = false;
+
         if (a.merchantId && b.merchantId && a.merchantId === b.merchantId) {
             console.log(`[DedupeCheck] "${a.name}" vs "${b.name}": MATCH on merchantId (${a.merchantId})`);
-            return true;
+            hasNameMatch = true;
+        } else {
+            // 2. Name similarity
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
+
+            // Check for token overlap or substring
+            const tokensA = nameA.split(/[\s-_]+/);
+            const tokensB = nameB.split(/[\s-_]+/);
+
+            // Filter out common useless words
+            const stopWords = ['bv', 'nv', 'gmbh', 'inc', 'corp', 'services', 'payments', 'pay', 'nl', 'com', 'nederland', 'netherlands'];
+            const cleanTokensA = tokensA.filter(t => !stopWords.includes(t) && t.length > 2);
+            const cleanTokensB = tokensB.filter(t => !stopWords.includes(t) && t.length > 2);
+
+            const hasOverlap = cleanTokensA.some(ta => cleanTokensB.some(tb => tb.includes(ta) || ta.includes(tb)));
+
+            hasNameMatch = (
+                nameA.includes(nameB) ||
+                nameB.includes(nameA) ||
+                hasOverlap
+            );
         }
-
-        // 2. Name similarity
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-
-        // Check for token overlap or substring
-        const tokensA = nameA.split(/[\s-_]+/);
-        const tokensB = nameB.split(/[\s-_]+/);
-
-        // Filter out common useless words
-        const stopWords = ['bv', 'nv', 'gmbh', 'inc', 'corp', 'services', 'payments', 'pay', 'nl', 'com', 'nederland', 'netherlands'];
-        const cleanTokensA = tokensA.filter(t => !stopWords.includes(t) && t.length > 2);
-        const cleanTokensB = tokensB.filter(t => !stopWords.includes(t) && t.length > 2);
-
-        const hasOverlap = cleanTokensA.some(ta => cleanTokensB.some(tb => tb.includes(ta) || ta.includes(tb)));
-
-        const hasNameMatch = (
-            nameA.includes(nameB) ||
-            nameB.includes(nameA) ||
-            hasOverlap
-        );
 
         if (!hasNameMatch) return false;
 
@@ -206,9 +222,9 @@ export class RecurringDetectionService {
         return false;
     }
 
-    private detectByInterval(transactions: transactions[]): RecurringCandidate[] {
+    private detectByInterval(transactions: (transactions & { categories: categories | null })[]): RecurringCandidate[] {
         const candidates: RecurringCandidate[] = [];
-        const grouped = new Map<string, transactions[]>();
+        const grouped = new Map<string, (transactions & { categories: categories | null })[]>();
 
         // 1. Group transactions
         for (const tx of transactions) {
@@ -223,8 +239,17 @@ export class RecurringDetectionService {
 
         // 2. Analyze groups
         for (const [key, txs] of grouped) {
-            // Need at least 3 transactions to establish a pattern
-            if (txs.length < 3) continue;
+            // PHASE 3: Check category exclusion first
+            const categoryName = txs[0]?.categories?.name || null;
+            const categoryBehavior = getCategoryRecurringBehavior(categoryName);
+
+            if (categoryBehavior.type === 'exclude') {
+                console.log(`[RecurringDetection] Skipping excluded category: ${categoryName}`);
+                continue;
+            }
+
+            // Need at least 3 transactions to establish a pattern (or category-specific minimum)
+            if (txs.length < categoryBehavior.minTransactions) continue;
 
             // Cluster by amount to handle cases where a merchant has different charge types
             const amountClusters = this.clusterByAmount(txs);
@@ -233,7 +258,9 @@ export class RecurringDetectionService {
                 if (cluster.length < 3) continue;
 
                 const sorted = [...cluster].sort((a, b) => b.date.getTime() - a.date.getTime());
-                const interval = this.estimateIntervalFromTransactions(sorted);
+                const interval = categoryBehavior.type === 'fixed_recurring'
+                    ? this.estimateIntervalRobust(sorted)
+                    : this.estimateIntervalFromTransactions(sorted);
                 const averageAmount = this.calculateAverageAmount(sorted);
                 const relativeVariance = this.calculateRelativeVariance(sorted);
 
@@ -261,22 +288,22 @@ export class RecurringDetectionService {
                 const lowerName = name.toLowerCase();
                 const isGroceries = ['albert heijn', 'jumbo', 'lidl', 'aldi', 'plus', 'dirk', 'coop', 'hoogvliet', 'picnic'].some(s => lowerName.includes(s));
 
-                // Strictness rules
+                // Strictness rules - PHASE 3: Use category-specific thresholds
                 let isCandidate = false;
                 let confidence = 0.5;
 
-                // Rule 1: Very stable amount (Subscription-like)
-                // If it's groceries, we require EXACT amount stability (0 variance)
-                // to avoid flagging weekly grocery runs as subscriptions.
-                const varianceThreshold = isGroceries ? 0 : 0.05;
+                // PHASE 3: Apply category-specific variance threshold
+                const categoryVarianceThreshold = categoryBehavior.varianceThreshold;
 
-                if (relativeVariance <= varianceThreshold) {
+                // For groceries/variable categories, we're more lenient
+                const isVariableCategory = categoryBehavior.type === 'variable_recurring';
+
+                if (relativeVariance <= categoryVarianceThreshold) {
                     isCandidate = true;
-                    confidence = 0.8;
+                    confidence = isVariableCategory ? 0.7 : 0.8; // Slightly lower confidence for variable
                 }
-                // Rule 2: Somewhat stable amount, but very regular interval (Utility-like)
-                // We don't apply this to groceries, as they often have regular intervals but variable amounts
-                else if (!isGroceries && relativeVariance < 0.20) {
+                // Only apply looser rule for non-groceries and non-variable categories
+                else if (!isGroceries && !isVariableCategory && relativeVariance < 0.20) {
                     isCandidate = true;
                     confidence = 0.6;
                 }
@@ -297,13 +324,22 @@ export class RecurringDetectionService {
                     // Determine name
                     const name = sorted[0].cleaned_merchant_name || sorted[0].merchantName || sorted[0].description;
 
+                    // PHASE 3.5: Set type based on category behavior
+                    const candidateType: RecurringCandidate['type'] =
+                        categoryBehavior.type === 'variable_recurring' ? 'variable_cost' : 'subscription';
+
+                    // PHASE 3: Log category-aware detection
+                    if (categoryName) {
+                        console.log(`[RecurringDetection] Interval: Found ${candidateType} for "${name}" (${categoryName}): ${sorted.length} txs, ${relativeVariance.toFixed(2)} variance, ${interval}`);
+                    }
+
                     candidates.push({
                         name: name,
                         amount: Number(sorted[0].amount),
                         averageAmount,
                         interval,
                         confidence,
-                        type: 'subscription', // Default to subscription, user can change
+                        type: candidateType,
                         source: 'interval_rule',
                         transactions: sorted,
                         merchantId,
@@ -316,7 +352,7 @@ export class RecurringDetectionService {
         return candidates;
     }
 
-    private getGroupKey(tx: transactions): string {
+    private getGroupKey(tx: transactions & { categories: categories | null }): string {
         if (tx.merchant_id) return `merchant-${tx.merchant_id}`;
         if (tx.counterparty_iban) return `iban-${tx.counterparty_iban.toLowerCase()}`;
         if (tx.cleaned_merchant_name) return `cleaned-${tx.cleaned_merchant_name.toLowerCase()}`;
@@ -325,9 +361,9 @@ export class RecurringDetectionService {
         return `desc-${(tx.normalized_description || tx.description).toLowerCase()}`;
     }
 
-    private async detectByKnownList(transactions: transactions[]): Promise<RecurringCandidate[]> {
+    private async detectByKnownList(transactions: (transactions & { categories: categories | null })[]): Promise<RecurringCandidate[]> {
         const candidates: RecurringCandidate[] = [];
-        const groupedByProvider = new Map<string, { txs: transactions[], merchantId: number }>();
+        const groupedByProvider = new Map<string, { txs: (transactions & { categories: categories | null })[], merchantId: number }>();
 
         console.log(`[RecurringDetection] Scanning ${transactions.length} transactions`);
 
@@ -341,8 +377,11 @@ export class RecurringDetectionService {
 
         console.log(`[RecurringDetection] Loaded ${knownMerchants.length} known recurring merchants from DB`);
 
-        // Group transactions by known providers
+        // Group transactions by known providers (ONLY EXPENSES)
         for (const tx of transactions) {
+            // PHASE 1 FIX: Only process expenses (debits) in Known List
+            if (!tx.is_debit) continue;
+
             const description = (tx.description || '').toLowerCase();
             const merchantName = (tx.merchantName || '').toLowerCase();
             const cleanedMerchant = (tx.cleaned_merchant_name || '').toLowerCase();
@@ -384,32 +423,82 @@ export class RecurringDetectionService {
 
             if (txs.length === 0) continue;
 
+            // PHASE 3: Check category exclusion
+            const categoryName = txs[0]?.categories?.name || null;
+            const categoryBehavior = getCategoryRecurringBehavior(categoryName);
+
+            if (categoryBehavior.type === 'exclude') {
+                console.log(`[RecurringDetection] Known List: Skipping excluded category: ${categoryName}`);
+                continue;
+            }
+
             // Cluster by amount to separate different subscriptions from the same provider
             // e.g. Ziggo Mobile (€20) vs Ziggo Internet (€60)
+            // PHASE 2C: Using improved 20% threshold
             const amountClusters = this.clusterByAmount(txs);
 
-            for (const cluster of amountClusters) {
+            console.log(`[RecurringDetection] "${providerName}" - Found ${amountClusters.length} amount clusters from ${txs.length} transactions`);
+
+            // PHASE 2B: Filter clusters - require minimum based on category
+            // PHASE 3: Use category-specific minimum transactions
+            const minTransactionsRequired = categoryBehavior.minTransactions;
+            const significantClusters = amountClusters.filter(cluster => cluster.length >= minTransactionsRequired);
+
+            // PHASE 2A: If we filtered out all clusters but have enough total transactions, check for dominant amount
+            let clustersToProcess = significantClusters;
+            if (significantClusters.length === 0 && txs.length >= 5) {
+                // Find the dominant cluster (most transactions)
+                const dominantCluster = amountClusters.reduce((max, cluster) =>
+                    cluster.length > max.length ? cluster : max
+                    , amountClusters[0]);
+
+                // Only use dominant if it represents >60% of transactions
+                if (dominantCluster.length / txs.length > 0.6) {
+                    console.log(`[RecurringDetection] "${providerName}" - Using dominant cluster with ${dominantCluster.length}/${txs.length} txs (${Math.round(dominantCluster.length / txs.length * 100)}%)`);
+                    clustersToProcess = [dominantCluster];
+                } else {
+                    console.log(`[RecurringDetection] "${providerName}" - No dominant cluster or significant clusters found, skipping`);
+                    continue;
+                }
+            } else if (significantClusters.length === 0) {
+                console.log(`[RecurringDetection] "${providerName}" - No clusters with >=${minTransactionsRequired} txs (${categoryBehavior.type}), skipping`);
+                continue;
+            } else {
+                console.log(`[RecurringDetection] "${providerName}" - Processing ${significantClusters.length} significant clusters (${categoryBehavior.type})`);
+            }
+
+            for (const cluster of clustersToProcess) {
                 // Sort transactions by date descending (newest first)
                 cluster.sort((a, b) => b.date.getTime() - a.date.getTime());
 
                 const avgAmount = this.calculateAverageAmount(cluster);
 
-                if (amountClusters.length > 1) {
-                    console.log(`[RecurringDetection] Known List SPLIT: "${providerName}" into cluster with €${avgAmount.toFixed(2)} avg (${cluster.length} txs)`);
+                if (clustersToProcess.length > 1) {
+                    console.log(`[RecurringDetection] Known List: "${providerName}" cluster with €${avgAmount.toFixed(2)} avg (${cluster.length} txs)`);
                 }
-                const interval = this.estimateIntervalFromTransactions(cluster);
+
+                // PHASE 3.5: Use robust interval detection for fixed recurring
+                const interval = categoryBehavior.type === 'fixed_recurring'
+                    ? this.estimateIntervalRobust(cluster)
+                    : this.estimateIntervalFromTransactions(cluster);
+
                 const nextPaymentDate = this.calculateNextPaymentDate(cluster[0].date, interval, 'subscription');
 
                 // Determine confidence based on consistency
                 let confidence = 0.5;
-                if (cluster.length >= 3) confidence = 0.9;
-                else if (cluster.length === 2) confidence = 0.7;
+                if (cluster.length >= 10) confidence = 0.95;
+                else if (cluster.length >= 5) confidence = 0.9;
+                else if (cluster.length >= 3) confidence = 0.85;
 
                 // Add name suffix if multiple clusters
                 let displayName = providerName;
-                if (amountClusters.length > 1) {
+                if (clustersToProcess.length > 1) {
                     displayName += ` (€${Math.round(avgAmount)})`;
                 }
+
+                // PHASE 3.5: Set type based on category behavior
+                const candidateType: RecurringCandidate['type'] =
+                    categoryBehavior.type === 'variable_recurring' ? 'variable_cost' : 'subscription';
 
                 candidates.push({
                     name: displayName,
@@ -417,7 +506,7 @@ export class RecurringDetectionService {
                     averageAmount: avgAmount,
                     interval,
                     confidence,
-                    type: 'subscription',
+                    type: candidateType,
                     source: 'known_list',
                     transactions: cluster,
                     merchantId,
@@ -429,9 +518,9 @@ export class RecurringDetectionService {
         return candidates;
     }
 
-    private detectIncome(transactions: transactions[]): RecurringCandidate[] {
+    private detectIncome(transactions: (transactions & { categories: categories | null })[]): RecurringCandidate[] {
         const candidates: RecurringCandidate[] = [];
-        const grouped = new Map<string, transactions[]>();
+        const grouped = new Map<string, (transactions & { categories: categories | null })[]>();
 
         for (const tx of transactions) {
             if (tx.is_debit) continue;
@@ -463,6 +552,13 @@ export class RecurringDetectionService {
 
                 const isSalary = this.containsKeywords(sorted[0], SALARY_KEYWORDS) && averageAmount >= SALARY_MIN_AMOUNT;
                 const isTax = this.containsKeywords(sorted[0], TAX_KEYWORDS);
+                const isSavings = this.containsKeywords(sorted[0], SAVINGS_KEYWORDS);
+
+                // Skip savings transfers - these are manual/discretionary
+                if (isSavings) {
+                    console.log(`[RecurringDetection] Skipping savings transfer: ${this.pickSalaryCandidateName(sorted)}`);
+                    continue;
+                }
 
                 if (isSalary) {
                     type = 'salary';
@@ -472,6 +568,9 @@ export class RecurringDetectionService {
                     source = 'ai';
                 } else {
                     // Regular transfer?
+                    // Require at least 3 transactions for transfers (salary/tax can be 2)
+                    if (sorted.length < 3) continue;
+
                     // Only if variance is low and interval is regular
                     if (relativeVariance < 0.1 && interval !== 'irregular') {
                         type = 'transfer';
@@ -515,21 +614,39 @@ export class RecurringDetectionService {
         return candidates;
     }
 
-    private clusterByAmount(transactions: transactions[]): transactions[][] {
+    private clusterByAmount(transactions: (transactions & { categories: categories | null })[]): (transactions & { categories: categories | null })[][] {
         if (transactions.length === 0) return [];
+
+        // PHASE 3: Get category-specific clustering threshold
+        const categoryName = transactions[0]?.categories?.name || null;
+        const categoryBehavior = getCategoryRecurringBehavior(categoryName);
+
+        // Use category variance as clustering threshold for consistency
+        // Variable categories (groceries) get wider clusters (60%)
+        // Fixed categories (subscriptions) get tighter clusters (5%)
+        let threshold = categoryBehavior.varianceThreshold;
+
+        // But for clustering, we use a slightly more lenient threshold than detection
+        // to avoid over-splitting, especially for semi-variable (utilities)
+        if (categoryBehavior.type === 'semi_variable') {
+            threshold = 0.30; // 30% for utilities clustering (vs 25% detection)
+        } else if (categoryBehavior.type === 'variable_recurring') {
+            threshold = 0.40; // 40% for groceries clustering (vs 60% detection)
+        } else {
+            threshold = 0.20; // Default 20%
+        }
 
         // Sort by amount
         const sorted = [...transactions].sort((a, b) => Math.abs(Number(a.amount)) - Math.abs(Number(b.amount)));
 
-        const clusters: transactions[][] = [];
-        let currentCluster: transactions[] = [sorted[0]];
+        const clusters: (transactions & { categories: categories | null })[][] = [];
+        let currentCluster: (transactions & { categories: categories | null })[] = [sorted[0]];
 
         for (let i = 1; i < sorted.length; i++) {
             const currentAmount = Math.abs(Number(sorted[i].amount));
             const clusterAvg = Math.abs(this.calculateAverageAmount(currentCluster));
 
-            // If the amount is within 15% of the cluster average, add to current cluster
-            const threshold = 0.15;
+            // PHASE 3: Use dynamic threshold based on category
             if (Math.abs(currentAmount - clusterAvg) / clusterAvg <= threshold) {
                 currentCluster.push(sorted[i]);
             } else {
@@ -545,7 +662,7 @@ export class RecurringDetectionService {
         return clusters;
     }
 
-    private containsKeywords(tx: transactions, keywords: string[]): boolean {
+    private containsKeywords(tx: transactions & { categories: categories | null }, keywords: string[]): boolean {
         const fields = [
             tx.description,
             tx.cleaned_merchant_name,
@@ -562,7 +679,7 @@ export class RecurringDetectionService {
         return false;
     }
 
-    private getSalaryGroupKey(tx: transactions): string {
+    private getSalaryGroupKey(tx: transactions & { categories: categories | null }): string {
         if (tx.merchant_id) return `merchant-${tx.merchant_id}`;
         if (tx.counterparty_iban) return `iban-${tx.counterparty_iban.toLowerCase()}`;
         if (tx.cleaned_merchant_name) return `cleaned-${tx.cleaned_merchant_name.toLowerCase()}`;
@@ -570,7 +687,7 @@ export class RecurringDetectionService {
         return `description-${(tx.description || 'salary').toLowerCase()}`;
     }
 
-    private pickSalaryCandidateName(txs: transactions[]): string {
+    private pickSalaryCandidateName(txs: (transactions & { categories: categories | null })[]): string {
         const first = txs[0];
         return (
             first.cleaned_merchant_name ||
@@ -581,7 +698,7 @@ export class RecurringDetectionService {
         );
     }
 
-    private estimateIntervalFromTransactions(txs: transactions[]): RecurringCandidate['interval'] {
+    private estimateIntervalFromTransactions(txs: (transactions & { categories: categories | null })[]): RecurringCandidate['interval'] {
         if (txs.length < 2) {
             return 'monthly';
         }
@@ -605,13 +722,71 @@ export class RecurringDetectionService {
         return 'irregular';
     }
 
-    private calculateAverageAmount(txs: transactions[]): number {
+    // PHASE 3.5: Robust interval detection using mode (most common interval)
+    // This handles outliers better for fixed recurring subscriptions
+    private estimateIntervalRobust(txs: (transactions & { categories: categories | null })[]): RecurringCandidate['interval'] {
+        if (txs.length < 2) {
+            return 'monthly';
+        }
+
+        const sorted = [...txs].sort((a, b) => a.date.getTime() - b.date.getTime());
+        const daysDiffs: number[] = [];
+
+        for (let i = 1; i < sorted.length; i++) {
+            const diffTime = Math.abs(sorted[i].date.getTime() - sorted[i - 1].date.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            daysDiffs.push(diffDays);
+        }
+
+        // Categorize each interval
+        const intervalCounts = {
+            weekly: 0,
+            '4-weekly': 0,
+            monthly: 0,
+            quarterly: 0,
+            yearly: 0,
+            outlier: 0
+        };
+
+        for (const days of daysDiffs) {
+            if (days >= 6 && days <= 8) intervalCounts.weekly++;
+            else if (days >= 26 && days <= 30) intervalCounts['4-weekly']++;
+            else if (days >= 25 && days <= 35) intervalCounts.monthly++;
+            else if (days >= 85 && days <= 95) intervalCounts.quarterly++;
+            else if (days >= 360 && days <= 370) intervalCounts.yearly++;
+            else intervalCounts.outlier++;
+        }
+
+        // Find the mode (most common interval)
+        const entries = Object.entries(intervalCounts) as Array<[RecurringCandidate['interval'] | 'outlier', number]>;
+        const validEntries = entries.filter(([key]) => key !== 'outlier');
+
+        if (validEntries.length === 0) {
+            return 'irregular';
+        }
+
+        const [mostCommonInterval, mostCommonCount] = validEntries.reduce((max, current) =>
+            current[1] > max[1] ? current : max
+        );
+
+        // If the most common interval represents at least 60% of intervals, use it
+        const totalNonOutlier = daysDiffs.length - intervalCounts.outlier;
+        if (totalNonOutlier > 0 && mostCommonCount / totalNonOutlier >= 0.6) {
+            console.log(`[RecurringDetection] Robust interval: ${mostCommonInterval} (${mostCommonCount}/${totalNonOutlier} intervals, ${intervalCounts.outlier} outliers)`);
+            return mostCommonInterval as RecurringCandidate['interval'];
+        }
+
+        // Otherwise fall back to irregular
+        return 'irregular';
+    }
+
+    private calculateAverageAmount(txs: (transactions & { categories: categories | null })[]): number {
         if (txs.length === 0) return 0;
         const totalAmount = txs.reduce((sum, t) => sum + Number(t.amount), 0);
         return totalAmount / txs.length;
     }
 
-    private calculateRelativeVariance(txs: transactions[]): number {
+    private calculateRelativeVariance(txs: (transactions & { categories: categories | null })[]): number {
         if (txs.length === 0) return 1;
         const amounts = txs.map((t) => Math.abs(Number(t.amount)));
         const mean = amounts.reduce((sum, value) => sum + value, 0) / amounts.length;
@@ -664,8 +839,8 @@ export class RecurringDetectionService {
             // 1. ALWAYS get merchant_id (find or create)
             const merchantId = await this.findOrCreateMerchant(candidate);
 
-            // 2. Find existing recurring tx for this merchant
-            const existing = await db.recurringTransaction.findFirst({
+            // 2. Find ALL existing recurring txs for this merchant
+            const existingTxs = await db.recurringTransaction.findMany({
                 where: {
                     user_id: userId,
                     merchant_id: merchantId,
@@ -673,11 +848,22 @@ export class RecurringDetectionService {
                 }
             });
 
-            if (existing) {
-                // 3. Update
-                console.log(`[RecurringDetection] Updating existing recurring tx for merchant ${merchantId}`);
+            // 3. Try to find a match by amount
+            const match = existingTxs.find(existing => {
+                const amountA = Math.abs(Number(existing.amount));
+                const amountB = Math.abs(candidate.amount);
+                const diff = Math.abs(amountA - amountB);
+                const avg = (amountA + amountB) / 2;
+                if (avg === 0) return true;
+                // Use a tighter threshold for updating existing records (e.g. 15%)
+                return (diff / avg) < 0.15;
+            });
+
+            if (match) {
+                // 4. Update
+                console.log(`[RecurringDetection] Updating existing recurring tx ${match.id} for merchant ${merchantId}`);
                 await db.recurringTransaction.update({
-                    where: { id: existing.id },
+                    where: { id: match.id },
                     data: {
                         amount: candidate.amount,
                         interval: candidate.interval,
@@ -686,17 +872,17 @@ export class RecurringDetectionService {
                     }
                 });
 
-                // 4. Link any new transactions
+                // 5. Link any new transactions
                 await db.transactions.updateMany({
                     where: {
                         id: { in: candidate.transactions.map(t => t.id) },
                         recurring_transaction_id: null
                     },
-                    data: { recurring_transaction_id: existing.id }
+                    data: { recurring_transaction_id: match.id }
                 });
 
             } else {
-                // 5. Create new
+                // 6. Create new
                 console.log(`[RecurringDetection] Creating new recurring tx for merchant ${merchantId}`);
                 const recurring = await db.recurringTransaction.create({
                     data: {
@@ -710,7 +896,7 @@ export class RecurringDetectionService {
                     }
                 });
 
-                // 6. Link all transactions
+                // 7. Link all transactions
                 await db.transactions.updateMany({
                     where: { id: { in: candidate.transactions.map(t => t.id) } },
                     data: {

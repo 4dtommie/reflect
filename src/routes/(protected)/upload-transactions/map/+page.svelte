@@ -19,7 +19,7 @@
 		{ value: 'merchantName', label: 'Merchant Name', required: true },
 		{ value: 'iban', label: 'IBAN', required: true },
 		{ value: 'amount', label: 'Amount', required: true },
-		{ value: 'type', label: 'Transaction Type', required: true },
+		{ value: 'type', label: 'Transaction Type', required: false },
 		{ value: 'description', label: 'Description', required: true },
 		{ value: 'counterpartyIban', label: 'Counterparty IBAN', required: false },
 		{ value: 'isDebit', label: 'Is Debit', required: false },
@@ -239,86 +239,87 @@
 		<!-- Two-column layout: Title + Column mapping on left, widgets on right -->
 		<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
 			<!-- Left Column: Title + Column Mapping -->
-			<div class="lg:col-span-2 flex flex-col gap-8">
+			<div class="flex flex-col gap-8 lg:col-span-2">
 				<!-- Title Widget -->
 				<DashboardWidget size="wide">
 					<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
 						<h1 class="mb-4 text-7xl font-bold">Assign columns</h1>
 						<p class="text-2xl opacity-70">
-							Assign the columns from your CSV file to the corresponding fields in your transactions.
+							Assign the columns from your CSV file to the corresponding fields in your
+							transactions.
 						</p>
 					</div>
 				</DashboardWidget>
 
 				<!-- Column Mapping Widget -->
 				<DashboardWidget size="wide" title="Column mapping">
-				<div class="flex h-full flex-col justify-center">
-					<div class="overflow-x-auto">
-						<table class="table w-full">
-							<thead>
-								<tr>
-									<th>CSV column</th>
-									<th class="w-20">Sample value</th>
-									<th>Map to field</th>
-									<th>Status</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each parseResult.headers as header, index}
-									{@const currentMapping = mapping[index] || 'skip'}
-									{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
-									{@const isRequired =
-										TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
-									<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
-										<td>
-											<p class="font-medium">{header || '(empty header)'}</p>
-										</td>
-										<td class="w-20 max-w-20">
-											<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
-										</td>
-										<td>
-											<select
-												class="select-bordered select w-full"
-												value={currentMapping}
-												onchange={(e) =>
-													updateMapping(
-														index,
-														(e.target as HTMLSelectElement).value as TransactionField
-													)}
-											>
-												<option value="skip">-- (Skip column) --</option>
-												{#each TRANSACTION_FIELDS as field}
-													{@const alreadyMapped =
-														getMappedColumn(field.value) !== null &&
-														getMappedColumn(field.value) !== index}
-													<option
-														value={field.value}
-														disabled={alreadyMapped && field.value !== 'skip'}
-													>
-														{field.label}
-														{field.required ? '*' : ''}
-														{#if alreadyMapped && field.value !== 'skip'}
-															(already mapped){/if}
-													</option>
-												{/each}
-											</select>
-										</td>
-										<td>
-											{#if currentMapping === 'skip'}
-												<span class="badge badge-ghost">Skipped</span>
-											{:else if isRequired}
-												<span class="badge badge-success">Required</span>
-											{:else}
-												<span class="badge badge-info">Optional</span>
-											{/if}
-										</td>
+					<div class="flex h-full flex-col justify-center">
+						<div class="overflow-x-auto">
+							<table class="table w-full">
+								<thead>
+									<tr>
+										<th>CSV column</th>
+										<th class="w-20">Sample value</th>
+										<th>Map to field</th>
+										<th>Status</th>
 									</tr>
-								{/each}
-							</tbody>
-						</table>
+								</thead>
+								<tbody>
+									{#each parseResult.headers as header, index}
+										{@const currentMapping = mapping[index] || 'skip'}
+										{@const sampleValue = parseResult.rows[0]?.[index] || '(empty)'}
+										{@const isRequired =
+											TRANSACTION_FIELDS.find((f) => f.value === currentMapping)?.required || false}
+										<tr class={currentMapping === 'skip' ? 'opacity-60' : ''}>
+											<td>
+												<p class="font-medium">{header || '(empty header)'}</p>
+											</td>
+											<td class="w-20 max-w-20">
+												<p class="truncate text-sm" title={sampleValue}>{sampleValue}</p>
+											</td>
+											<td>
+												<select
+													class="select-bordered select w-full"
+													value={currentMapping}
+													onchange={(e) =>
+														updateMapping(
+															index,
+															(e.target as HTMLSelectElement).value as TransactionField
+														)}
+												>
+													<option value="skip">-- (Skip column) --</option>
+													{#each TRANSACTION_FIELDS as field}
+														{@const alreadyMapped =
+															getMappedColumn(field.value) !== null &&
+															getMappedColumn(field.value) !== index}
+														<option
+															value={field.value}
+															disabled={alreadyMapped && field.value !== 'skip'}
+														>
+															{field.label}
+															{field.required ? '*' : ''}
+															{#if alreadyMapped && field.value !== 'skip'}
+																(already mapped){/if}
+														</option>
+													{/each}
+												</select>
+											</td>
+											<td>
+												{#if currentMapping === 'skip'}
+													<span class="badge badge-ghost">Skipped</span>
+												{:else if isRequired}
+													<span class="badge badge-success">Required</span>
+												{:else}
+													<span class="badge badge-info">Optional</span>
+												{/if}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
 					</div>
-				</div>
-			</DashboardWidget>
+				</DashboardWidget>
 			</div>
 
 			<!-- Right Column: Summary and Status Widgets (starts at top) -->
@@ -346,8 +347,10 @@
 				{#if missingRequired.length > 0}
 					<DashboardWidget size="small" title="Missing required fields">
 						<div class="flex h-full flex-col justify-center">
-							<div class="alert alert-warning flex-row flex">
-								<div class="font-semibold mb-2 full-width">Please map the following required fields:</div>
+							<div class="alert flex flex-row alert-warning">
+								<div class="full-width mb-2 font-semibold">
+									Please map the following required fields:
+								</div>
 								<div class="">
 									{#each missingRequired as field}
 										<div>{TRANSACTION_FIELDS.find((f) => f.value === field)?.label || field}</div>
@@ -390,114 +393,115 @@
 
 				<!-- Preview Mapped Transactions -->
 				{#if mappedTransactions.length > 0}
-			<DashboardWidget size="small" title="Preview">
-				<div class="flex h-full flex-col justify-start">
-					<div class="flex h-full flex-col justify-start">
-						{#if validCount === 0}
-							<div class="alert alert-error flex flex-col items-start">
-								<p class="mb-2 font-semibold">No valid transactions found.</p>
-								<p class="mb-2 text-sm">
-									Please check the validation errors section above to see what needs to be fixed.
-								</p>
-								<details class="mt-2">
-									<summary class="cursor-pointer text-sm font-medium"
-										>Common issues and fixes:</summary
-									>
-									<ul class="mt-2 list-inside list-disc space-y-1 text-sm">
-										<li>
-											<strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY,
-											or YYYY-MM-DD
-										</li>
-										<li>
-											<strong>Amount format:</strong> Ensure it's a number (can include decimal point
-											or comma, currency symbols will be removed)
-										</li>
-										<li>
-											<strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric
-											characters (spaces allowed)
-										</li>
-										<li>
-											<strong>Missing fields:</strong> Make sure all required fields (marked with *)
-											are mapped to CSV columns
-										</li>
-										<li>
-											<strong>Empty values:</strong> Check that your CSV doesn't have empty cells in
-											required columns
-										</li>
-									</ul>
-								</details>
-							</div>
-						{:else}
-							<div class="space-y-4">
-								{#each mappedTransactions.slice(0, previewRowCount) as transaction, index}
-									{@const errors = mappingErrors[index] || []}
-									{@const preview = previewTransactions[index]}
-									<div class="card relative bg-base-200 shadow-sm">
-										<div class="card-body p-4">
-											<div class="absolute top-4 right-4">
-												{#if errors.length > 0}
-													<span class="badge badge-error">{errors.length} error(s)</span>
-												{:else}
-													<span class="badge badge-success">OK</span>
-												{/if}
-											</div>
-
-											{#if transaction}
-												<div class="grid grid-cols-1 gap-2">
-													<div>
-														<span class="font-semibold opacity-70">Date:</span>
-														<span>{transaction.date.toLocaleDateString()}</span>
-													</div>
-													<div>
-														<span class="font-semibold opacity-70">Amount:</span>
-														<span class={transaction.isDebit ? 'text-error' : 'text-success'}>
-															{transaction.isDebit ? '-' : '+'}
-															€{transaction.amount.toFixed(2)}
-														</span>
-													</div>
-													<div>
-														<span class="font-semibold opacity-70">Merchant:</span>
-														{#if preview && preview.cleaned_merchant_name}
-															<span>{preview.cleaned_merchant_name}</span>
-														{:else}
-															<span>{transaction.merchantName}</span>
-														{/if}
-													</div>
-													<div>
-														<span class="font-semibold opacity-70">Description:</span>
-														{#if preview}
-															<span>{preview.normalized_description}</span>
-														{:else if loadingPreview}
-															<span class="loading loading-xs loading-spinner"></span>
-														{:else}
-															<span>{transaction.description}</span>
-														{/if}
-													</div>
-													<div>
-														<span class="font-semibold opacity-70">Type:</span>
-														<span class="badge badge-sm">{transaction.type}</span>
-													</div>
-												</div>
-											{:else}
-												<div class="text-error">
-													Invalid: {errors.map((e) => e.message).join(', ')}
-												</div>
-											{/if}
-										</div>
+					<DashboardWidget size="small" title="Preview">
+						<div class="flex h-full flex-col justify-start">
+							<div class="flex h-full flex-col justify-start">
+								{#if validCount === 0}
+									<div class="alert flex flex-col items-start alert-error">
+										<p class="mb-2 font-semibold">No valid transactions found.</p>
+										<p class="mb-2 text-sm">
+											Please check the validation errors section above to see what needs to be
+											fixed.
+										</p>
+										<details class="mt-2">
+											<summary class="cursor-pointer text-sm font-medium"
+												>Common issues and fixes:</summary
+											>
+											<ul class="mt-2 list-inside list-disc space-y-1 text-sm">
+												<li>
+													<strong>Date format:</strong> Try formats like DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY,
+													or YYYY-MM-DD
+												</li>
+												<li>
+													<strong>Amount format:</strong> Ensure it's a number (can include decimal point
+													or comma, currency symbols will be removed)
+												</li>
+												<li>
+													<strong>IBAN format:</strong> Should be 2 letters + 2 digits + up to 30 alphanumeric
+													characters (spaces allowed)
+												</li>
+												<li>
+													<strong>Missing fields:</strong> Make sure all required fields (marked with
+													*) are mapped to CSV columns
+												</li>
+												<li>
+													<strong>Empty values:</strong> Check that your CSV doesn't have empty cells
+													in required columns
+												</li>
+											</ul>
+										</details>
 									</div>
-								{/each}
+								{:else}
+									<div class="space-y-4">
+										{#each mappedTransactions.slice(0, previewRowCount) as transaction, index}
+											{@const errors = mappingErrors[index] || []}
+											{@const preview = previewTransactions[index]}
+											<div class="card relative bg-base-200 shadow-sm">
+												<div class="card-body p-4">
+													<div class="absolute top-4 right-4">
+														{#if errors.length > 0}
+															<span class="badge badge-error">{errors.length} error(s)</span>
+														{:else}
+															<span class="badge badge-success">OK</span>
+														{/if}
+													</div>
 
-								{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
-									<p class="mt-2 text-center text-sm text-base-content/70">
-										Showing {previewRowCount} items from total of {totalRows} rows
-									</p>
+													{#if transaction}
+														<div class="grid grid-cols-1 gap-2">
+															<div>
+																<span class="font-semibold opacity-70">Date:</span>
+																<span>{transaction.date.toLocaleDateString()}</span>
+															</div>
+															<div>
+																<span class="font-semibold opacity-70">Amount:</span>
+																<span class={transaction.isDebit ? 'text-error' : 'text-success'}>
+																	{transaction.isDebit ? '-' : '+'}
+																	€{transaction.amount.toFixed(2)}
+																</span>
+															</div>
+															<div>
+																<span class="font-semibold opacity-70">Merchant:</span>
+																{#if preview && preview.cleaned_merchant_name}
+																	<span>{preview.cleaned_merchant_name}</span>
+																{:else}
+																	<span>{transaction.merchantName}</span>
+																{/if}
+															</div>
+															<div>
+																<span class="font-semibold opacity-70">Description:</span>
+																{#if preview}
+																	<span>{preview.normalized_description}</span>
+																{:else if loadingPreview}
+																	<span class="loading loading-xs loading-spinner"></span>
+																{:else}
+																	<span>{transaction.description}</span>
+																{/if}
+															</div>
+															<div>
+																<span class="font-semibold opacity-70">Type:</span>
+																<span class="badge badge-sm">{transaction.type}</span>
+															</div>
+														</div>
+													{:else}
+														<div class="text-error">
+															Invalid: {errors.map((e) => e.message).join(', ')}
+														</div>
+													{/if}
+												</div>
+											</div>
+										{/each}
+
+										{#if mappedTransactions.length > previewRowCount || totalRows > mappedTransactions.length}
+											<p class="mt-2 text-center text-sm text-base-content/70">
+												Showing {previewRowCount} items from total of {totalRows} rows
+											</p>
+										{/if}
+									</div>
 								{/if}
 							</div>
-						{/if}
-					</div>
-				</div></DashboardWidget
-			>
-		{/if}
+						</div></DashboardWidget
+					>
+				{/if}
 			</div>
 		</div>
 	{/if}

@@ -57,13 +57,13 @@ export const GET: RequestHandler = async ({ locals }) => {
         const checkIsIncome = (sub: typeof subscriptions[0]): boolean => {
             // Check category group first
             if (sub.categories?.group === 'income') return true;
-            
+
             // Check linked transactions - if most are NOT debits, it's income
             if (sub.transactions.length > 0) {
                 const nonDebitCount = sub.transactions.filter(tx => !tx.is_debit).length;
                 return nonDebitCount > sub.transactions.length / 2;
             }
-            
+
             return false;
         };
 
@@ -172,13 +172,13 @@ export const GET: RequestHandler = async ({ locals }) => {
         const isIncomeSubscription = (sub: typeof subscriptions[0]): boolean => {
             // Check category group first
             if (sub.categories?.group === 'income') return true;
-            
+
             // Check linked transactions - if most are NOT debits, it's income
             if (sub.transactions.length > 0) {
                 const nonDebitCount = sub.transactions.filter(tx => !tx.is_debit).length;
                 return nonDebitCount > sub.transactions.length / 2;
             }
-            
+
             return false;
         };
 
@@ -210,5 +210,36 @@ export const GET: RequestHandler = async ({ locals }) => {
     } catch (err) {
         console.error('Error fetching recurring transactions:', err);
         throw error(500, 'Failed to fetch recurring transactions');
+    }
+};
+
+export const DELETE: RequestHandler = async ({ locals }) => {
+    if (!locals.user) {
+        throw error(401, 'Not authenticated');
+    }
+
+    try {
+        // Delete all recurring transactions for the user
+        await db.recurringTransaction.deleteMany({
+            where: {
+                user_id: locals.user.id
+            }
+        });
+
+        // Also unlink any transactions that were linked to these recurring transactions
+        await db.transactions.updateMany({
+            where: {
+                user_id: locals.user.id,
+                recurring_transaction_id: { not: null }
+            },
+            data: {
+                recurring_transaction_id: null
+            }
+        });
+
+        return json({ success: true });
+    } catch (err) {
+        console.error('Error deleting recurring transactions:', err);
+        throw error(500, 'Failed to delete recurring transactions');
     }
 };

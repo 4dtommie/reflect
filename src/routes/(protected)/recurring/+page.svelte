@@ -6,7 +6,8 @@
 	import UpcomingPaymentsWidget from '$lib/components/UpcomingPaymentsWidget.svelte';
 	import RecurringItem from '$lib/components/RecurringItem.svelte';
 	import Amount from '$lib/components/Amount.svelte';
-	import { Search, TrendingDown, TrendingUp, ArrowRight, RefreshCw } from 'lucide-svelte';
+	import { Search, TrendingDown, TrendingUp, ArrowRight, RefreshCw, Trash2 } from 'lucide-svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data }: { data: PageData } = $props();
 
@@ -71,6 +72,23 @@
 			expenseSubscriptions.length > 0 ||
 			incomeSubscriptions.length > 0
 	);
+
+	async function deleteAllSubscriptions() {
+		if (!confirm('Are you sure you want to delete ALL subscriptions? This cannot be undone.'))
+			return;
+
+		try {
+			const res = await fetch('/api/recurring', { method: 'DELETE' });
+			if (res.ok) {
+				await invalidateAll();
+			} else {
+				alert('Failed to delete subscriptions');
+			}
+		} catch (e) {
+			console.error(e);
+			alert('Error deleting subscriptions');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -99,10 +117,7 @@
 		<!-- Actions widget -->
 		<DashboardWidget size="small" title="Actions">
 			<div class="flex h-full flex-col justify-center gap-3">
-				<a
-					href="/recurring/detect"
-					class="btn btn-primary group justify-between"
-				>
+				<a href="/recurring/detect" class="group btn justify-between btn-primary">
 					<span class="flex items-center gap-2">
 						<Search size={18} />
 						Detect subscriptions
@@ -111,11 +126,20 @@
 				</a>
 
 				{#if hasData}
+					<button
+						class="group btn justify-between btn-outline btn-error"
+						onclick={deleteAllSubscriptions}
+					>
+						<span class="flex items-center gap-2">
+							<Trash2 size={18} />
+							Delete all
+						</span>
+					</button>
+
 					<p class="text-center text-xs opacity-50">
-						Last updated: {new Date(data.subscriptions?.[0]?.updated_at || Date.now()).toLocaleDateString(
-							'en-US',
-							{ month: 'short', day: 'numeric' }
-						)}
+						Last updated: {new Date(
+							data.subscriptions?.[0]?.updated_at || Date.now()
+						).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
 					</p>
 				{/if}
 			</div>
@@ -160,7 +184,7 @@
 						</div>
 					</div>
 					<div class="text-right">
-						<p class="text-xs uppercase tracking-wide opacity-50">Monthly</p>
+						<p class="text-xs tracking-wide uppercase opacity-50">Monthly</p>
 						<p class="text-xl font-bold text-success">
 							<Amount
 								value={incomeStats.monthlyTotal}
@@ -205,7 +229,7 @@
 						</div>
 					</div>
 					<div class="text-right">
-						<p class="text-xs uppercase tracking-wide opacity-50">Monthly</p>
+						<p class="text-xs tracking-wide uppercase opacity-50">Monthly</p>
 						<p class="text-xl font-bold text-error">
 							<Amount
 								value={data.stats?.monthlyTotal || 0}
@@ -226,7 +250,7 @@
 				{:else}
 					<div class="py-8 text-center">
 						<p class="opacity-50">No recurring expenses detected yet.</p>
-						<a href="/recurring/detect" class="link link-primary mt-2 inline-block text-sm">
+						<a href="/recurring/detect" class="mt-2 inline-block link text-sm link-primary">
 							Run detection
 						</a>
 					</div>
@@ -235,4 +259,3 @@
 		{/if}
 	</div>
 </div>
-
