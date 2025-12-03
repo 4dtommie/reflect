@@ -101,6 +101,7 @@ model RecurringTransaction {
   name               String
   amount             Decimal        @db.Decimal(10, 2)
   interval           String         // "monthly", "weekly", "quarterly", "yearly", "4-weekly"
+  type               String?        // "subscription", "variable_cost", "salary", "tax", "transfer"
   status             String         @default("active") // "active", "inactive"
   merchant_id        Int?
   category_id        Int?

@@ -128,15 +128,114 @@ export class RecurringDetectionService {
             }
         }
 
+        // POST-PROCESSING: Merge over-split variable merchants
+        // If a merchant has many small candidates from interval detection in a variable category,
+        // merge them into a single variable_cost
+        console.log(`[RecurringDetection] Post-processing: Checking for over-split variable merchants...`);
+        const merchantGroups = new Map<number, RecurringCandidate[]>();
+
+        for (const candidate of uniqueCandidates) {
+            if (candidate.merchantId) {
+                const group = merchantGroups.get(candidate.merchantId) || [];
+                group.push(candidate);
+                merchantGroups.set(candidate.merchantId, group);
+            }
+        }
+
+        const candidatesToRemove = new Set<RecurringCandidate>();
+        const candidatesToAdd: RecurringCandidate[] = [];
+
+        for (const [merchantId, merchantCandidates] of merchantGroups) {
+            // Only process if we have multiple candidates for this merchant
+            if (merchantCandidates.length <= 2) continue;
+
+            // Check if they're all from a variable category
+            const firstCandidate = merchantCandidates[0];
+            const firstTx = firstCandidate.transactions[0] as (transactions & { categories: categories | null });
+            const categoryName = firstTx?.categories?.name || null;
+            const categoryBehavior = getCategoryRecurringBehavior(categoryName);
+
+            if (categoryBehavior.type === 'variable_recurring') {
+                // Found over-split variable merchant! Merge them
+                console.log(`[RecurringDetection] Merging ${merchantCandidates.length} over-split candidates for merchant ${merchantId} (${firstCandidate.name})`);
+
+                // Collect all transactions
+                const allTransactions: (transactions & { categories: categories | null })[] = [];
+                const seenIds = new Set<number>();
+
+                for (const candidate of merchantCandidates) {
+                    for (const tx of candidate.transactions) {
+                        if (!seenIds.has(tx.id)) {
+                            allTransactions.push(tx as (transactions & { categories: categories | null }));
+                            seenIds.add(tx.id);
+                        }
+                    }
+                }
+
+                // Sort by date
+                allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                // Create merged variable_cost candidate
+                const avgAmount = this.calculateAverageAmount(allTransactions);
+                const interval = this.estimateIntervalFromTransactions(allTransactions);
+
+                const mergedCandidate: RecurringCandidate = {
+                    name: `${firstCandidate.name} (variable)`,
+                    amount: Number(allTransactions[0].amount),
+                    averageAmount: avgAmount,
+                    interval,
+                    confidence: 0.75,
+                    type: 'variable_cost',
+                    source: 'interval_rule',
+                    transactions: allTransactions,
+                    merchantId,
+                    nextPaymentDate: undefined
+                };
+
+                // Mark old candidates for removal, add merged one
+                merchantCandidates.forEach(c => candidatesToRemove.add(c));
+                candidatesToAdd.push(mergedCandidate);
+
+                console.log(`  → Merged into variable_cost: ${allTransactions.length} txs, ~€${avgAmount.toFixed(2)} avg`);
+            }
+        }
+
+        // Apply the merges - filter and combine
+        let finalCandidates = uniqueCandidates.filter(c => !candidatesToRemove.has(c));
+        if (candidatesToAdd.length > 0) {
+            finalCandidates.push(...candidatesToAdd);
+            console.log(`[RecurringDetection] Post-processing complete: Removed ${candidatesToRemove.size} candidates, added ${candidatesToAdd.length} merged`);
+        }
+
         // Final filter: Remove small amounts (< 10)
-        // This applies to all sources (Known List, Interval, etc.)
-        const beforeFilter = uniqueCandidates.length;
-        const filtered = uniqueCandidates.filter(c => Math.abs(c.amount) >= 10);
+        // For variable costs, use average amount; for others use amount
+        const beforeFilter = finalCandidates.length;
+        const filtered = finalCandidates.filter(c => {
+            const checkAmount = c.type === 'variable_cost' ? (c.averageAmount || c.amount) : c.amount;
+            return Math.abs(checkAmount) >= 10;
+        });
         const removed = beforeFilter - filtered.length;
         if (removed > 0) {
             console.log(`[RecurringDetection] Filtered out ${removed} candidates with amount < €10`);
         }
         console.log(`[RecurringDetection] Final result: ${filtered.length} unique candidates`);
+
+        // Clean summary by type
+        const subscriptions = filtered.filter(c => c.type === 'subscription');
+        const variableCosts = filtered.filter(c => c.type === 'variable_cost');
+        const income = filtered.filter(c => ['salary', 'tax', 'transfer'].includes(c.type));
+
+        console.log(`\n📊 RECURRING DETECTION SUMMARY:`)
+            ;
+        console.log(`   💳 Subscriptions: ${subscriptions.length}`);
+        subscriptions.forEach(s => console.log(`      - ${s.name}: €${Math.abs(s.amount).toFixed(2)} (${s.interval})`));
+
+        console.log(`   🛒 Variable costs: ${variableCosts.length}`);
+        variableCosts.forEach(v => console.log(`      - ${v.name}: ~€${Math.abs(v.averageAmount || v.amount).toFixed(2)} avg (${v.transactions.length} txs)`));
+
+        console.log(`   💰 Income: ${income.length}`);
+        income.forEach(i => console.log(`      - ${i.name}: €${Math.abs(i.amount).toFixed(2)} (${i.type})`));
+        console.log(``);
 
         // Save to DB
         await this.saveRecurringTransactions(userId, filtered);
@@ -252,7 +351,7 @@ export class RecurringDetectionService {
             if (txs.length < categoryBehavior.minTransactions) continue;
 
             // Cluster by amount to handle cases where a merchant has different charge types
-            const amountClusters = this.clusterByAmount(txs);
+            const amountClusters = categoryBehavior.type === 'variable_recurring' ? [txs] : this.clusterByAmount(txs);
 
             for (const cluster of amountClusters) {
                 if (cluster.length < 3) continue;
@@ -298,7 +397,12 @@ export class RecurringDetectionService {
                 // For groceries/variable categories, we're more lenient
                 const isVariableCategory = categoryBehavior.type === 'variable_recurring';
 
-                if (relativeVariance <= categoryVarianceThreshold) {
+                // Variable categories (groceries) SHOULD have variable amounts - always accept
+                if (isVariableCategory) {
+                    isCandidate = true;
+                    confidence = 0.75;
+                }
+                else if (relativeVariance <= categoryVarianceThreshold) {
                     isCandidate = true;
                     confidence = isVariableCategory ? 0.7 : 0.8; // Slightly lower confidence for variable
                 }
@@ -439,6 +543,11 @@ export class RecurringDetectionService {
 
             console.log(`[RecurringDetection] "${providerName}" - Found ${amountClusters.length} amount clusters from ${txs.length} transactions`);
 
+            // PHASE 3.5: For variable_recurring, track all processed transactions
+            // to later create a variable_cost if there are enough unmatched transactions
+            const isVariableCategory = categoryBehavior.type === 'variable_recurring';
+            const processedTransactionIds = new Set<number>();
+
             // PHASE 2B: Filter clusters - require minimum based on category
             // PHASE 3: Use category-specific minimum transactions
             const minTransactionsRequired = categoryBehavior.minTransactions;
@@ -496,9 +605,30 @@ export class RecurringDetectionService {
                     displayName += ` (€${Math.round(avgAmount)})`;
                 }
 
-                // PHASE 3.5: Set type based on category behavior
-                const candidateType: RecurringCandidate['type'] =
-                    categoryBehavior.type === 'variable_recurring' ? 'variable_cost' : 'subscription';
+                // PHASE 3.5: Set type based on cluster characteristics for variable categories
+                let candidateType: RecurringCandidate['type'];
+
+                if (isVariableCategory) {
+                    // For variable categories (groceries), check if this cluster is subscription-like
+                    const clusterVariance = this.calculateRelativeVariance(cluster);
+                    const hasRegularInterval = interval !== 'irregular';
+
+                    // If low variance (<10%) + regular interval -> it's a subscription (e.g., Picnic box)
+                    // Otherwise skip this cluster for variable_cost consideration later
+                    if (clusterVariance < 0.10 && hasRegularInterval && cluster.length >= 3) {
+                        candidateType = 'subscription';
+                        console.log(`[RecurringDetection] Found subscription pattern in variable category: \"${displayName}\" (${cluster.length} txs, ${clusterVariance.toFixed(2)} variance)`);
+
+                        // Mark these as processed
+                        cluster.forEach(tx => processedTransactionIds.add(tx.id));
+                    } else {
+                        // High variance or irregular - skip for now, will be part of variable_cost
+                        console.log(`[RecurringDetection] Skipping high-variance cluster in variable category: \u20ac${avgAmount.toFixed(2)} (${cluster.length} txs, ${clusterVariance.toFixed(2)} variance)`);
+                        continue;
+                    }
+                } else {
+                    candidateType = 'subscription';
+                }
 
                 candidates.push({
                     name: displayName,
@@ -512,6 +642,36 @@ export class RecurringDetectionService {
                     merchantId,
                     nextPaymentDate
                 });
+            }
+
+            // PHASE 3.5: For variable categories, check if there are enough unprocessed transactions
+            // to create a variable_cost pattern
+            if (isVariableCategory) {
+                const unprocessedTxs = txs.filter(tx => !processedTransactionIds.has(tx.id));
+
+                if (unprocessedTxs.length >= 6) {
+                    // Enough frequent variable transactions - create a variable_cost
+                    unprocessedTxs.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                    const avgAmount = this.calculateAverageAmount(unprocessedTxs);
+                    const interval = this.estimateIntervalFromTransactions(unprocessedTxs);
+                    const variance = this.calculateRelativeVariance(unprocessedTxs);
+
+                    console.log(`[RecurringDetection] Creating variable_cost for "${providerName}": ${unprocessedTxs.length} txs, €${avgAmount.toFixed(2)} avg, ${variance.toFixed(2)} variance`);
+
+                    candidates.push({
+                        name: `${providerName} (variable)`,
+                        amount: Number(unprocessedTxs[0].amount),
+                        averageAmount: avgAmount,
+                        interval,
+                        confidence: 0.75,
+                        type: 'variable_cost',
+                        source: 'known_list',
+                        transactions: unprocessedTxs,
+                        merchantId,
+                        nextPaymentDate: undefined // No specific next date for variable costs
+                    });
+                }
             }
         }
 
@@ -750,8 +910,8 @@ export class RecurringDetectionService {
 
         for (const days of daysDiffs) {
             if (days >= 6 && days <= 8) intervalCounts.weekly++;
-            else if (days >= 26 && days <= 30) intervalCounts['4-weekly']++;
-            else if (days >= 25 && days <= 35) intervalCounts.monthly++;
+            else if (days >= 25 && days <= 35) intervalCounts.monthly++;  // Check monthly FIRST
+            else if (days >= 27 && days <= 29) intervalCounts['4-weekly']++;  // More specific (28 ±1)
             else if (days >= 85 && days <= 95) intervalCounts.quarterly++;
             else if (days >= 360 && days <= 370) intervalCounts.yearly++;
             else intervalCounts.outlier++;
@@ -867,6 +1027,7 @@ export class RecurringDetectionService {
                     data: {
                         amount: candidate.amount,
                         interval: candidate.interval,
+                        type: candidate.type, // PHASE 3.6: Save type
                         next_expected_date: candidate.nextPaymentDate,
                         updated_at: new Date()
                     }
@@ -890,6 +1051,7 @@ export class RecurringDetectionService {
                         name: candidate.name,
                         amount: candidate.amount,
                         interval: candidate.interval,
+                        type: candidate.type, // PHASE 3.6: Save type
                         merchant_id: merchantId,
                         next_expected_date: candidate.nextPaymentDate,
                         status: 'active'

@@ -19,7 +19,7 @@ export const CATEGORY_RECURRING_CONFIG = {
             'Persoonlijke verzorging'
         ],
         varianceThreshold: 0.60, // Allow 60% variance
-        minTransactions: 8, // Need more data points for variable amounts
+        minTransactions: 6, // Lowered from 8 to 6 for better detection
         description: 'Variable amounts but frequent'
     },
 

@@ -192,6 +192,19 @@ export const GET: RequestHandler = async ({ locals }) => {
             }))
         }));
 
+        // Log types for debugging
+        const typeBreakdown = {
+            subscription: serializedSubscriptions.filter(s => s.type === 'subscription').length,
+            variable_cost: serializedSubscriptions.filter(s => s.type === 'variable_cost').length,
+            salary: serializedSubscriptions.filter(s => s.type === 'salary').length,
+            tax: serializedSubscriptions.filter(s => s.type === 'tax').length,
+            other: serializedSubscriptions.filter(s => !['subscription', 'variable_cost', 'salary', 'tax'].includes(s.type || '')).length
+        };
+        console.log(`[API /recurring] Returning ${serializedSubscriptions.length} recurring transactions:`, typeBreakdown);
+        serializedSubscriptions.filter(s => s.type === 'variable_cost').forEach(v =>
+            console.log(`  - Variable cost: ${v.name} (type: ${v.type})`)
+        );
+
         return json({
             subscriptions: serializedSubscriptions,
             stats: {

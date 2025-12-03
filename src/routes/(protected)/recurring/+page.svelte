@@ -11,10 +11,16 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Separate expenses and income based on the isIncome flag from the API
-	const expenseSubscriptions = $derived.by(() => {
+	// Separate by type: subscriptions, variable costs, and income
+	const subscriptions = $derived.by(() => {
 		return (data.subscriptions || []).filter((s) => {
-			return !s.isIncome && s.status === 'active';
+			return !s.isIncome && s.status === 'active' && s.type === 'subscription';
+		});
+	});
+
+	const variableCosts = $derived.by(() => {
+		return (data.subscriptions || []).filter((s) => {
+			return !s.isIncome && s.status === 'active' && s.type === 'variable_cost';
 		});
 	});
 
@@ -69,7 +75,8 @@
 
 	const hasData = $derived(
 		(data.subscriptions && data.subscriptions.length > 0) ||
-			expenseSubscriptions.length > 0 ||
+			subscriptions.length > 0 ||
+			variableCosts.length > 0 ||
 			incomeSubscriptions.length > 0
 	);
 
@@ -111,7 +118,7 @@
 			/>
 
 			<!-- Upcoming payments widget -->
-			<UpcomingPaymentsWidget subscriptions={expenseSubscriptions} />
+			<UpcomingPaymentsWidget {subscriptions} />
 		{/if}
 
 		<!-- Actions widget -->
@@ -222,9 +229,7 @@
 						<div>
 							<h2 class="text-xl font-bold">Recurring expenses</h2>
 							<p class="text-sm opacity-60">
-								{expenseSubscriptions.length} active subscription{expenseSubscriptions.length !== 1
-									? 's'
-									: ''}
+								{subscriptions.length} active subscription{subscriptions.length !== 1 ? 's' : ''}
 							</p>
 						</div>
 					</div>
@@ -241,9 +246,9 @@
 					</div>
 				</div>
 
-				{#if expenseSubscriptions.length > 0}
+				{#if subscriptions.length > 0}
 					<div class="space-y-2">
-						{#each expenseSubscriptions as subscription (subscription.id)}
+						{#each subscriptions as subscription (subscription.id)}
 							<RecurringItem {subscription} isIncome={false} />
 						{/each}
 					</div>
