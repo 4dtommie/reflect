@@ -7,21 +7,25 @@
 		monthlyIncome = 0,
 		monthlyExpenses = 0,
 		recurringExpenses = 0,
-		variableExpenses = 0
+		variableExpenses = 0,
+		monthlySavings = 0
 	}: {
 		monthlyIncome?: number;
 		monthlyExpenses?: number;
 		recurringExpenses?: number;
 		variableExpenses?: number;
+		monthlySavings?: number;
 	} = $props();
 
-	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses));
-	const isPositive = $derived(monthlyIncome >= monthlyExpenses);
+	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses - monthlySavings));
+	const totalObligations = $derived(monthlyExpenses + monthlySavings);
+	const isPositive = $derived(monthlyIncome >= totalObligations);
 	const savingsRate = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
 
 	// For the visual bars - all relative to income
 	const incomeBarWidth = $derived(100); // Income is always full width as reference
 	const expenseBarWidth = $derived(monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 0);
+	const savingsBarWidth = $derived(monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0);
 	const freeBarWidth = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
 	
 	// Calculate recurring and variable bar widths
@@ -64,37 +68,37 @@
 				</div>
 			</div>
 
-			<!-- Expenses bar (split into recurring and variable) -->
+			<!-- Expenses bar - shows position starting at 0 -->
 			<div class="flex items-center gap-2">
 				<span class="w-16 text-right text-xs opacity-50">Expenses</span>
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
-					<!-- Recurring expenses (dark purple - matching chart) -->
+					<!-- Recurring expenses (dark purple) -->
 					{#if recurringBarWidth > 0}
 						<div
 							class="absolute inset-y-0 left-0 flex items-center justify-end rounded-l px-2 transition-all duration-500"
 							style="width: {Math.min(recurringBarWidth, 100)}%; background-color: rgba(139, 92, 246, 0.8);"
 						>
-							{#if recurringBarWidth > 20}
+							{#if recurringBarWidth > 15 && expenseBarWidth > 30}
 								<span class="text-xs font-medium text-white">
 									€ {formatNumber(Math.round(recurringExpenses))}
 								</span>
 							{/if}
 						</div>
 					{/if}
-					<!-- Variable expenses (light purple - matching chart) -->
+					<!-- Variable expenses (light purple) -->
 					{#if variableBarWidth > 0}
 						<div
 							class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
 							style="left: {Math.min(recurringBarWidth, 100)}%; width: {Math.min(variableBarWidth, 100 - Math.min(recurringBarWidth, 100))}%; background-color: rgba(196, 181, 253, 0.7);"
 						>
-							{#if variableBarWidth > 20 && recurringBarWidth <= 20}
+							{#if variableBarWidth > 15 && expenseBarWidth > 30 && recurringBarWidth <= 15}
 								<span class="text-xs font-medium text-purple-900">
 									€ {formatNumber(Math.round(variableExpenses))}
 								</span>
 							{/if}
 						</div>
 					{/if}
-					<!-- Total label if bars are too small or at the end if both visible -->
+					<!-- Total label if bars are too small -->
 					{#if expenseBarWidth <= 20}
 						<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium">
 							€ {formatNumber(Math.round(monthlyExpenses))}
@@ -107,22 +111,46 @@
 				</div>
 			</div>
 
-			<!-- Free to spend bar -->
+			<!-- Savings bar - shows position starting where expenses end -->
+			{#if savingsBarWidth > 0}
+				<div class="flex items-center gap-2">
+					<span class="w-16 text-right text-xs opacity-50">Savings</span>
+					<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
+						<div
+							class="absolute inset-y-0 flex items-center justify-end rounded px-2 transition-all duration-500"
+							style="left: {Math.min(expenseBarWidth, 100)}%; width: {Math.min(savingsBarWidth, 100 - Math.min(expenseBarWidth, 100))}%; background-color: rgba(234, 179, 8, 0.8);"
+						>
+							{#if savingsBarWidth > 20}
+								<span class="text-xs font-medium text-yellow-900">
+									€ {formatNumber(Math.round(monthlySavings))}
+								</span>
+							{/if}
+						</div>
+						{#if savingsBarWidth <= 20 && monthlySavings > 0}
+							<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium" style="left: {Math.min(expenseBarWidth + 2, 98)}%;">
+								€ {formatNumber(Math.round(monthlySavings))}
+							</span>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Free to spend bar - shows position starting where expenses + savings end -->
 			<div class="flex items-center gap-2">
 				<span class="w-16 text-right text-xs opacity-50">Free</span>
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
 					<div
-						class="absolute inset-y-0 left-0 flex items-center justify-end rounded bg-sky-600/80 px-2 transition-all duration-500"
-						style="width: {freeBarWidth}%"
+						class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
+						style="left: {Math.min(expenseBarWidth + savingsBarWidth, 100)}%; width: {Math.min(freeBarWidth, 100 - Math.min(expenseBarWidth + savingsBarWidth, 100))}%; background-color: rgba(14, 165, 233, 0.8);"
 					>
-					{#if freeBarWidth > 20}
-						<span class="text-xs font-medium text-white">
-							€ {formatNumber(Math.round(freeToSpend))}
-						</span>
-					{/if}
+						{#if freeBarWidth > 20}
+							<span class="text-xs font-medium text-white">
+								€ {formatNumber(Math.round(freeToSpend))}
+							</span>
+						{/if}
 					</div>
 					{#if freeBarWidth <= 20 && freeToSpend > 0}
-						<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium">
+						<span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium">
 							€ {formatNumber(Math.round(freeToSpend))}
 						</span>
 					{/if}

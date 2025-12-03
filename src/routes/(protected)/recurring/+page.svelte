@@ -162,6 +162,7 @@
 				monthlyExpenses={(data.stats?.monthlyTotal || 0) + (variableStats?.totalMonthlyAverage || 0)}
 				recurringExpenses={data.stats?.monthlyTotal || 0}
 				variableExpenses={variableStats?.totalMonthlyAverage || 0}
+				monthlySavings={data.monthlySavingsAverage || 0}
 			/>
 		</div>
 

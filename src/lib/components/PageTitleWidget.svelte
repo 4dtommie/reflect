@@ -12,7 +12,7 @@
 	}: {
 		title: string;
 		subtitle?: string;
-		monthlySpending?: { month: string; recurring: number; variable: number; remaining: number }[];
+		monthlySpending?: { month: string; recurring: number; variable: number; remaining: number; savings: number; income: number }[];
 		class?: string;
 	} = $props();
 
@@ -31,27 +31,38 @@
 			return date.toLocaleDateString('nl-NL', { month: 'short' })[0].toUpperCase();
 		});
 
-		// Extract recurring, variable, and remaining values
-		const recurringValues = monthlySpending.map(({ recurring }) => recurring);
-		const variableValues = monthlySpending.map(({ variable }) => variable);
-		const remainingValues = monthlySpending.map(({ remaining }) => remaining);
+		// Extract recurring, variable, savings, and remaining values
+		const recurringValues = monthlySpending.map(({ recurring }) => recurring || 0);
+		const variableValues = monthlySpending.map(({ variable }) => variable || 0);
+		const savingsValues = monthlySpending.map(({ savings }) => savings || 0);
+		const remainingValues = monthlySpending.map(({ remaining }) => remaining || 0);
 		
-		// Calculate stacked values for proper layering:
-		// Bottom: recurring
-		// Middle: variable (stacked on recurring)
-		// Top: remaining (stacked on variable + recurring)
+		// Calculate cumulative values for proper stacked area chart visualization:
+		// Each layer's data point represents the cumulative height from the base
+		// Bottom: recurring (base)
+		// Second: variable stacked on recurring
+		// Third: savings stacked on variable + recurring  
+		// Top: remaining stacked on savings + variable + recurring
 		const stackedVariable = recurringValues.map((recurring, i) => recurring + variableValues[i]);
-		const stackedRemaining = stackedVariable.map((variableStack, i) => variableStack + remainingValues[i]);
+		const stackedSavings = stackedVariable.map((variableStack, i) => variableStack + savingsValues[i]);
+		const stackedRemaining = stackedSavings.map((savingsStack, i) => savingsStack + remainingValues[i]);
+		
+		// Income line - real monthly income values
+		const incomeLineValues = monthlySpending.map(({ income }) => income || 0);
 
 		return {
 			labels: monthLabels,
 			recurring: recurringValues,
 			variable: stackedVariable,
+			savings: stackedSavings,
 			remaining: stackedRemaining,
-			// Keep raw values for tooltips
+			income: incomeLineValues,
+			// Keep raw individual values for tooltips
 			rawRecurring: recurringValues,
 			rawVariable: variableValues,
-			rawRemaining: remainingValues
+			rawSavings: savingsValues,
+			rawRemaining: remainingValues,
+			rawIncome: incomeLineValues
 		};
 	});
 
@@ -60,6 +71,7 @@
 
 		// Dark purple: rgb(139, 92, 246) - #8B5CF6 (recurring)
 		// Light purple: rgb(196, 181, 253) - #C4B5FD (variable)
+		// Yellow: rgb(234, 179, 8) - #EAB308 (savings)
 		// Light blue: rgb(14, 165, 233) - #0EA5E9 (remaining, matching sky-600)
 		
 		// Store reference to data for tooltip callbacks
@@ -93,6 +105,17 @@
 						order: 2
 					},
 					{
+						label: 'Savings & Investments',
+						data: chartData.savings,
+						borderColor: 'rgb(234, 179, 8)',
+						backgroundColor: 'rgba(234, 179, 8, 0.6)',
+						fill: '-1',
+						tension: 0.4,
+						pointRadius: 0,
+						pointHoverRadius: 4,
+						order: 3
+					},
+					{
 						label: 'Remaining expenses',
 						data: chartData.remaining,
 						borderColor: 'rgb(14, 165, 233)',
@@ -101,7 +124,24 @@
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 3
+						order: 4,
+						hidden: true
+					},
+					{
+						label: 'Income',
+						data: chartData.income,
+						borderColor: 'rgb(34, 197, 94)',
+						backgroundColor: 'transparent',
+						borderWidth: 2,
+						borderDash: [5, 5],
+						fill: false,
+						stepped: false,
+						tension: 0.4,
+						pointRadius: 0,
+						pointHoverRadius: 4,
+						order: 5,
+						spanGaps: true,
+						hidden: true
 					}
 				]
 			},
@@ -131,14 +171,14 @@
 						},
 						callbacks: {
 							title: (tooltipItems) => {
-								if (!dataRef.chartData || !dataRef.monthlySpending) return '';
+								if (!dataRef?.chartData || !dataRef?.monthlySpending) return '';
 								const index = tooltipItems[0].dataIndex;
 								const [year, monthNum] = dataRef.monthlySpending[index].month.split('-');
 								const date = new Date(parseInt(year), parseInt(monthNum) - 1);
 								return date.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
 							},
 							label: (context) => {
-								if (!dataRef.chartData) return '';
+								if (!dataRef?.chartData) return '';
 								const index = context.dataIndex;
 								const datasetIndex = context.datasetIndex;
 								let label = context.dataset.label || '';
@@ -151,8 +191,14 @@
 									// Variable
 									value = dataRef.chartData.rawVariable[index];
 								} else if (datasetIndex === 2) {
+									// Savings
+									value = dataRef.chartData.rawSavings[index];
+								} else if (datasetIndex === 3) {
 									// Remaining
 									value = dataRef.chartData.rawRemaining[index];
+								} else if (datasetIndex === 4) {
+									// Income
+									value = dataRef.chartData.rawIncome[index];
 								}
 								
 								const formatted = new Intl.NumberFormat('nl-NL', {
@@ -165,9 +211,9 @@
 								return `${label}: ${formatted}`;
 							},
 							footer: (tooltipItems) => {
-								if (!dataRef.chartData) return '';
+								if (!dataRef?.chartData) return '';
 								const index = tooltipItems[0].dataIndex;
-								const total = dataRef.chartData.rawRecurring[index] + dataRef.chartData.rawVariable[index] + dataRef.chartData.rawRemaining[index];
+								const total = dataRef.chartData.rawRecurring[index] + dataRef.chartData.rawVariable[index] + dataRef.chartData.rawSavings[index] + dataRef.chartData.rawRemaining[index];
 								const formatted = new Intl.NumberFormat('nl-NL', {
 									style: 'currency',
 									currency: 'EUR',
@@ -181,12 +227,10 @@
 				},
 				scales: {
 					x: {
-						display: false,
-						stacked: true
+						display: false
 					},
 					y: {
 						display: false,
-						stacked: true,
 						beginAtZero: true
 					}
 				},
@@ -212,7 +256,13 @@
 			chartInstance.data.labels = chartData.labels;
 			chartInstance.data.datasets[0].data = chartData.recurring;
 			chartInstance.data.datasets[1].data = chartData.variable;
-			chartInstance.data.datasets[2].data = chartData.remaining;
+			chartInstance.data.datasets[2].data = chartData.savings;
+			chartInstance.data.datasets[3].data = chartData.remaining;
+			chartInstance.data.datasets[3].hidden = true; // Hide remaining expenses
+			if (chartInstance.data.datasets[4]) {
+				chartInstance.data.datasets[4].data = chartData.income;
+				chartInstance.data.datasets[4].hidden = true; // Hide income line
+			}
 			// Update data reference for tooltips
 			if (dataRef) {
 				dataRef.chartData = chartData;

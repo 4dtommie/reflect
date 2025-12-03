@@ -22,14 +22,39 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
         console.error('[Recurring Page] Variable spending API error:', variableResponse.status, await variableResponse.text());
     }
 
-    // Fetch monthly spending data for the chart (last 12 months) - split by recurring, variable, and remaining
-    let monthlySpending: { month: string; recurring: number; variable: number; remaining: number }[] = [];
+    // Fetch monthly spending data for the chart (last 12 months) - split by recurring, variable, remaining, and savings
+    // Also calculate monthly income
+    let monthlySpending: { month: string; recurring: number; variable: number; remaining: number; savings: number; income: number }[] = [];
     if (locals.user) {
         const now = new Date();
         const twelveMonthsAgo = new Date(now);
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
         
-        // Get all transactions from last 12 months with category info
+        // Find Savings & Investments category (try multiple possible names)
+        const savingsCategory = await db.categories.findFirst({
+            where: {
+                OR: [
+                    { name: 'Savings & Investments' },
+                    { name: 'Sparen & beleggen' },
+                    { name: { contains: 'Savings', mode: 'insensitive' } },
+                    { name: { contains: 'Sparen', mode: 'insensitive' } }
+                ],
+                group: 'financial'
+            },
+            select: {
+                id: true,
+                name: true
+            }
+        });
+        
+        const savingsCategoryId = savingsCategory?.id;
+        if (savingsCategory) {
+            console.log(`[Monthly Spending] Found savings category: ${savingsCategory.name} (ID: ${savingsCategoryId})`);
+        } else {
+            console.log(`[Monthly Spending] Savings & Investments category not found`);
+        }
+        
+        // Get all debit transactions (expenses) from last 12 months with category info
         const transactions = await db.transactions.findMany({
             where: {
                 user_id: locals.user.id,
@@ -41,6 +66,20 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
             include: {
                 categories: true,
                 recurring_transaction: true
+            }
+        });
+
+        // Get all credit transactions (income) from last 12 months
+        const incomeTransactions = await db.transactions.findMany({
+            where: {
+                user_id: locals.user.id,
+                is_debit: false,
+                date: {
+                    gte: twelveMonthsAgo
+                }
+            },
+            include: {
+                categories: true
             }
         });
 
@@ -67,20 +106,25 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
         
         console.log(`[Monthly Spending] Variable category IDs: ${Array.from(variableCategoryIds).join(', ')}`);
 
-        // Group by month and type
-        const monthMap = new Map<string, { recurring: number; variable: number; remaining: number; total: number }>();
+        // Group expenses by month and type
+        const monthMap = new Map<string, { recurring: number; variable: number; remaining: number; savings: number; income: number; total: number }>();
+        
+        // Process expense transactions
         for (const tx of transactions) {
             const date = new Date(tx.date);
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const current = monthMap.get(monthKey) || { recurring: 0, variable: 0, remaining: 0, total: 0 };
+            const current = monthMap.get(monthKey) || { recurring: 0, variable: 0, remaining: 0, savings: 0, income: 0, total: 0 };
             const amount = Math.abs(Number(tx.amount));
             
             // Track total for all expenses
             current.total += amount;
             
-            // Categorize each transaction
+            // Check if this is a savings transaction first (highest priority)
+            if (savingsCategoryId && tx.category_id === savingsCategoryId) {
+                current.savings += amount;
+            }
             // Recurring: transactions linked to a recurring transaction (fixed subscriptions)
-            if (tx.recurring_transaction_id || tx.recurring_transaction) {
+            else if (tx.recurring_transaction_id || tx.recurring_transaction) {
                 current.recurring += amount;
             } 
             // Variable: transactions in variable spending categories (groceries, coffee, etc.)
@@ -95,13 +139,26 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
             monthMap.set(monthKey, current);
         }
 
-        // Convert to array and sort by month, only include the three categories
+        // Process income transactions
+        for (const tx of incomeTransactions) {
+            const date = new Date(tx.date);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const current = monthMap.get(monthKey) || { recurring: 0, variable: 0, remaining: 0, savings: 0, income: 0, total: 0 };
+            const amount = Math.abs(Number(tx.amount));
+            
+            current.income += amount;
+            monthMap.set(monthKey, current);
+        }
+
+        // Convert to array and sort by month, include all categories including income
         monthlySpending = Array.from(monthMap.entries())
             .map(([month, data]) => ({ 
                 month, 
                 recurring: data.recurring, 
                 variable: data.variable, 
-                remaining: data.remaining 
+                remaining: data.remaining,
+                savings: data.savings,
+                income: data.income
             }))
             .sort((a, b) => a.month.localeCompare(b.month));
         
@@ -110,14 +167,21 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
             const avgVariable = monthlySpending.reduce((sum, m) => sum + m.variable, 0) / monthlySpending.length;
             const avgRecurring = monthlySpending.reduce((sum, m) => sum + m.recurring, 0) / monthlySpending.length;
             const avgRemaining = monthlySpending.reduce((sum, m) => sum + m.remaining, 0) / monthlySpending.length;
-            console.log(`[Monthly Spending] Averages - Recurring: €${avgRecurring.toFixed(2)}, Variable: €${avgVariable.toFixed(2)}, Remaining: €${avgRemaining.toFixed(2)}`);
+            const avgSavings = monthlySpending.reduce((sum, m) => sum + m.savings, 0) / monthlySpending.length;
+            console.log(`[Monthly Spending] Averages - Recurring: €${avgRecurring.toFixed(2)}, Variable: €${avgVariable.toFixed(2)}, Remaining: €${avgRemaining.toFixed(2)}, Savings: €${avgSavings.toFixed(2)}`);
         }
     }
+
+    // Calculate monthly savings average for widgets
+    const monthlySavingsAverage = monthlySpending.length > 0
+        ? monthlySpending.reduce((sum, m) => sum + m.savings, 0) / monthlySpending.length
+        : 0;
 
     return {
         ...recurringData,
         variableSpending: variableData.patterns || [],
         variableStats: variableData.stats || null,
-        monthlySpending
+        monthlySpending,
+        monthlySavingsAverage
     };
 };

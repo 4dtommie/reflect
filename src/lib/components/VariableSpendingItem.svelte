@@ -150,8 +150,8 @@
 							<!-- Horizontal bar chart -->
 							<div class="h-1.5 w-full overflow-hidden rounded-full bg-base-300/50">
 								<div
-									class="h-full bg-error transition-all duration-300"
-									style="width: {merchant.percentage}%"
+									class="h-full transition-all duration-300"
+									style="width: {merchant.percentage}%; background-color: rgba(196, 181, 253, 0.7);"
 								></div>
 							</div>
 						</div>
