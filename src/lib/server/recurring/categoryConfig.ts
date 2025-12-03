@@ -1,8 +1,55 @@
 // Category-based recurring detection configuration
 // Maps categories to their recurring detection behavior
+//
+// NOTE: Variable spending categories are now stored in the DATABASE via the
+// `is_variable_spending` field on the categories table. VariableSpendingService
+// reads from DB. RecurringDetectionService skips these categories.
+//
+// The `variable_recurring` list below is kept as a FALLBACK for synchronous lookups.
+// To modify which categories are variable spending, update the database directly
+// or modify seed.ts for new installations.
+
+import { db } from '$lib/server/db';
+
+// Cache for variable spending category names from DB
+let variableCategoriesCache: Set<string> | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fetch variable spending category names from database
+ */
+export async function getVariableSpendingCategories(): Promise<Set<string>> {
+    const now = Date.now();
+    
+    if (variableCategoriesCache && (now - cacheTimestamp) < CACHE_TTL_MS) {
+        return variableCategoriesCache;
+    }
+    
+    const categories = await db.categories.findMany({
+        where: { is_variable_spending: true },
+        select: { name: true }
+    });
+    
+    variableCategoriesCache = new Set(categories.map(c => c.name));
+    cacheTimestamp = now;
+    
+    return variableCategoriesCache;
+}
+
+/**
+ * Check if a category is marked as variable spending (async - uses DB)
+ */
+export async function isVariableSpendingCategory(categoryName: string | null): Promise<boolean> {
+    if (!categoryName) return false;
+    const variableCategories = await getVariableSpendingCategories();
+    return variableCategories.has(categoryName);
+}
 
 export const CATEGORY_RECURRING_CONFIG = {
-    // Variable Recurring - Accept wide variance, focus on frequency
+    // Variable Recurring - Handled by VariableSpendingService (frequency-based)
+    // SOURCE OF TRUTH: Database field `is_variable_spending` on categories table
+    // This list is a FALLBACK for synchronous lookups only
     variable_recurring: {
         categories: [
             'Supermarkt',
@@ -13,14 +60,16 @@ export const CATEGORY_RECURRING_CONFIG = {
             'Lunch',
             'Uit eten',
             'Bestellen',
+            'Uitgaan/bars',
             'Brandstof',
             'Openbaar vervoer',
             'Parkeren',
-            'Persoonlijke verzorging'
+            'Taxi & deelvervoer',
+            'Persoonlijke verzorging',
+            'Huisdierenverzorging'
         ],
-        varianceThreshold: 0.60, // Allow 60% variance
-        minTransactions: 6, // Lowered from 8 to 6 for better detection
-        description: 'Variable amounts but frequent'
+        minTransactions: 4, // Minimum visits to establish a pattern
+        description: 'Variable amounts, frequent visits - handled by VariableSpendingService'
     },
 
     // Fixed Recurring - Expect very consistent amounts
@@ -112,7 +161,7 @@ export const CATEGORY_RECURRING_CONFIG = {
             'Creditcard betalingen',
             'Goede doelen & donaties',
             'Geldopnames',
-            'Leningen & schuldaflossing',
+            // Note: 'Leningen & schuldaflossing' removed - loan payments are recurring and should be tracked
             'Kosten & vergoedingen',
             'Belastingen & boetes', // Irregular
             'Niet gecategoriseerd',
@@ -133,16 +182,21 @@ export function getCategoryRecurringBehavior(categoryName: string | null): {
         return { type: 'default', varianceThreshold: 0.20, minTransactions: 3 };
     }
 
-    // Check each group
-    if (CATEGORY_RECURRING_CONFIG.variable_recurring.categories.includes(categoryName)) {
+    // Check each group (cast to string[] to avoid literal type issues)
+    const variableCategories = CATEGORY_RECURRING_CONFIG.variable_recurring.categories as readonly string[];
+    const fixedCategories = CATEGORY_RECURRING_CONFIG.fixed_recurring.categories as readonly string[];
+    const semiVariableCategories = CATEGORY_RECURRING_CONFIG.semi_variable.categories as readonly string[];
+    const excludeCategories = CATEGORY_RECURRING_CONFIG.exclude_from_recurring.categories as readonly string[];
+
+    if (variableCategories.includes(categoryName)) {
         return {
             type: 'variable_recurring',
-            varianceThreshold: CATEGORY_RECURRING_CONFIG.variable_recurring.varianceThreshold,
+            varianceThreshold: 1.0, // Not used - VariableSpendingService handles these
             minTransactions: CATEGORY_RECURRING_CONFIG.variable_recurring.minTransactions
         };
     }
 
-    if (CATEGORY_RECURRING_CONFIG.fixed_recurring.categories.includes(categoryName)) {
+    if (fixedCategories.includes(categoryName)) {
         return {
             type: 'fixed_recurring',
             varianceThreshold: CATEGORY_RECURRING_CONFIG.fixed_recurring.varianceThreshold,
@@ -150,7 +204,7 @@ export function getCategoryRecurringBehavior(categoryName: string | null): {
         };
     }
 
-    if (CATEGORY_RECURRING_CONFIG.semi_variable.categories.includes(categoryName)) {
+    if (semiVariableCategories.includes(categoryName)) {
         return {
             type: 'semi_variable',
             varianceThreshold: CATEGORY_RECURRING_CONFIG.semi_variable.varianceThreshold,
@@ -158,7 +212,7 @@ export function getCategoryRecurringBehavior(categoryName: string | null): {
         };
     }
 
-    if (CATEGORY_RECURRING_CONFIG.exclude_from_recurring.categories.includes(categoryName)) {
+    if (excludeCategories.includes(categoryName)) {
         return {
             type: 'exclude',
             varianceThreshold: 0,

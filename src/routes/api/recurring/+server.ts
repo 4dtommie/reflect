@@ -11,6 +11,11 @@ export const GET: RequestHandler = async ({ locals }) => {
     const userId = locals.user.id;
 
     try {
+        // Calculate date range: last 12 months
+        const now = new Date();
+        const twelveMonthsAgo = new Date(now);
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
         // Fetch all recurring transactions for the user
         const subscriptions = await db.recurringTransaction.findMany({
             where: {
@@ -20,10 +25,14 @@ export const GET: RequestHandler = async ({ locals }) => {
                 merchants: true,
                 categories: true,
                 transactions: {
+                    where: {
+                        date: {
+                            gte: twelveMonthsAgo
+                        }
+                    },
                     orderBy: {
                         date: 'desc'
-                    },
-                    take: 5 // Get last 5 transactions for history
+                    }
                 }
             },
             orderBy: {
@@ -39,7 +48,6 @@ export const GET: RequestHandler = async ({ locals }) => {
         });
 
         // Calculate Stats
-        const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
@@ -232,17 +240,26 @@ export const DELETE: RequestHandler = async ({ locals }) => {
     }
 
     try {
+        const userId = locals.user.id;
+
         // Delete all recurring transactions for the user
         await db.recurringTransaction.deleteMany({
             where: {
-                user_id: locals.user.id
+                user_id: userId
+            }
+        });
+
+        // Delete all variable spending patterns for the user
+        await db.variableSpendingPattern.deleteMany({
+            where: {
+                user_id: userId
             }
         });
 
         // Also unlink any transactions that were linked to these recurring transactions
         await db.transactions.updateMany({
             where: {
-                user_id: locals.user.id,
+                user_id: userId,
                 recurring_transaction_id: { not: null }
             },
             data: {

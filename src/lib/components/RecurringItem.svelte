@@ -1,17 +1,8 @@
 <script lang="ts">
 	import Amount from './Amount.svelte';
-	import {
-		ChevronDown,
-		ChevronUp,
-		TrendingUp,
-		TrendingDown,
-		Minus,
-		Calendar,
-		Clock,
-		Hash,
-		Wallet
-	} from 'lucide-svelte';
+	import { ChevronDown, ChevronUp } from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
+	import { formatDateShort } from '$lib/utils/locale';
 
 	type Transaction = {
 		id: number;
@@ -94,20 +85,6 @@
 		return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 	});
 
-	function formatDate(date: string | Date): string {
-		return new Date(date).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function formatShortDate(date: string | Date): string {
-		return new Date(date).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric'
-		});
-	}
 
 	function getIntervalLabel(interval: string): string {
 		const labels: Record<string, string> = {
@@ -137,142 +114,84 @@
 	}
 </script>
 
-<div class="rounded-xl bg-base-200/50 transition-all duration-200 hover:bg-base-200">
+<div class="border-b border-base-200 last:border-b-0">
 	<button
-		class="flex w-full cursor-pointer items-center justify-between gap-4 p-4 text-left focus:outline-none"
+		class="flex w-full cursor-pointer items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-base-200/30 focus:outline-none"
 		onclick={() => (expanded = !expanded)}
 	>
-		<!-- Left: Icon + Name + Interval -->
-		<div class="flex min-w-0 flex-1 items-center gap-3">
-			<div class="flex-shrink-0 text-base-content/40">
+		<!-- Left: Chevron + Name + Tags -->
+		<div class="flex min-w-0 flex-1 items-center gap-2">
+			<div class="flex-shrink-0 text-base-content/30">
 				{#if expanded}
-					<ChevronUp size={18} />
+					<ChevronUp size={16} />
 				{:else}
-					<ChevronDown size={18} />
+					<ChevronDown size={16} />
 				{/if}
 			</div>
 
-			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-2">
-					<h3 class="truncate font-semibold">{subscription.name}</h3>
-
-					<!-- Amount trend indicator -->
-					{#if stats.amountTrend === 'up'}
-						<TrendingUp size={14} class="flex-shrink-0 text-warning" />
-					{:else if stats.amountTrend === 'down'}
-						<TrendingDown size={14} class="flex-shrink-0 text-success" />
-					{/if}
-				</div>
-
-				<div class="flex items-center gap-2 text-xs opacity-60">
-					<span>{getIntervalLabel(subscription.interval)}</span>
-					{#if daysUntil !== null}
-						<span>•</span>
-						<span class="badge badge-xs {getDaysColor(daysUntil)}">{getDaysLabel(daysUntil)}</span>
-					{/if}
-				</div>
-			</div>
+			<span class="truncate">{subscription.name}</span>
 		</div>
 
 		<!-- Right: Amount -->
-		<div class="flex-shrink-0 text-right">
-			<div class="text-lg font-bold">
-				<Amount value={subscription.amount} size="medium" showDecimals={true} isDebit={!isIncome} />
-			</div>
+		<div class="flex-shrink-0">
+			<span class="font-semibold">
+				<Amount value={subscription.amount} size="small" showDecimals={true} isDebit={!isIncome} locale="NL" />
+			</span>
 		</div>
 	</button>
 
 	<!-- Expanded content -->
 	{#if expanded}
-		<div transition:slide={{ duration: 200 }} class="border-t border-base-300 px-4 pt-4 pb-4">
-			<!-- Stats grid -->
-			<div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-				<div class="flex items-start gap-2">
-					<Hash size={14} class="mt-0.5 flex-shrink-0 text-primary" />
-					<div>
-						<p class="text-xs opacity-50">Occurrences</p>
-						<p class="font-semibold">{stats.occurrences}</p>
-					</div>
+		<div
+			transition:slide={{ duration: 150 }}
+			class="rounded-lg bg-base-200/30 p-4 pb-3"
+			style="background-color: rgba(0, 0, 0, 0.03);"
+		>
+			<!-- Key Metrics Grid -->
+			<div class="mb-4 grid grid-cols-3 gap-4 border-b border-base-300/50 pb-3">
+				<div class="flex flex-col">
+					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Total {new Date().getFullYear()}</span>
+					<span class="text-base font-semibold">
+						<Amount value={stats.totalPaid} size="small" showDecimals={false} isDebit={!isIncome} locale="NL" />
+					</span>
 				</div>
-
-				<div class="flex items-start gap-2">
-					<Wallet size={14} class="mt-0.5 flex-shrink-0 text-primary" />
-					<div>
-						<p class="text-xs opacity-50">Total paid</p>
-						<p class="font-semibold">
-							<Amount
-								value={stats.totalPaid}
-								size="small"
-								showDecimals={false}
-								isDebit={!isIncome}
-							/>
-						</p>
-					</div>
+				<div class="flex flex-col">
+					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Average</span>
+					<span class="text-base font-semibold">
+						<Amount value={Math.round(stats.averageAmount)} size="small" showDecimals={false} isDebit={!isIncome} locale="NL" />
+					</span>
 				</div>
-
-				<div class="flex items-start gap-2">
-					<Minus size={14} class="mt-0.5 flex-shrink-0 text-primary" />
-					<div>
-						<p class="text-xs opacity-50">Average</p>
-						<p class="font-semibold">
-							<Amount
-								value={stats.averageAmount}
-								size="small"
-								showDecimals={true}
-								isDebit={!isIncome}
-							/>
-						</p>
-					</div>
+				<div class="flex flex-col">
+					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Frequency</span>
+					<span class="text-base font-semibold">{getIntervalLabel(subscription.interval)}</span>
 				</div>
-
-				{#if stats.firstSeen}
-					<div class="flex items-start gap-2">
-						<Calendar size={14} class="mt-0.5 flex-shrink-0 text-primary" />
-						<div>
-							<p class="text-xs opacity-50">First seen</p>
-							<p class="font-semibold">{formatShortDate(stats.firstSeen)}</p>
-						</div>
-					</div>
-				{/if}
 			</div>
 
 			<!-- Transaction history -->
 			{#if subscription.transactions && subscription.transactions.length > 0}
-				<div class="mt-4">
-					<p class="mb-2 text-xs font-medium uppercase tracking-wide opacity-50">
-						Recent transactions
-					</p>
-					<div class="space-y-1">
-						{#each subscription.transactions.slice(0, 5) as tx}
-							<div
-								class="flex items-center justify-between rounded-lg bg-base-100/50 px-3 py-2 text-sm"
-							>
-								<span class="opacity-70">{formatDate(tx.date)}</span>
-								<Amount value={tx.amount} size="small" showDecimals={true} isDebit={!isIncome} />
-							</div>
-						{/each}
-					</div>
-
+				<div class="mb-4 space-y-2">
+					<div class="mb-2 text-[10px] uppercase tracking-wide opacity-50">Recent transactions</div>
+					{#each subscription.transactions.slice(0, 5) as tx (tx.id)}
+						<div class="flex items-center justify-between gap-4 text-xs">
+							<span class="opacity-70">{formatDateShort(tx.date)}</span>
+							<div class="flex-1 border-t border-dotted border-base-300/50"></div>
+							<span class="font-medium">
+								<Amount value={tx.amount} size="small" showDecimals={true} isDebit={!isIncome} locale="NL" />
+							</span>
+						</div>
+					{/each}
 					{#if subscription.transactions.length > 5}
-						<p class="mt-2 text-center text-xs opacity-50">
-							+{subscription.transactions.length - 5} more transactions
-						</p>
+						<p class="pt-1 text-xs opacity-40">+{subscription.transactions.length - 5} more</p>
 					{/if}
 				</div>
 			{/if}
 
-			<!-- Next payment info -->
-			{#if subscription.next_expected_date}
-				<div class="mt-4 flex items-center gap-2 rounded-lg bg-base-100/50 px-3 py-2">
-					<Clock size={14} class="text-primary" />
-					<span class="text-sm">
-						<span class="opacity-70">Next payment:</span>
-						<span class="font-medium">
-							{formatDate(subscription.next_expected_date)}
-						</span>
-					</span>
-				</div>
-			{/if}
+			<!-- Divider and Since date -->
+			<div class="border-t border-base-300/50 pt-3">
+				{#if stats.firstSeen}
+					<p class="text-xs opacity-60">Since {formatDateShort(stats.firstSeen)}</p>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>

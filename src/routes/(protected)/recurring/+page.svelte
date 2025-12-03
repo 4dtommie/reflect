@@ -2,30 +2,50 @@
 	import type { PageData } from './$types';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
-	import RecurringStatsWidget from '$lib/components/RecurringStatsWidget.svelte';
+	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
 	import UpcomingPaymentsWidget from '$lib/components/UpcomingPaymentsWidget.svelte';
 	import RecurringItem from '$lib/components/RecurringItem.svelte';
+	import VariableSpendingItem from '$lib/components/VariableSpendingItem.svelte';
 	import Amount from '$lib/components/Amount.svelte';
-	import { Search, TrendingDown, TrendingUp, ArrowRight, RefreshCw, Trash2 } from 'lucide-svelte';
+	import { Search, TrendingDown, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { formatDateShort } from '$lib/utils/locale';
 
 	let { data }: { data: PageData } = $props();
 
+	const subtitles = [
+		'Your predictable expenses, all in one place',
+		'Track what leaves your account every month',
+		'The costs that keep coming back',
+		'Know exactly where your money goes',
+		'Fixed costs and habitual spending',
+		'Your monthly financial commitments',
+		'The recurring rhythm of your finances',
+		'Subscriptions, bills, and everyday habits',
+		'What your future self is already paying for',
+		'The autopilot expenses of your life'
+	];
+
+	const randomSubtitle = subtitles[Math.floor(Math.random() * subtitles.length)];
+
+	// Type for subscription items
+	type SubscriptionItem = NonNullable<PageData['subscriptions']>[number];
+
 	// Separate by type: subscriptions, variable costs, and income
 	const subscriptions = $derived.by(() => {
-		return (data.subscriptions || []).filter((s) => {
+		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
 			return !s.isIncome && s.status === 'active' && s.type === 'subscription';
 		});
 	});
 
 	const variableCosts = $derived.by(() => {
-		return (data.subscriptions || []).filter((s) => {
+		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
 			return !s.isIncome && s.status === 'active' && s.type === 'variable_cost';
 		});
 	});
 
 	const incomeSubscriptions = $derived.by(() => {
-		return (data.subscriptions || []).filter((s) => {
+		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
 			return s.isIncome && s.status === 'active';
 		});
 	});
@@ -73,11 +93,16 @@
 		return { monthlyTotal, yearlyTotal };
 	});
 
+	// Variable spending patterns from DB
+	const variableSpending = $derived(data.variableSpending || []);
+	const variableStats = $derived(data.variableStats || null);
+
 	const hasData = $derived(
 		(data.subscriptions && data.subscriptions.length > 0) ||
 			subscriptions.length > 0 ||
 			variableCosts.length > 0 ||
-			incomeSubscriptions.length > 0
+			incomeSubscriptions.length > 0 ||
+			variableSpending.length > 0
 	);
 
 	async function deleteAllSubscriptions() {
@@ -99,40 +124,128 @@
 </script>
 
 <svelte:head>
-	<title>Recurring payments - Reflect</title>
+	<title>Spending patterns - Reflect</title>
 </svelte:head>
 
-<div class="grid grid-cols-1 gap-8 p-4 lg:grid-cols-3">
-	<!-- Left Column: Sidebar widgets -->
-	<div class="flex flex-col gap-8 lg:col-span-1">
-		<!-- Page title -->
-		<PageTitleWidget title="Recurring payments" subtitle="Track your subscriptions and income" />
-
-		<!-- Stats widget - only show if we have data -->
-		{#if hasData}
-			<RecurringStatsWidget
-				monthlyTotal={data.stats?.monthlyTotal || 0}
-				yearlyTotal={data.stats?.yearlyTotal || 0}
-				totalActive={data.stats?.totalActive || 0}
-				overdue={data.stats?.overdue || 0}
-			/>
-
-			<!-- Upcoming payments widget -->
-			<UpcomingPaymentsWidget {subscriptions} />
-		{/if}
-
-		<!-- Actions widget -->
-		<DashboardWidget size="small" title="Actions">
-			<div class="flex h-full flex-col justify-center gap-3">
-				<a href="/recurring/detect" class="group btn justify-between btn-primary">
-					<span class="flex items-center gap-2">
-						<Search size={18} />
-						Detect subscriptions
-					</span>
-					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
+<div class="flex flex-col gap-6">
+	{#if !hasData}
+		<!-- Empty state -->
+		<DashboardWidget size="large">
+			<div class="flex h-full flex-col items-center justify-center py-12 text-center">
+				<div class="mb-6 rounded-full bg-primary/10 p-6">
+					<RefreshCw size={48} class="text-primary" />
+				</div>
+				<h2 class="mb-2 text-2xl font-bold">No recurring payments yet</h2>
+				<p class="mb-8 max-w-md opacity-70">
+					We haven't detected any subscriptions or recurring income. Run the detection to find
+					patterns in your transactions.
+				</p>
+				<a href="/recurring/detect" class="btn btn-lg btn-primary">
+					<Search size={20} class="mr-2" />
+					Start detection
 				</a>
+			</div>
+		</DashboardWidget>
+	{:else}
+		<!-- Row 1: Title (2 cols) + Net Balance (1 col) -->
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+			<div class="lg:col-span-2">
+				<PageTitleWidget title="Spending patterns" subtitle={randomSubtitle} class="h-full" />
+			</div>
+			<NetBalanceWidget
+				monthlyIncome={incomeStats.monthlyTotal}
+				monthlyExpenses={(data.stats?.monthlyTotal || 0) + (variableStats?.totalMonthlyAverage || 0)}
+			/>
+		</div>
 
-				{#if hasData}
+		<!-- Row 2: Income, Expenses, Variable (3 cols) -->
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+			<!-- Recurring income -->
+			<DashboardWidget size="small" enableHover={false}>
+				<div class="mb-3 flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<TrendingUp size={18} class="text-success" />
+						<h2 class="font-semibold">Income</h2>
+					</div>
+					<span class="text-lg font-bold text-success">
+						<Amount value={incomeStats.monthlyTotal} size="medium" showDecimals={false} isDebit={false} locale="NL" />
+					</span>
+				</div>
+
+				{#if incomeSubscriptions.length > 0}
+					<div>
+						{#each incomeSubscriptions as subscription (subscription.id)}
+							<RecurringItem {subscription} isIncome={true} />
+						{/each}
+					</div>
+				{:else}
+					<p class="py-4 text-center text-sm opacity-50">No income detected</p>
+				{/if}
+			</DashboardWidget>
+
+			<!-- Recurring expenses -->
+			<DashboardWidget size="small" enableHover={false}>
+				<div class="mb-3 flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<TrendingDown size={18} class="text-error" />
+						<h2 class="font-semibold">Recurring expenses</h2>
+					</div>
+					<span class="text-lg font-bold text-error">
+						<Amount value={data.stats?.monthlyTotal || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+					</span>
+				</div>
+
+				{#if subscriptions.length > 0}
+					<div>
+						{#each subscriptions as subscription (subscription.id)}
+							<RecurringItem {subscription} isIncome={false} />
+						{/each}
+					</div>
+				{:else}
+					<p class="py-4 text-center text-sm opacity-50">No subscriptions detected</p>
+				{/if}
+			</DashboardWidget>
+
+			<!-- Variable spending -->
+			<DashboardWidget size="small" enableHover={false}>
+				<div class="mb-3 flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<ShoppingCart size={18} class="text-warning" />
+						<h2 class="font-semibold">Variable expenses</h2>
+					</div>
+					<span class="text-lg font-bold text-warning">
+						<Amount value={variableStats?.totalMonthlyAverage || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+					</span>
+				</div>
+
+				{#if variableSpending.length > 0}
+					<div>
+						{#each variableSpending as pattern (pattern.id)}
+							<VariableSpendingItem {pattern} />
+						{/each}
+					</div>
+				{:else}
+					<p class="py-4 text-center text-sm opacity-50">No patterns saved</p>
+				{/if}
+			</DashboardWidget>
+		</div>
+
+		<!-- Row 3: Upcoming, Actions (2 cols) -->
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<!-- Upcoming payments -->
+			<UpcomingPaymentsWidget {subscriptions} />
+
+			<!-- Actions -->
+			<DashboardWidget size="small" title="Actions">
+				<div class="flex h-full flex-col justify-center gap-3">
+					<a href="/recurring/detect" class="group btn justify-between btn-primary">
+						<span class="flex items-center gap-2">
+							<Search size={18} />
+							Detect patterns
+						</span>
+						<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
+					</a>
+
 					<button
 						class="group btn justify-between btn-outline btn-error"
 						onclick={deleteAllSubscriptions}
@@ -144,123 +257,10 @@
 					</button>
 
 					<p class="text-center text-xs opacity-50">
-						Last updated: {new Date(
-							data.subscriptions?.[0]?.updated_at || Date.now()
-						).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+						Last updated: {formatDateShort(data.subscriptions?.[0]?.updated_at || Date.now())}
 					</p>
-				{/if}
-			</div>
-		</DashboardWidget>
-	</div>
-
-	<!-- Right Column: Main content -->
-	<div class="flex flex-col gap-8 lg:col-span-2">
-		{#if !hasData}
-			<!-- Empty state -->
-			<DashboardWidget size="large">
-				<div class="flex h-full flex-col items-center justify-center py-12 text-center">
-					<div class="mb-6 rounded-full bg-primary/10 p-6">
-						<RefreshCw size={48} class="text-primary" />
-					</div>
-					<h2 class="mb-2 text-2xl font-bold">No recurring payments yet</h2>
-					<p class="mb-8 max-w-md opacity-70">
-						We haven't detected any subscriptions or recurring income. Run the detection to find
-						patterns in your transactions.
-					</p>
-					<a href="/recurring/detect" class="btn btn-lg btn-primary">
-						<Search size={20} class="mr-2" />
-						Start detection
-					</a>
 				</div>
 			</DashboardWidget>
-		{:else}
-			<!-- Recurring income -->
-			<DashboardWidget size="large" enableHover={false}>
-				<div class="mb-4 flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="rounded-full bg-success/10 p-2">
-							<TrendingUp size={20} class="text-success" />
-						</div>
-						<div>
-							<h2 class="text-xl font-bold">Recurring income</h2>
-							<p class="text-sm opacity-60">
-								{incomeSubscriptions.length} active source{incomeSubscriptions.length !== 1
-									? 's'
-									: ''}
-							</p>
-						</div>
-					</div>
-					<div class="text-right">
-						<p class="text-xs tracking-wide uppercase opacity-50">Monthly</p>
-						<p class="text-xl font-bold text-success">
-							<Amount
-								value={incomeStats.monthlyTotal}
-								size="large"
-								showDecimals={false}
-								isDebit={false}
-							/>
-						</p>
-					</div>
-				</div>
-
-				{#if incomeSubscriptions.length > 0}
-					<div class="space-y-2">
-						{#each incomeSubscriptions as subscription (subscription.id)}
-							<RecurringItem {subscription} isIncome={true} />
-						{/each}
-					</div>
-				{:else}
-					<div class="py-8 text-center">
-						<p class="opacity-50">No recurring income detected yet.</p>
-						<p class="mt-1 text-sm opacity-40">
-							Salary and regular transfers will appear here after detection.
-						</p>
-					</div>
-				{/if}
-			</DashboardWidget>
-
-			<!-- Recurring expenses -->
-			<DashboardWidget size="large" enableHover={false}>
-				<div class="mb-4 flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="rounded-full bg-error/10 p-2">
-							<TrendingDown size={20} class="text-error" />
-						</div>
-						<div>
-							<h2 class="text-xl font-bold">Recurring expenses</h2>
-							<p class="text-sm opacity-60">
-								{subscriptions.length} active subscription{subscriptions.length !== 1 ? 's' : ''}
-							</p>
-						</div>
-					</div>
-					<div class="text-right">
-						<p class="text-xs tracking-wide uppercase opacity-50">Monthly</p>
-						<p class="text-xl font-bold text-error">
-							<Amount
-								value={data.stats?.monthlyTotal || 0}
-								size="large"
-								showDecimals={false}
-								isDebit={true}
-							/>
-						</p>
-					</div>
-				</div>
-
-				{#if subscriptions.length > 0}
-					<div class="space-y-2">
-						{#each subscriptions as subscription (subscription.id)}
-							<RecurringItem {subscription} isIncome={false} />
-						{/each}
-					</div>
-				{:else}
-					<div class="py-8 text-center">
-						<p class="opacity-50">No recurring expenses detected yet.</p>
-						<a href="/recurring/detect" class="mt-2 inline-block link text-sm link-primary">
-							Run detection
-						</a>
-					</div>
-				{/if}
-			</DashboardWidget>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>

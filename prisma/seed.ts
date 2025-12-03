@@ -14,6 +14,7 @@ async function createCategoryWithKeywords(
 		group: string | null;
 		parent_id?: number | null;
 		tier?: string | null; // 'most' | 'medium' | 'less' | null
+		is_variable_spending?: boolean; // true = frequent variable purchases (groceries, coffee, fuel)
 		updated_at: Date;
 	},
 	keywords: string[]
@@ -311,6 +312,7 @@ export async function seedDatabase() {
 				parent_id: foodGroceries.id,
 				group: 'essential',
 				tier: 'most',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -348,6 +350,7 @@ export async function seedDatabase() {
 				parent_id: foodGroceries.id,
 				group: 'essential',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -383,6 +386,7 @@ export async function seedDatabase() {
 				parent_id: foodGroceries.id,
 				group: 'essential',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -418,6 +422,7 @@ export async function seedDatabase() {
 				parent_id: foodGroceries.id,
 				group: 'essential',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -470,6 +475,7 @@ export async function seedDatabase() {
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
 				tier: 'most',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -502,6 +508,7 @@ export async function seedDatabase() {
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
 				tier: 'medium',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -531,6 +538,7 @@ export async function seedDatabase() {
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
 				tier: 'medium',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -588,6 +596,7 @@ export async function seedDatabase() {
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
 				tier: 'medium',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -631,6 +640,7 @@ export async function seedDatabase() {
 				parent_id: restaurantsDining.id,
 				group: 'lifestyle',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -695,6 +705,7 @@ export async function seedDatabase() {
 				created_by: null,
 				parent_id: transportation.id,
 				group: 'essential',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -730,6 +741,7 @@ export async function seedDatabase() {
 				parent_id: transportation.id,
 				group: 'essential',
 				tier: 'most',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -765,6 +777,7 @@ export async function seedDatabase() {
 				parent_id: transportation.id,
 				group: 'essential',
 				tier: 'medium',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -836,6 +849,7 @@ export async function seedDatabase() {
 				parent_id: transportation.id,
 				group: 'essential',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -1735,6 +1749,7 @@ export async function seedDatabase() {
 				created_by: null,
 				group: 'lifestyle',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			[
@@ -1913,6 +1928,7 @@ export async function seedDatabase() {
 				created_by: null,
 				group: 'lifestyle',
 				tier: 'less',
+				is_variable_spending: true,
 				updated_at: new Date()
 			},
 			['pet', 'veterinary', 'vet', 'pet food', 'dierenarts', 'hondenvoer', 'kattenvoer', 'huisdier', 'dier', 'pet care', 'dierenverzorging']

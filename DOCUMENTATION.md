@@ -1,6 +1,6 @@
 # Reflect AI - Application Documentation
 
-**Version:** 1.0  
+**Version:** 1.1.1  
 **Last Updated:** December 3, 2025
 
 ---
@@ -9,9 +9,13 @@
 
 1. [System Overview](#1-system-overview)
 2. [Recurring Transaction Detection](#2-recurring-transaction-detection)
+   - 2.1-2.12: Fixed recurring (subscriptions, income)
+   - 2.13: Variable spending detection (groceries, coffee, fuel)
 3. [Transaction Categorization](#3-transaction-categorization) _(Coming Soon)_
 4. [Data Architecture](#4-data-architecture) _(Coming Soon)_
 5. [User Interface Components](#5-user-interface-components) _(Coming Soon)_
+6. [Changelog](#6-changelog)
+7. [Future Improvements (TODOs)](#7-future-improvements-todos)
 
 ---
 
@@ -30,15 +34,18 @@ Reflect AI is a personal finance management application that helps users underst
 
 ## 2. Recurring Transaction Detection
 
-The recurring transaction detection system is designed to automatically identify patterns in your financial transactions and classify them as subscriptions, regular income, or other recurring payments. The system uses a multi-phase approach to ensure accuracy while minimizing false positives.
+The recurring transaction detection system is designed to automatically identify patterns in your financial transactions. It consists of **two separate services**:
+
+1. **RecurringDetectionService** - For fixed-amount subscriptions and income
+2. **VariableSpendingService** - For variable spending patterns (groceries, coffee, fuel, etc.)
 
 ### 2.1. Overview
 
 The detection process analyzes all transactions in your account to find:
-- **Subscriptions**: Regular payments to services (Netflix, Spotify, insurance, etc.)
+- **Subscriptions**: Regular fixed-amount payments (Netflix, Spotify, insurance, etc.)
 - **Bills**: Utility payments, phone bills, internet services
 - **Income**: Salary, government benefits, regular transfers
-- **Other recurring payments**: Any other pattern of regular transactions
+- **Variable Spending**: Habitual spending patterns grouped by category (groceries, coffee, fuel)
 
 ### 2.2. Detection Methods
 
@@ -260,6 +267,72 @@ This allows the system to:
 - Mark transactions as "recurring" for better categorization
 - Identify divergent charges (one-off amounts that differ from the usual subscription)
 
+### 2.13. Variable Spending Detection
+
+**NEW in v1.1**: Variable spending is now handled by a separate `VariableSpendingService` that groups transactions by **category** rather than individual merchants.
+
+#### Why Separate Services?
+
+Fixed subscriptions and variable spending have fundamentally different patterns:
+
+| Aspect | Subscriptions | Variable Spending |
+|--------|---------------|-------------------|
+| Amount | Fixed or near-fixed | Varies significantly |
+| Timing | Regular intervals | Frequent but irregular |
+| Analysis | Per-merchant, amount clustering | Per-category aggregation |
+| Insight | "Netflix costs €15.99/month" | "You spend €180/month on groceries" |
+
+#### How Variable Spending Detection Works
+
+1. **Category Filtering**: Only analyzes transactions in variable spending categories:
+   - Supermarkt, Slager, Bakker, Speciaalzaken
+   - Koffie, Lunch, Uit eten, Bestellen
+   - Brandstof, Openbaar vervoer, Parkeren
+   - Persoonlijke verzorging
+
+2. **Category Grouping**: All transactions in a category are grouped together (not per-merchant)
+
+3. **Metrics Calculated**:
+   - `monthlyAverage`: Your typical monthly spend in this category
+   - `visitsPerMonth`: How often you make purchases
+   - `averagePerVisit`: Average transaction amount
+   - `uniqueMerchants`: How many different places you visit
+   - `topMerchants`: Top 5 merchants with their totals (for drill-down)
+
+4. **Filtering**:
+   - Minimum 3 transactions per category
+   - Last transaction within 90 days (for category-level)
+
+#### Example Output
+
+```
+🛒 VARIABLE SPENDING BY CATEGORY:
+   Total: €450.00/month across 8 categories
+   🛒 Supermarkt: €180.00/mo (8.5 visits/mo, 5 places)
+      Top: Albert Heijn (€120), Jumbo (€35), Lidl (€25)
+   ☕ Koffie: €45.00/mo (12 visits/mo, 8 places)
+      Top: Starbucks (€20), Anne&Max (€15)
+   ⛽ Brandstof: €80.00/mo (2.5 visits/mo, 3 places)
+      Top: Shell (€50), Total (€30)
+```
+
+#### API Endpoints
+
+- `POST /api/recurring/detect` - Runs both services, returns `candidates` (subscriptions) and `variableSpending` (categories)
+- `GET /api/variable-spending` - Returns only variable spending patterns
+
+#### Configuration
+
+Variable spending categories are currently hardcoded in `variableSpendingService.ts`. 
+
+**TODO**: Add `spending_type` field to `categories` table:
+- `fixed` - Fixed recurring (subscriptions, bills)
+- `variable` - Variable spending (groceries, coffee)
+- `exclude` - Never recurring (one-off purchases)
+- `null` - Default behavior
+
+This would allow per-category configuration without code changes.
+
 ---
 
 ## 3. Transaction Categorization
@@ -274,3 +347,125 @@ _(Coming Soon)_
 
 ## 5. User Interface Components
 _(Coming Soon)_
+
+---
+
+## 6. Changelog
+
+### Version 1.1.1 (December 3, 2025)
+
+#### Bug Fixes
+
+**Fixed Loan Payment Detection (AXUS)**
+- **Issue**: Transactions categorized as "Leningen & schuldaflossing" (Loans & debt repayment) were being excluded from recurring detection, even though loan payments are legitimate recurring transactions.
+- **Solution**: Removed "Leningen & schuldaflossing" from the `exclude_from_recurring` category list in `categoryConfig.ts`.
+- **Impact**: Loan payments (e.g., AXUS mortgage payments of €729/month) are now properly detected and tracked as recurring transactions.
+
+**Fixed Multi-Category Merchant Detection (Nationale Nederlanden)**
+- **Issue**: When a merchant had transactions in multiple categories (e.g., Nationale Nederlanden with both mortgage payments in "Woning" category and fuel purchases in "Brandstof" category), the system only checked the first transaction's category. If that category was excluded or variable_recurring, the entire merchant group was skipped, missing legitimate subscriptions.
+- **Solution**: Updated `detectByKnownList()` in `recurringDetectionService.ts` to:
+  1. Group transactions by category first (in addition to merchant grouping)
+  2. Process each category group separately
+  3. Only skip categories that should be excluded, not the entire merchant
+  4. Add category name to display name when merchant has multiple categories (e.g., "Nationale-Nederlanden (Woning)")
+- **Impact**: Merchants with mixed transaction types (mortgage payments, fuel, etc.) now correctly detect subscriptions for each category. Nationale Nederlanden mortgage payments (€1013.85/month) are now properly detected.
+
+**Enhanced Delete Functionality**
+- **Issue**: The "Delete all" button on the recurring transactions page only deleted fixed recurring transactions, but not variable spending patterns.
+- **Solution**: Updated the `DELETE` handler in `/api/recurring/+server.ts` to also delete all `VariableSpendingPattern` records for the user.
+- **Impact**: Users can now completely reset their recurring transaction detection, including variable spending patterns, with a single action.
+
+#### Technical Improvements
+
+**Improved Debug Logging**
+- Added comprehensive debug logging for multi-category merchant detection
+- Logs now show category distribution and processing decisions
+- Helps identify why specific transactions might not be detected
+
+**Code Quality**
+- Improved code organization by processing categories separately
+- Better handling of edge cases (merchants with 10+ different transaction categories)
+- More descriptive candidate names when merchants have multiple subscription types
+
+---
+
+## 7. Future Improvements (TODOs)
+
+### 6.1. Category-Based Spending Type (High Priority)
+
+**Problem**: Variable spending categories are hardcoded in `variableSpendingService.ts`. Adding or removing categories requires code changes.
+
+**Solution**: Add a `spending_type` enum field to the `categories` table:
+
+```prisma
+model categories {
+  // ... existing fields ...
+  spending_type    SpendingType?  // "fixed" | "variable" | "exclude"
+}
+
+enum SpendingType {
+  fixed      // Fixed recurring (subscriptions, insurance)
+  variable   // Variable spending (groceries, coffee, fuel)
+  exclude    // Never recurring (clothing, electronics)
+}
+```
+
+**Benefits**:
+- Admin can configure categories via UI
+- No code deployment needed to change behavior
+- Category-specific thresholds can also be stored
+
+### 6.2. Category-Specific Thresholds
+
+**Problem**: Different variable spending categories have different natural patterns:
+- Groceries: Weekly visits, €30-80 per visit
+- Coffee: Frequent (daily?), €3-8 per visit
+- Fuel: Bi-weekly, €40-80 per visit
+- Dining out: Occasional, €20-100 per visit
+
+**Solution**: Add category-specific configuration:
+
+```typescript
+interface CategorySpendingConfig {
+  expectedFrequency: 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'occasional';
+  minTransactions: number;
+  typicalAmountRange: { min: number; max: number };
+}
+```
+
+### 6.3. Variable Spending Persistence
+
+**Problem**: Currently, variable spending patterns are calculated on-the-fly and not stored in the database.
+
+**Solution**: Create a `variable_spending_patterns` table to:
+- Cache calculated patterns
+- Track trends over time (is grocery spending increasing?)
+- Enable budget alerts ("You've spent 80% of your typical grocery budget")
+
+### 6.4. Budget Integration
+
+**Problem**: Variable spending insights exist but aren't connected to budgeting.
+
+**Solution**:
+- Allow users to set budgets per category
+- Show progress: "Groceries: €145/€200 (73%)"
+- Alert when approaching or exceeding budget
+- Suggest budgets based on historical spending
+
+### 6.5. Trend Analysis
+
+**Problem**: We show current monthly averages but not trends.
+
+**Solution**: Track and display:
+- Month-over-month changes
+- Seasonal patterns (higher grocery spend in December)
+- Anomaly detection (unusually high spending in a category)
+
+### 6.6. Merchant Intelligence
+
+**Problem**: Top merchants are shown but not analyzed.
+
+**Solution**:
+- Identify if spending is concentrated (70% at one store) or distributed
+- Suggest alternatives ("You could save €20/month at Lidl vs Albert Heijn")
+- Flag merchant changes (new frequent merchant, stopped visiting old one)

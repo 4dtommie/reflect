@@ -17,6 +17,7 @@ model User {
   transactions    transactions[]
   user_categories user_categories[]
   recurring_transactions RecurringTransaction[]
+  variable_spending_patterns VariableSpendingPattern[]
 
   @@map("users")
 }
@@ -34,6 +35,7 @@ model categories {
   is_default       Boolean           @default(false)
   group            String?            // "income", "essential", "lifestyle", "financial", "other"
   tier             String?            // "most" | "medium" | "less" - for AI prompt ordering
+  is_variable_spending Boolean        @default(false) // true = frequent variable purchases (groceries, coffee, fuel)
   users            User?             @relation(fields: [created_by], references: [id])
   categories       categories?       @relation("categoriesTocategories", fields: [parent_id], references: [id])
   other_categories categories[]      @relation("categoriesTocategories")
@@ -42,6 +44,7 @@ model categories {
   user_categories  user_categories[]
   category_keywords category_keywords[]
   recurring_transactions RecurringTransaction[]
+  variable_spending_patterns VariableSpendingPattern[]
 }
 
 model merchants {
@@ -115,6 +118,35 @@ model RecurringTransaction {
   transactions       transactions[]
 
   @@map("recurring_transactions")
+  @@index([user_id])
+  @@index([status])
+}
+
+model VariableSpendingPattern {
+  id                 Int         @id @default(autoincrement())
+  user_id            Int
+  category_id        Int
+  category_name      String      // Denormalized for easy display
+  monthly_average    Decimal     @db.Decimal(10, 2)
+  visits_per_month   Decimal     @db.Decimal(5, 2)
+  average_per_visit  Decimal     @db.Decimal(10, 2)
+  total_spent        Decimal     @db.Decimal(12, 2)
+  total_transactions Int
+  unique_merchants   Int
+  top_merchants      Json?       // Array of { merchantName, totalSpent, transactionCount }
+  min_amount         Decimal     @db.Decimal(10, 2)
+  max_amount         Decimal     @db.Decimal(10, 2)
+  first_transaction  DateTime
+  last_transaction   DateTime
+  status             String      @default("active") // "active", "inactive"
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
+
+  users              User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  categories         categories  @relation(fields: [category_id], references: [id])
+
+  @@unique([user_id, category_id])
+  @@map("variable_spending_patterns")
   @@index([user_id])
   @@index([status])
 }

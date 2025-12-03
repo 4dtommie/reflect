@@ -5,7 +5,7 @@
 		showDecimals = true,
 		isDebit = false,
 		hideEuro = false,
-		locale = 'NL'
+		locale = 'NL' // Default to Dutch locale
 	}: {
 		value: number;
 		size?: 'small' | 'medium' | 'large';
