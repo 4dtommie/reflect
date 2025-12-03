@@ -4,10 +4,11 @@
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
 	import UpcomingPaymentsWidget from '$lib/components/UpcomingPaymentsWidget.svelte';
+	import RecurringExpensesWidget from '$lib/components/RecurringExpensesWidget.svelte';
 	import RecurringItem from '$lib/components/RecurringItem.svelte';
 	import VariableSpendingItem from '$lib/components/VariableSpendingItem.svelte';
 	import Amount from '$lib/components/Amount.svelte';
-	import { Search, TrendingDown, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
+	import { Search, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { formatDateShort } from '$lib/utils/locale';
 
@@ -195,30 +196,12 @@
 			</DashboardWidget>
 
 			<!-- Recurring expenses -->
-			<DashboardWidget size="small" enableHover={false}>
-				<div class="mb-3">
-					<div class="mb-1.5 flex items-center justify-between">
-						<div class="flex items-center gap-2">
-							<TrendingDown size={18} class="text-error" />
-							<h2 class="font-semibold">Recurring expenses</h2>
-						</div>
-						<span class="text-lg font-bold text-error">
-							<Amount value={data.stats?.monthlyTotal || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
-						</span>
-					</div>
-					<div class="h-0.5 w-full rounded-full" style="background-color: rgb(139, 92, 246);"></div>
-				</div>
-
-				{#if subscriptions.length > 0}
-					<div>
-						{#each subscriptions as subscription (subscription.id)}
-							<RecurringItem {subscription} isIncome={false} />
-						{/each}
-					</div>
-				{:else}
-					<p class="py-4 text-center text-sm opacity-50">No subscriptions detected</p>
-				{/if}
-			</DashboardWidget>
+			<RecurringExpensesWidget
+				subscriptions={data.subscriptions || []}
+				monthlyTotal={data.stats?.monthlyTotal || 0}
+				actionLabel="View all subscriptions"
+				actionHref="/subscriptions"
+			/>
 
 			<!-- Variable spending -->
 			<DashboardWidget size="small" enableHover={false}>

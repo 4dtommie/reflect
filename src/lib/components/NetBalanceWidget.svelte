@@ -1,20 +1,24 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
-	import Amount from './Amount.svelte';
 	import { formatNumber } from '$lib/utils/locale';
+	import { ArrowRight } from 'lucide-svelte';
 
 	let {
 		monthlyIncome = 0,
 		monthlyExpenses = 0,
 		recurringExpenses = 0,
 		variableExpenses = 0,
-		monthlySavings = 0
+		monthlySavings = 0,
+		actionLabel = '',
+		actionHref = ''
 	}: {
 		monthlyIncome?: number;
 		monthlyExpenses?: number;
 		recurringExpenses?: number;
 		variableExpenses?: number;
 		monthlySavings?: number;
+		actionLabel?: string;
+		actionHref?: string;
 	} = $props();
 
 	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses - monthlySavings));
@@ -27,13 +31,19 @@
 	const expenseBarWidth = $derived(monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 0);
 	const savingsBarWidth = $derived(monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0);
 	const freeBarWidth = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
-	
+
 	// Calculate recurring and variable bar widths
-	const recurringBarWidth = $derived(monthlyIncome > 0 && monthlyExpenses > 0 ? (recurringExpenses / monthlyIncome) * 100 : 0);
-	const variableBarWidth = $derived(monthlyIncome > 0 && monthlyExpenses > 0 ? (variableExpenses / monthlyIncome) * 100 : 0);
+	const recurringBarWidth = $derived(
+		monthlyIncome > 0 && monthlyExpenses > 0 ? (recurringExpenses / monthlyIncome) * 100 : 0
+	);
+	const variableBarWidth = $derived(
+		monthlyIncome > 0 && monthlyExpenses > 0 ? (variableExpenses / monthlyIncome) * 100 : 0
+	);
+
+	const showAction = $derived(actionLabel && actionHref);
 </script>
 
-<DashboardWidget size="small" title="Income you can spend">
+<DashboardWidget size="small" title="Average income you can spend">
 	<div class="flex h-full flex-col justify-center gap-4">
 		<!-- Free to spend display -->
 		<div class="text-center">
@@ -104,7 +114,9 @@
 							€ {formatNumber(Math.round(monthlyExpenses))}
 						</span>
 					{:else if expenseBarWidth > 20 && recurringBarWidth > 20 && variableBarWidth > 20}
-						<span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-error-content">
+						<span
+							class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-error-content"
+						>
 							€ {formatNumber(Math.round(monthlyExpenses))}
 						</span>
 					{/if}
@@ -127,7 +139,10 @@
 							{/if}
 						</div>
 						{#if savingsBarWidth <= 20 && monthlySavings > 0}
-							<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium" style="left: {Math.min(expenseBarWidth + 2, 98)}%;">
+							<span
+								class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium"
+								style="left: {Math.min(expenseBarWidth + 2, 98)}%;"
+							>
 								€ {formatNumber(Math.round(monthlySavings))}
 							</span>
 						{/if}
@@ -158,13 +173,21 @@
 			</div>
 		</div>
 
-		<!-- Yearly projection -->
-		<div class="border-t border-base-200 pt-3 text-center text-sm">
-			<span class="opacity-50">Yearly savings potential: </span>
-			<span class="font-semibold text-sky-600">
-				€ {formatNumber(Math.round(freeToSpend * 12))}
-			</span>
-		</div>
+		<!-- Yearly projection or action button -->
+		{#if showAction}
+			<div class="border-t border-base-200 pt-3">
+				<a href={actionHref} class="btn btn-sm btn-ghost w-full justify-between group">
+					<span>{actionLabel}</span>
+					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
+				</a>
+			</div>
+		{:else}
+			<div class="border-t border-base-200 pt-3 text-center text-sm">
+				<span class="opacity-50">Yearly savings potential: </span>
+				<span class="font-semibold text-sky-600">
+					€ {formatNumber(Math.round(freeToSpend * 12))}
+				</span>
+			</div>
+		{/if}
 	</div>
 </DashboardWidget>
-

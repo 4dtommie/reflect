@@ -8,14 +8,14 @@
 		id: number;
 		date: string | Date;
 		amount: number;
-		merchantName: string;
+		merchantName?: string | null;
 	};
 
 	type Subscription = {
 		id: number;
 		name: string;
 		amount: number;
-		interval: string;
+		interval: string | null;
 		status: string;
 		next_expected_date: string | Date | null;
 		created_at: string | Date;
@@ -86,7 +86,8 @@
 	});
 
 
-	function getIntervalLabel(interval: string): string {
+	function getIntervalLabel(interval: string | null): string {
+		if (!interval) return 'Unknown';
 		const labels: Record<string, string> = {
 			monthly: 'Monthly',
 			weekly: 'Weekly',

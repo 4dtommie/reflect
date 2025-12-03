@@ -12,7 +12,7 @@
 	}: {
 		title?: string;
 		icon?: Snippet;
-		size?: 'extra-small' | 'small' | 'medium' | 'large' | 'wide' | 'full';
+		size?: 'auto' | 'extra-small' | 'small' | 'medium' | 'large' | 'wide' | 'full';
 		variant?: 'default' | 'placeholder';
 		enableHover?: boolean;
 		bgColor?: string;
@@ -20,6 +20,7 @@
 	} = $props();
 
 	const sizeClasses = {
+		auto: '',
 		'extra-small': 'min-h-[150px]',
 		small: 'min-h-[200px]',
 		medium: 'min-h-[300px]',

@@ -1,6 +1,6 @@
 # Reflect AI - Application Documentation
 
-**Version:** 1.1.1  
+**Version:** 1.2.0  
 **Last Updated:** December 3, 2025
 
 ---
@@ -12,7 +12,8 @@
    - 2.1-2.12: Fixed recurring (subscriptions, income)
    - 2.13: Variable spending detection (groceries, coffee, fuel)
 3. [Transaction Categorization](#3-transaction-categorization) _(Coming Soon)_
-4. [Data Architecture](#4-data-architecture) _(Coming Soon)_
+4. [Data Architecture](#4-data-architecture)
+   - 4.1: Service Layer Pattern
 5. [User Interface Components](#5-user-interface-components) _(Coming Soon)_
 6. [Changelog](#6-changelog)
 7. [Future Improvements (TODOs)](#7-future-improvements-todos)
@@ -341,7 +342,91 @@ _(Coming Soon)_
 ---
 
 ## 4. Data Architecture
-_(Coming Soon)_
+
+### 4.1. Service Layer Pattern
+
+The application uses a **service layer pattern** to share business logic between API routes and page loaders, avoiding code duplication and improving maintainability.
+
+#### Directory Structure
+
+```
+src/lib/server/
+  recurring/
+    recurringService.ts       # Core recurring transaction logic
+    balanceCalculator.ts      # NetBalanceWidget data calculation
+    variableSpendingService.ts # Variable spending detection
+  categorization/
+    categorizationService.ts  # Categorization business logic
+    ...
+  db/
+    index.ts                  # Prisma client singleton
+```
+
+#### Layer Responsibilities
+
+| Layer | Location | Responsibility | Database Access |
+|-------|----------|----------------|-----------------|
+| **Services** | `lib/server/*/` | Reusable business logic, calculations | Direct via Prisma |
+| **API Routes** | `routes/api/*/+server.ts` | HTTP handling, auth, validation | Via services |
+| **Page Loaders** | `routes/**/+page.server.ts` | Data fetching for pages | Via services |
+| **Components** | `lib/components/` | UI rendering | None (receives data via props) |
+
+#### Data Flow Examples
+
+**Dashboard Loading:**
+```
+Browser requests /dashboard
+  → +page.server.ts calls calculateBalanceData(userId)
+  → balanceCalculator.ts queries DB via Prisma
+  → Returns data to +page.svelte
+  → NetBalanceWidget renders with data props
+```
+
+**Client-Side Mutation:**
+```
+User clicks "Delete all"
+  → +page.svelte calls fetch('/api/recurring', { method: 'DELETE' })
+  → +server.ts calls recurringService.deleteAllRecurring(userId)
+  → Service layer executes DB operations
+  → Response sent to client
+```
+
+#### Key Services
+
+**RecurringService** (`recurringService.ts`)
+- `getRecurringData(userId)`: Fetches subscriptions, stats, and category breakdown
+- `deleteAllRecurring(userId)`: Removes all recurring data for a user
+- `calculateMonthlyIncome(subscriptions)`: Calculates total monthly income
+
+**BalanceCalculator** (`balanceCalculator.ts`)
+- `calculateBalanceData(userId)`: Lightweight balance data for widgets
+- `calculateFullBalanceData(userId)`: Full data including monthly spending breakdown
+
+**VariableSpendingService** (`variableSpendingService.ts`)
+- `detectVariableSpending(userId)`: Analyzes spending patterns by category
+- `getSummary(userId)`: Returns summary statistics
+
+#### Benefits
+
+1. **Single Source of Truth**: Business logic lives in one place
+2. **Efficiency**: No HTTP overhead when fetching data in page loaders
+3. **Type Safety**: Full TypeScript support across the stack
+4. **Testability**: Services can be unit tested in isolation
+5. **Maintainability**: Changes to business logic only need updates in services
+
+#### Guidelines
+
+1. **Page loaders should NOT use `fetch()` to call internal APIs**
+   - Bad: `fetch('/api/recurring')` from `+page.server.ts`
+   - Good: `recurringService.getRecurringData(userId)` from `+page.server.ts`
+
+2. **Client components SHOULD use `fetch()` for mutations**
+   - Mutations need proper HTTP handling, error responses, etc.
+   - Example: `fetch('/api/recurring', { method: 'DELETE' })`
+
+3. **Services should handle their own error logging**
+   - API routes convert errors to proper HTTP responses
+   - Services can throw errors for API routes to catch
 
 ---
 

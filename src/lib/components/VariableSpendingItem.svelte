@@ -21,7 +21,7 @@
 		totalSpent: number;
 		totalTransactions: number;
 		uniqueMerchants: number;
-		topMerchants: TopMerchant[];
+		topMerchants: TopMerchant[] | unknown;
 		minAmount: number;
 		maxAmount: number;
 		firstTransaction: string;
@@ -38,12 +38,13 @@
 
 	// Calculate percentages for bar charts
 	const merchantPercentages = $derived.by(() => {
-		if (!pattern.topMerchants || pattern.topMerchants.length === 0) return [];
+		const merchants = pattern.topMerchants as TopMerchant[] | null;
+		if (!merchants || !Array.isArray(merchants) || merchants.length === 0) return [];
 		
-		const maxSpent = Math.max(...pattern.topMerchants.map(m => Math.abs(m.totalSpent)));
-		if (maxSpent === 0) return pattern.topMerchants.map(() => 0);
+		const maxSpent = Math.max(...merchants.map(m => Math.abs(m.totalSpent)));
+		if (maxSpent === 0) return merchants.map(() => ({ merchantName: '', totalSpent: 0, transactionCount: 0, percentage: 0 }));
 		
-		return pattern.topMerchants.map(merchant => ({
+		return merchants.map(merchant => ({
 			...merchant,
 			percentage: (Math.abs(merchant.totalSpent) / maxSpent) * 100
 		}));

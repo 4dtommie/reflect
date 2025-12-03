@@ -7,7 +7,7 @@
 		id: number;
 		name: string;
 		amount: number;
-		interval: string;
+		interval: string | null;
 		next_expected_date: string | Date | null;
 	};
 

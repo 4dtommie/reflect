@@ -4,10 +4,10 @@
 	import UploadCTAWidget from '$lib/components/UploadCTAWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
-	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
 	import RecurringWidget from '$lib/components/RecurringWidget.svelte';
-	import { Clock, TrendingUp, PieChart, Target, PiggyBank, RefreshCw } from 'lucide-svelte';
+	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
+	import { TrendingUp, PieChart, Target, PiggyBank } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
@@ -58,6 +58,7 @@
 				uncategorizedCount={data.stats.uncategorizedCount}
 				categorizedPercentage={data.stats.categorizedPercentage}
 				topUncategorizedMerchants={data.stats.topUncategorizedMerchants}
+				variant="compact"
 			/>
 		{:else}
 			<PlaceholderWidget
@@ -70,6 +71,18 @@
 
 		{#if data.stats.totalTransactions > 0}
 			<RecurringWidget recurringTransactions={data.recurringTransactions} />
+		{/if}
+
+		{#if data.stats.totalTransactions > 0}
+			<NetBalanceWidget
+				monthlyIncome={data.balanceData.monthlyIncome}
+				monthlyExpenses={data.balanceData.monthlyExpenses}
+				recurringExpenses={data.balanceData.recurringExpenses}
+				variableExpenses={data.balanceData.variableExpenses}
+				monthlySavings={data.balanceData.monthlySavings}
+				actionLabel="View spending patterns"
+				actionHref="/recurring"
+			/>
 		{/if}
 
 		<PlaceholderWidget
