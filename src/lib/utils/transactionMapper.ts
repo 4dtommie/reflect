@@ -85,8 +85,6 @@ const FIELD_VARIATIONS: Record<TransactionField, string[]> = {
 		'name',
 		'naam',
 		'omschrijving', // Omschrijving can mean merchant name in Dutch banking
-		'counterparty',
-		'tegenpartij',
 		'recipient',
 		'payee'
 	],
@@ -103,6 +101,8 @@ const FIELD_VARIATIONS: Record<TransactionField, string[]> = {
 	counterpartyIban: [
 		'counterparty iban',
 		'counterpartyiban',
+		'counterparty',
+		'tegenpartij',
 		'tegenrekening',
 		'to iban',
 		'toiban',
@@ -117,8 +117,8 @@ const FIELD_VARIATIONS: Record<TransactionField, string[]> = {
 		'type',
 		'direction',
 		'credit debit',
-        'af',
-        'bij'
+		'af',
+		'bij'
 	],
 	amount: [
 		'amount',
@@ -141,14 +141,14 @@ const FIELD_VARIATIONS: Record<TransactionField, string[]> = {
 	],
 	description: [
 		'description',
-        'mededelingen',
+		'mededelingen',
 		'desc',
 		'note',
 		'notitie',
 		'remarks',
 		'comment',
 		'details',
-        'mededeling'
+		'mededeling'
 		// Note: 'omschrijving' is NOT here - it belongs to merchantName when combined with 'naam'
 	],
 	categoryId: ['category', 'category id', 'categorie', 'categoryid'],
@@ -188,7 +188,7 @@ export function detectColumnMapping(headers: string[]): ColumnMapping {
 			if (usedFields.has(field)) continue;
 
 			const variations = FIELD_VARIATIONS[field];
-			
+
 			// Check exact match
 			if (variations.includes(normalizedHeader)) {
 				mapping[i] = field;
@@ -208,7 +208,7 @@ export function detectColumnMapping(headers: string[]): ColumnMapping {
 			if (usedFields.has(field)) continue;
 
 			const variations = FIELD_VARIATIONS[field];
-			
+
 			// Check if header contains any variation (with priority)
 			for (const variation of variations) {
 				if (normalizedHeader.includes(variation) || variation.includes(normalizedHeader)) {
