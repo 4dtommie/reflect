@@ -125,30 +125,32 @@
 								<button
 									type="button"
 									on:click={() => handleTransactionClick(transaction.id)}
-									class="group relative flex w-full items-center justify-between rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-error hover:bg-error/5"
+									class="group flex w-full flex-col gap-2 rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-error hover:bg-error/5"
 								>
-									<div class="flex-1 min-w-0">
-										<div class="truncate font-medium">{transaction.merchantName}</div>
-										<div class="mt-1">
-											<Amount value={parseFloat(transaction.amount)} />
-										</div>
-									</div>
-									<div class="ml-2 flex items-center gap-2 flex-shrink-0">
-										{#if transaction.category}
-											<span
-												class="badge badge-sm"
-												style="background-color: {transaction.category.color || 'hsl(var(--b3))'}; color: {transaction.category.color ? 'white' : 'hsl(var(--bc))'};"
-											>
-												{transaction.category.name}
-											</span>
-										{/if}
-										<span class="badge badge-sm badge-error badge-outline">
-											{formatConfidence(transaction.category_confidence)}
-										</span>
+									<!-- Top row: Merchant name with chevron -->
+									<div class="flex items-center gap-2">
+										<div class="flex-1 min-w-0 truncate font-medium">{transaction.merchantName}</div>
 										<ChevronRight
 											size={16}
-											class="opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100"
+											class="flex-shrink-0 opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100"
 										/>
+									</div>
+									<!-- Bottom row: Amount on left, tags on right -->
+									<div class="flex items-center justify-between gap-2">
+										<Amount value={parseFloat(transaction.amount)} />
+										<div class="flex items-center gap-2 flex-shrink-0">
+											{#if transaction.category}
+												<span
+													class="badge badge-sm"
+													style="background-color: {transaction.category.color || 'hsl(var(--b3))'}; color: {transaction.category.color ? 'white' : 'hsl(var(--bc))'};"
+												>
+													{transaction.category.name}
+												</span>
+											{/if}
+											<span class="badge badge-sm badge-error badge-outline">
+												{formatConfidence(transaction.category_confidence)}
+											</span>
+										</div>
 									</div>
 								</button>
 							{/each}
