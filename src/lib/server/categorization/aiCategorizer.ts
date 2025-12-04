@@ -46,8 +46,8 @@ export interface AICategorizationResult {
 	categoryId: number | null;
 	categoryName?: string; // Optional category name (when using name-based categorization)
 	confidence: number; // 0.0 - 1.0
-	suggestedKeywords: string[]; // 1-2 keywords (from merchant name only)
 	cleanedMerchantName?: string; // AI-generated cleaned merchant name
+	merchantNameOptions?: string[]; // 3 alternative merchant name suggestions
 	reasoning?: string; // Optional explanation
 }
 
@@ -224,20 +224,13 @@ export function createCategorizationPrompt(
 			jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryName": "Uit eten",\n      "confidence": 0.85\n    }\n  ]\n}';
 		}
 	} else {
-		// Using category IDs (original method)
-		if (includeCleanedMerchantName && includeReasoning) {
-			jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryId": 45,\n      "confidence": 0.85,\n      "cleanedMerchantName": "Nationale-Nederlanden",\n      "reasoning": "Korte uitleg waarom deze categorie gekozen is."\n    }\n  ]\n}';
-		} else if (includeCleanedMerchantName && !includeReasoning) {
-			jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryId": 45,\n      "confidence": 0.85,\n      "cleanedMerchantName": "Nationale-Nederlanden"\n    }\n  ]\n}';
-		} else if (!includeCleanedMerchantName && includeReasoning) {
-			jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryId": 45,\n      "confidence": 0.85,\n      "reasoning": "Korte uitleg waarom deze categorie gekozen is."\n    }\n  ]\n}';
-		} else {
-			jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryId": 45,\n      "confidence": 0.85\n    }\n  ]\n}';
-		}
+		// Default fallback if useCategoryNames is false (though we prefer names now)
+		jsonExample = '{\n  "results": [\n    {\n      "transactionId": 11085,\n      "categoryName": "Uit eten",\n      "confidence": 0.85\n    }\n  ]\n}';
 	}
 
+
 	const cleanedMerchantNameInstruction = includeCleanedMerchantName
-		? '\n7. Gecleande transactie naam: Geef een schone, genormaliseerde versie van de transactie naam met de volgende regels:\n   - Verwijder onnodige prefixen en suffixen (bijv. "NL * TRANSACTIE NAAM" → "Transactie naam")\n   - Verwijder bedrijfsvormen: "BV", "NV", "B.V.", "N.V." etc.\n   - Hoofdlettergebruik: Eerste letter hoofdletter, rest kleine letters (bijv. "ALBERT HEIJN" → "Albert Heijn")\n   - Behouden van belangrijke woorden: Behoud merknamen en belangrijke delen van de naam\n   - Voorbeelden: "Starbucks", "ING BANK N.V." → "ING Bank"'
+		? '\n7. Gecleande transactie naam: Geef een schone, genormaliseerde versie van de transactie naam (cleanedMerchantName).\n   - Verwijder onnodige prefixen en suffixen (bijv. "NL * TRANSACTIE NAAM" → "Transactie naam")\n   - Verwijder bedrijfsvormen: "BV", "NV", "B.V.", "N.V." etc.\n   - Hoofdlettergebruik: Eerste letter hoofdletter, rest kleine letters (bijv. "ALBERT HEIJN" → "Albert Heijn")\n   - Behouden van belangrijke woorden: Behoud merknamen en belangrijke delen van de naam\n   - Voorbeelden: "Starbucks", "ING BANK N.V." → "ING Bank"\n\n8. Merchant Name Options: Geef OOK een array "merchantNameOptions" met precies 3 variaties van de merchant naam:\n   - Optie 1: De meest waarschijnlijke schone naam (hetzelfde als cleanedMerchantName)\n   - Optie 2: Een iets formelere of langere versie (indien van toepassing) of een alternatieve schrijfwijze\n   - Optie 3: Een kortere, meer casual versie of alleen de merknaam\n   - Zorg dat ze uniek zijn en nuttig voor de gebruiker om uit te kiezen.'
 		: '';
 
 	const reasoningInstruction = includeReasoning
@@ -246,7 +239,7 @@ export function createCategorizationPrompt(
 
 	const categorySelectionInstruction = useCategoryNames
 		? 'Selectieplicht: Je MOET voor elke transactie de meest geschikte categoryName selecteren uit de lijst hierboven. Gebruik de exacte categorie naam zoals getoond (bijv. "Uit eten", "Lunch", "Koffie"). Gebruik NOOIT "Category X" of nummers. Alleen als een categorie absoluut niet past, gebruik je "Niet gecategoriseerd".'
-		: `${template.instructions.selection}\n   BELANGRIJK: categoryId moet een NUMmer zijn (bijv. 45), NIET een string zoals "Category 45" of "45". Gebruik alleen het nummer zonder tekst.`;
+		: `${template.instructions.selection}\n   BELANGRIJK: Gebruik de exacte categorie naam.`;
 
 	// Build the prompt with the new structure
 	const prompt = `${template.intro}
@@ -503,13 +496,7 @@ export async function categorizeBatchWithAI(
 				confidence: typeof result.confidence === 'number'
 					? Math.max(0, Math.min(1, result.confidence)) // Clamp between 0 and 1
 					: 0.5, // Default confidence if missing
-				suggestedKeywords: Array.isArray(result.suggestedKeywords)
-					? result.suggestedKeywords
-						.filter((k: any) => typeof k === 'string')
-						.map((k: string) => k.trim())
-						.filter((k: string) => k.length > 0)
-						.slice(0, 2) // Max 2 keywords (1-2 recommended: from merchant name only)
-					: [],
+				// suggestedKeywords removed from interface
 				cleanedMerchantName: typeof result.cleanedMerchantName === 'string'
 					? result.cleanedMerchantName.trim()
 					: undefined,
@@ -560,49 +547,5 @@ export async function categorizeBatchWithAI(
 /**
  * Add suggested keywords to the database
  */
-export async function addSuggestedKeywords(
-	results: AICategorizationResult[]
-): Promise<number> {
-	let addedCount = 0;
-
-	for (const result of results) {
-		if (!result.categoryId || !result.suggestedKeywords || result.suggestedKeywords.length === 0) {
-			continue;
-		}
-
-		// Normalize and filter keywords
-		const keywords = result.suggestedKeywords
-			.map(k => k.trim().toLowerCase())
-			.filter(k => k.length > 0)
-			.slice(0, 2); // Max 2 keywords (from merchant name only)
-
-		if (keywords.length === 0) {
-			continue;
-		}
-
-		// Try to add keywords (skip duplicates)
-		try {
-			await (db as any).category_keywords.createMany({
-				data: keywords.map(keyword => ({
-					category_id: result.categoryId,
-					keyword,
-					source: 'ai',
-					source_transaction_id: result.transactionId,
-					confidence: result.confidence
-				})),
-				skipDuplicates: true
-			});
-
-			addedCount += keywords.length;
-		} catch (error) {
-			console.warn(`⚠️  Failed to add keywords for transaction ${result.transactionId}:`, error);
-		}
-	}
-
-	if (addedCount > 0) {
-		console.log(`   ✅ Added ${addedCount} AI-suggested keywords`);
-	}
-
-	return addedCount;
-}
+// addSuggestedKeywords removed as we no longer use suggestedKeywords
 

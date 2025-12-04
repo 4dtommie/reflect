@@ -11,8 +11,8 @@ export const systemPrompt = 'Je bent een expert in het categoriseren van financi
 
 export const aiConfig = {
 	apiKey: process.env.OPENAI_API_KEY || '',
-	model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-	maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '2000'),
+	model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+	maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '4000'),
 	temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.3'),
 	batchSize: parseInt(process.env.OPENAI_BATCH_SIZE || '10'),
 	maxRetries: parseInt(process.env.OPENAI_MAX_RETRIES || '3'),
@@ -41,10 +41,17 @@ export function validateAIConfig(): void {
 }
 
 /**
- * Check if AI categorization is available
+ * Check if OpenAI categorization is available
+ */
+export function isOpenAIAvailable(): boolean {
+	return aiConfig.enabled && !!aiConfig.apiKey;
+}
+
+/**
+ * Check if AI categorization is available (Legacy alias)
  */
 export function isAIAvailable(): boolean {
-	return aiConfig.enabled && !!aiConfig.apiKey;
+	return isOpenAIAvailable();
 }
 
 /**

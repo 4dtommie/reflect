@@ -10,6 +10,12 @@ import { matchTransactionByIBAN, type MerchantWithIBANs, normalizeIBAN } from '.
 import { cleanMerchantName, findOrCreateMerchant, ensureIBANInMerchant } from './merchantNameCleaner';
 import { matchTransactionsBatchWithVector, isVectorMatchingAvailable, type TransactionForEmbedding } from './vectorMatcher';
 import { isTransferBetweenPersons } from './transferDetector';
+import {
+	type AICategorizationResult,
+	type TransactionForAI
+} from './aiCategorizer';
+import { categorizeBatchWithGemini } from './geminiCategorizer';
+import { categorizeBatchWithOpenAI } from './openaiCategorizer';
 
 // Re-export Keyword for use by other modules
 export type { Keyword } from './keywordMatcher';
@@ -783,4 +789,144 @@ export async function categorizeTransactionsBatch(
 		results
 	};
 }
+
+/**
+ * Categorize a single transaction using Deep AI (Gemini 3 Pro)
+ */
+export async function categorizeSingleTransactionWithAI(
+	userId: number,
+	transactionId: number
+): Promise<AICategorizationResult> {
+	console.log(`[Deep AI] Starting categorization for transaction ${transactionId}`);
+
+	// 1. Fetch transaction details
+	const transaction = await (db as any).transactions.findUnique({
+		where: {
+			id: transactionId,
+			user_id: userId
+		},
+		select: {
+			id: true,
+			description: true,
+			merchantName: true,
+			amount: true,
+			type: true,
+			is_debit: true,
+			date: true
+		}
+	});
+
+	if (!transaction) {
+		throw new Error(`Transaction ${transactionId} not found`);
+	}
+
+	// 2. Prepare for AI
+	const transactionForAI: TransactionForAI = {
+		id: transaction.id,
+		description: transaction.description || '',
+		merchantName: transaction.merchantName || '',
+		amount: typeof transaction.amount === 'object' && transaction.amount?.toNumber
+			? transaction.amount.toNumber()
+			: Number(transaction.amount),
+		type: transaction.type,
+		is_debit: transaction.is_debit,
+		date: transaction.date instanceof Date ? transaction.date.toISOString() : transaction.date
+	};
+
+	// 3. Call OpenAI with Deep AI settings
+	// Model: gpt-5-mini
+	// Features: Search Grounding, Reasoning, Cleaned Merchant Name
+	console.log(`[Deep AI] Calling OpenAI for transaction ${transactionId}...`);
+	try {
+		const batchResult = await categorizeBatchWithOpenAI(
+			userId,
+			[transactionForAI],
+			'gpt-5-mini',
+			{
+				includeReasoning: true,
+				includeCleanedMerchantName: true,
+				enableSearchGrounding: true,
+				useCategoryNames: true,
+				temperature: 0.3,
+				maxTokens: 4000
+			}
+		);
+
+		console.log(`[Deep AI] Gemini response received. Results: ${batchResult.results.length}`);
+
+		if (batchResult.results.length === 0) {
+			throw new Error('AI returned no results');
+		}
+
+		return batchResult.results[0];
+	} catch (error) {
+		console.error(`[Deep AI] Error calling OpenAI:`, error);
+		throw error;
+	}
+}
+
+/**
+ * Update a transaction's category and merchant name manually
+ * Handles merchant creation/linking logic
+ */
+export async function updateTransactionCategory(
+	userId: number,
+	transactionId: number,
+	categoryId: number,
+	merchantName: string
+): Promise<void> {
+	// 1. Verify transaction ownership
+	const transaction = await (db as any).transactions.findUnique({
+		where: {
+			id: transactionId,
+			user_id: userId
+		}
+	});
+
+	if (!transaction) {
+		throw new Error(`Transaction ${transactionId} not found`);
+	}
+
+	// 2. Handle Merchant Logic
+	let merchantId: number | null = transaction.merchant_id;
+
+	// If merchant name changed or wasn't linked, try to find/create merchant
+	if (merchantName !== transaction.merchantName || !merchantId) {
+		// Clean the name just in case, though user input is taken as truth here
+		const cleanedName = merchantName.trim();
+
+		if (cleanedName) {
+			merchantId = await findOrCreateMerchant(
+				db,
+				cleanedName,
+				categoryId,
+				transaction.counterparty_iban
+			);
+		}
+	}
+
+	// 3. Update Transaction
+	await (db as any).transactions.update({
+		where: { id: transactionId },
+		data: {
+			category_id: categoryId,
+			merchantName: merchantName, // Update the display name too
+			merchant_id: merchantId,
+			category_confidence: 1.0, // Manual update = 100% confidence
+			is_category_manual: true, // Mark as manually categorized
+			updated_at: new Date()
+		}
+	});
+
+	// 4. Update Merchant's default category if it was just created or updated
+	if (merchantId) {
+		await (db as any).merchants.update({
+			where: { id: merchantId },
+			data: {
+				default_category_id: categoryId
+			}
+		});
+	}
+}
+
 

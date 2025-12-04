@@ -99,7 +99,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	console.log('🔍 [Categorize Page] Debug confidence query:');
 	console.log(`   - Total transactions: ${totalCount}`);
 	console.log(`   - Categorized transactions: ${categorizedCount}`);
-	
+
 	// Check how many transactions have confidence values
 	const transactionsWithConfidence = await db.transactions.count({
 		where: {
@@ -108,7 +108,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 	});
 	console.log(`   - Transactions with confidence: ${transactionsWithConfidence}`);
-	
+
 	// Check distribution of confidence values
 	const confidenceStats = await db.transactions.groupBy({
 		by: ['category_confidence'],
@@ -125,7 +125,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		confidence: s.category_confidence,
 		count: s._count._all
 	})));
-	
+
 	// Check transactions with category but no confidence
 	const transactionsWithCategoryNoConfidence = await db.transactions.count({
 		where: {
@@ -135,7 +135,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 	});
 	console.log(`   - Transactions with category but no confidence: ${transactionsWithCategoryNoConfidence}`);
-	
+
 	// Check what the manual review query finds
 	console.log(`   - Manual review transactions found: ${manualReviewTransactions.length}`);
 	if (manualReviewTransactions.length > 0) {
@@ -161,7 +161,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			id: c.id,
 			name: c.name,
 			icon: c.icon,
-			color: c.color
+			color: c.color,
+			parentId: c.parent_id
 		})),
 		uncategorizedMerchants: uncategorizedMerchants.map((m) => ({
 			name: m.merchantName,

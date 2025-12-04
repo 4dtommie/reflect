@@ -97,7 +97,7 @@ export async function categorizeBatchWithGemini(
 
 		// Build generation config
 		// For Gemini 3 Pro, increase max tokens since it uses thinking tokens
-		const defaultMaxTokens = isGemini3Pro ? 4000 : (options?.maxTokens || geminiConfig.maxTokens);
+		const defaultMaxTokens = isGemini3Pro ? 32000 : (options?.maxTokens || geminiConfig.maxTokens);
 
 		const generationConfig: any = {
 			// For Gemini 3 Pro, use default temperature of 1.0 (recommended)
@@ -108,7 +108,7 @@ export async function categorizeBatchWithGemini(
 					? options.temperature
 					: geminiConfig.temperature),
 			maxOutputTokens: options?.maxTokens || defaultMaxTokens,
-			responseMimeType: 'application/json' // Force JSON response
+			responseMimeType: isGemini3Pro ? undefined : 'application/json' // Don't force JSON for thinking models
 		};
 
 		// Get the model
@@ -138,6 +138,10 @@ export async function categorizeBatchWithGemini(
 		// Combine system prompt and user prompt
 		const fullPrompt = `${systemPrompt}\n\n${prompt}`;
 
+		console.log('📝 Gemini Prompt Preview (first 500 chars):', fullPrompt.substring(0, 500));
+		console.log('📝 Gemini Prompt Length:', fullPrompt.length);
+		console.log('📝 Full Gemini Prompt:', fullPrompt); // Log full prompt as requested
+
 		// Check if model supports search grounding (Gemini 2.5+ models)
 		const supportsSearchGrounding = modelToUse.includes('gemini-2.5') || modelToUse.includes('gemini-2.0');
 		const enableSearchGrounding = options?.enableSearchGrounding ?? false;
@@ -162,11 +166,14 @@ export async function categorizeBatchWithGemini(
 			: tools ? { tools } : undefined;
 
 		// Call Gemini API with retry logic
+		const timerLabel = `Gemini API Call ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+		console.time(timerLabel);
 		const response = await retryWithBackoff(
 			() => model.generateContent(fullPrompt, generateContentOptions as any),
 			3, // maxRetries
 			1000 // retryDelay
 		);
+		console.timeEnd(timerLabel);
 
 		// Parse response - try multiple methods to get text
 		let responseText: string = '';
@@ -427,6 +434,9 @@ export async function categorizeBatchWithGemini(
 					: [],
 				cleanedMerchantName: typeof result.cleanedMerchantName === 'string'
 					? result.cleanedMerchantName.trim()
+					: undefined,
+				merchantNameOptions: Array.isArray(result.merchantNameOptions)
+					? result.merchantNameOptions.filter((n: any) => typeof n === 'string').map((n: string) => n.trim())
 					: undefined,
 				reasoning: typeof result.reasoning === 'string' ? result.reasoning : undefined,
 				// Include original categoryName if provided by AI (even if matching failed)
