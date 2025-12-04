@@ -305,12 +305,13 @@ async function applyMatches(
 				// Note: merchant_name match reasons are tracked separately with more details
 			}
 
-			// Update transaction category and merchant link
+			// Update transaction category, merchant link, and confidence
 			await (db as any).transactions.update({
 				where: { id: match.transactionId },
 				data: {
 					category_id: match.categoryId,
 					merchant_id: merchantIdToLink,
+					category_confidence: match.confidence ?? 1.0, // Rule-based matches have high confidence
 					updated_at: new Date()
 				}
 			});
@@ -837,13 +838,14 @@ export async function categorizeAllTransactions(
 										matchReasons[result.transactionId] = `AI (${confidencePercent}%)`;
 										console.log(`   📝 Tracked AI match reason for transaction ${result.transactionId}: ${matchReasons[result.transactionId]}`);
 
-										// Update transaction with category and merchant link in one operation
+										// Update transaction with category, merchant link, and confidence in one operation
 										await (db as any).transactions.update({
 											where: { id: result.transactionId },
 											data: {
 												category_id: result.categoryId,
 												merchant_id: merchantId,
 												cleaned_merchant_name: cleanedName || null,
+												category_confidence: result.confidence,
 												updated_at: new Date()
 											}
 										});

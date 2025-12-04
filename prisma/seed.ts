@@ -76,6 +76,10 @@ export async function seedDatabase() {
 		const userCategoryCount = await prisma.user_categories.deleteMany({});
 		log(`   ✓ Deleted ${userCategoryCount.count} user category preferences`);
 
+		// Delete variable_spending_patterns (references categories)
+		const variableSpendingCount = await prisma.variableSpendingPattern.deleteMany({});
+		log(`   ✓ Deleted ${variableSpendingCount.count} variable spending patterns`);
+
 		// Delete categories (references users for created_by)
 		const categoryCount = await prisma.categories.deleteMany({});
 		log(`   ✓ Deleted ${categoryCount.count} categories`);

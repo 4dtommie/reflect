@@ -25,7 +25,7 @@
 		<div class="flex h-full flex-col items-center justify-center gap-4 py-4">
 			<Sparkles size={48} class="text-primary opacity-50" />
 			<p class="text-center text-sm opacity-70">Ready to organize your transactions?</p>
-			<a href="/categorize" class="btn w-full btn-primary"> Start categorizing </a>
+			<a href="/categorize-all" class="btn w-full btn-primary"> Start categorizing </a>
 		</div>
 	{:else if variant === 'compact'}
 		<!-- Compact variant: Just percentage + pie + CTA -->

@@ -68,7 +68,7 @@
 			</div>
 
 			<div class="mt-4 border-t border-base-200 pt-2">
-				<a href="/recurring" class="group btn btn-block justify-between btn-ghost btn-sm">
+				<a href="/subscriptions" class="group btn btn-block justify-between btn-ghost btn-sm">
 					View all subscriptions
 					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
 				</a>
