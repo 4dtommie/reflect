@@ -78,7 +78,7 @@
 						{
 							id: -1, // temporary ID
 							role: 'assistant',
-							content: `${timeGreeting} I'm Penny 🍌, your financial buddy!`,
+							content: `${timeGreeting} I'm Penny, your financial buddy!`,
 							createdAt: new Date()
 						},
 						{
@@ -98,7 +98,7 @@
 						{
 							id: 0,
 							role: 'assistant',
-							content: `${timeGreeting} I'm Penny 🍌, your financial buddy! How can I help you today?`,
+							content: `${timeGreeting} I'm Penny, your financial buddy! How can I help you today?`,
 							createdAt: new Date()
 						}
 					];
@@ -179,7 +179,7 @@
 					{
 						id: Date.now(),
 						role: 'assistant',
-						content: "Sorry, I couldn't process that. Try again? 🙈",
+						content: "Sorry, I couldn't process that. Try again?",
 						createdAt: new Date()
 					}
 				];
@@ -191,7 +191,7 @@
 				{
 					id: Date.now(),
 					role: 'assistant',
-					content: 'Oops, something went wrong! 😅',
+					content: 'Oops, something went wrong!',
 					createdAt: new Date()
 				}
 			];
@@ -286,7 +286,7 @@
 						<!-- Assistant message -->
 						<div class="flex flex-col items-start gap-1">
 							{#if msg.showLabel}
-								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny 🍌</p>
+								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny</p>
 							{/if}
 							<div
 								class="rounded-xl rounded-tl-none border-l-4 border-l-primary bg-base-200 px-3 py-2"

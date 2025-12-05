@@ -76,6 +76,19 @@
 			}
 
 			importResult = data;
+
+			// On success, redirect to dashboard with import message
+			if (data.success && data.imported > 0) {
+				// Clear upload session data
+				sessionStorage.removeItem('csv_upload_file');
+				sessionStorage.removeItem('csv_upload_filename');
+				sessionStorage.removeItem('csv_parse_result');
+				sessionStorage.removeItem('csv_column_mapping');
+
+				// Redirect to dashboard - insight engine will show fresh_import message
+				await goto('/');
+				return;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to import transactions';
 		} finally {

@@ -77,7 +77,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Define success transitions: previous_insight_id -> success_insight_id
 	const SUCCESS_TRANSITIONS: Record<string, string> = {
 		'uncategorized_high': 'categorization_complete',
-		'no_transactions': 'upload_complete'
+		'no_transactions': 'fresh_import'
 	};
 
 	// Smart Greeting Logic
@@ -112,20 +112,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 				if (newVisitCount > 5) {
 					// Funny greeting for frequent visitors
 					const funnyGreetings = [
-						"You really love checking your finances today! 😂",
-						"Back again? Your money misses you too! 💸",
-						"Penny here! Still counting those coins? 🍌",
-						"I admire your dedication to dashboard gazing! 🌟",
-						"5+ visits today! You're a power user (or just anxious? 😜)"
+						"You really love checking your finances today!",
+						"Back again? Your money misses you too!",
+						"Penny here! Still counting those coins?",
+						"I admire your dedication to dashboard gazing!",
+						"5+ visits today! You're a power user."
 					];
 					greetingMessage = funnyGreetings[Math.floor(Math.random() * funnyGreetings.length)];
 				} else if (newVisitCount > 1) {
 					// Welcome back greeting
 					const backGreetings = [
-						"Welcome back! 👋",
-						"Good to see you again! ✨",
-						"Penny here again! 🍌",
-						"Checking in? I'm here! 🫡"
+						"Welcome back!",
+						"Good to see you again!",
+						"Penny here again!",
+						"Checking in? I'm here!"
 					];
 					greetingMessage = backGreetings[Math.floor(Math.random() * backGreetings.length)];
 				} else {
@@ -133,7 +133,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 					// but here we can force a "Good morning" if chat exists
 					const hour = now.getHours();
 					const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-					greetingMessage = `${timeGreeting}! Ready to make some moves? 🚀`;
+					greetingMessage = `${timeGreeting}! Ready to make some moves?`;
 				}
 
 				// Add greeting to chat if conversation exists
@@ -188,7 +188,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 						messages: {
 							create: {
 								role: 'assistant',
-								content: `${timeGreeting}! I'm Penny 🍌, your financial buddy.`,
+								content: `${timeGreeting}! I'm Penny, your financial buddy.`,
 								created_at: now
 							}
 						}

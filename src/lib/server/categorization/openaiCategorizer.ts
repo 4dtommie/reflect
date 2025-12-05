@@ -62,6 +62,7 @@ export async function categorizeBatchWithOpenAI(
         maxTokens?: number;
         enableSearchGrounding?: boolean;
         includeCleanedMerchantName?: boolean;
+        includeMerchantNameOptions?: boolean; // Include 3 merchant name variations (for individual categorization)
         useCategoryNames?: boolean;
     }
 ): Promise<AICategorizationBatchResult> {
@@ -85,7 +86,8 @@ export async function categorizeBatchWithOpenAI(
         const includeCleanedMerchantName = options?.includeCleanedMerchantName ?? false;
         const useCategoryNames = options?.useCategoryNames ?? false;
         const enableSearchGrounding = options?.enableSearchGrounding ?? false;
-        const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames, enableSearchGrounding);
+        const includeMerchantNameOptions = options?.includeMerchantNameOptions ?? false;
+        const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames, enableSearchGrounding, includeMerchantNameOptions);
 
         // Use model override if provided, otherwise use config
         const modelToUse = modelOverride || aiConfig.model;

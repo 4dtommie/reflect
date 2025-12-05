@@ -65,11 +65,18 @@
 			/>
 		{/if}
 
-		{#if data.stats.totalTransactions > 0}
+		{#if data.stats.categorizedCount > 0}
 			<RecurringWidget recurringTransactions={data.recurringTransactions} />
+		{:else if data.stats.totalTransactions > 0}
+			<PlaceholderWidget
+				title="Upcoming payments"
+				description="Categorize transactions to detect recurring payments"
+				size="small"
+				icon={TrendingUp}
+			/>
 		{/if}
 
-		{#if data.stats.totalTransactions > 0}
+		{#if data.recurringTransactions.length > 0}
 			<NetBalanceWidget
 				monthlyIncome={data.balanceData.monthlyIncome}
 				monthlyExpenses={data.balanceData.monthlyExpenses}
@@ -78,6 +85,13 @@
 				monthlySavings={data.balanceData.monthlySavings}
 				actionLabel="View spending patterns"
 				actionHref="/recurring"
+			/>
+		{:else if data.stats.categorizedCount > 0}
+			<PlaceholderWidget
+				title="Average income to spend"
+				description="Run subscription detection to see your spendable income"
+				size="small"
+				icon={TrendingUp}
 			/>
 		{/if}
 

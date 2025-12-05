@@ -9,6 +9,8 @@ import OpenAI from 'openai';
 import { db } from '$lib/server/db';
 import { aiConfig, isAIAvailable, systemPrompt } from './config';
 import { prompts } from './prompts';
+import { normalizeDescription } from './descriptionCleaner';
+import { cleanMerchantName } from './merchantNameCleaner';
 
 // Initialize OpenAI client
 const openai = aiConfig.apiKey ? new OpenAI({ apiKey: aiConfig.apiKey }) : null;
@@ -138,7 +140,8 @@ export function createCategorizationPrompt(
 	includeReasoning: boolean = true,
 	includeCleanedMerchantName: boolean = false,
 	useCategoryNames: boolean = false, // If true, use category names instead of IDs
-	enableSearchGrounding: boolean = false // If true, include search instructions
+	enableSearchGrounding: boolean = false, // If true, include search instructions
+	includeMerchantNameOptions: boolean = false // If true, include 3 merchant name variations (for individual categorization)
 ): string {
 	// Filter to only show subcategories (categories with parent_id) and standalone categories (no parent, no children)
 	// Hide parent categories that have subcategories
@@ -187,17 +190,23 @@ export function createCategorizationPrompt(
 
 	// Format transactions - simplified format in Dutch, no date
 	const transactionsText = transactions
-		.map((t, index) => {
-			// Truncate description if too long (keep first 200 chars)
-			const description = t.description.length > 200
-				? t.description.substring(0, 200) + '...'
-				: t.description;
-			// Truncate merchant name if too long
-			const merchant = t.merchantName.length > 100
-				? t.merchantName.substring(0, 100) + '...'
-				: t.merchantName;
+		.map((t) => {
+			// Use cleaned description for better categorization
+			const rawDescription = t.description || '';
+			const cleanedDescription = normalizeDescription(rawDescription);
+			// Use cleaned description if available, otherwise truncate raw
+			const description = cleanedDescription.length > 0
+				? (cleanedDescription.length > 200 ? cleanedDescription.substring(0, 200) + '...' : cleanedDescription)
+				: (rawDescription.length > 200 ? rawDescription.substring(0, 200) + '...' : rawDescription);
+			// Use cleaned merchant name for better categorization
+			const rawMerchant = t.merchantName || '';
+			const cleanedMerchant = cleanMerchantName(rawMerchant, rawDescription);
+			// Use cleaned merchant name if available, otherwise truncate raw
+			const merchant = cleanedMerchant.length > 0
+				? (cleanedMerchant.length > 100 ? cleanedMerchant.substring(0, 100) + '...' : cleanedMerchant)
+				: (rawMerchant.length > 100 ? rawMerchant.substring(0, 100) + '...' : rawMerchant);
 
-			return `${index + 1}. Transaction ID ${t.id}
+			return `Transaction ID ${t.id}
    Beschrijving: ${description}
    Naam: ${merchant}
    Bedrag: €${t.amount.toFixed(2)}
@@ -230,9 +239,16 @@ export function createCategorizationPrompt(
 	}
 
 
-	const cleanedMerchantNameInstruction = includeCleanedMerchantName
-		? '\n7. Gecleande transactie naam: Geef een schone, genormaliseerde versie van de transactie naam (cleanedMerchantName).\n   - Verwijder onnodige prefixen en suffixen (bijv. "NL * TRANSACTIE NAAM" → "Transactie naam")\n   - Verwijder bedrijfsvormen: "BV", "NV", "B.V.", "N.V." etc.\n   - Hoofdlettergebruik: Eerste letter hoofdletter, rest kleine letters (bijv. "ALBERT HEIJN" → "Albert Heijn")\n   - Behouden van belangrijke woorden: Behoud merknamen en belangrijke delen van de naam\n   - Voorbeelden: "Starbucks", "ING BANK N.V." → "ING Bank"\n\n8. Merchant Name Options: Geef OOK een array "merchantNameOptions" met precies 3 variaties van de merchant naam:\n   - Optie 1: De meest waarschijnlijke schone naam (hetzelfde als cleanedMerchantName)\n   - Optie 2: Een iets formelere of langere versie (indien van toepassing) of een alternatieve schrijfwijze\n   - Optie 3: Een kortere, meer casual versie of alleen de merknaam\n   - Zorg dat ze uniek zijn en nuttig voor de gebruiker om uit te kiezen.'
-		: '';
+	// Build cleaned merchant name instruction
+	let cleanedMerchantNameInstruction = '';
+	if (includeCleanedMerchantName) {
+		cleanedMerchantNameInstruction = '\n7. Gecleande transactie naam: Geef een schone, genormaliseerde versie van de transactie naam (cleanedMerchantName).\n   - Verwijder onnodige prefixen en suffixen (bijv. "NL * TRANSACTIE NAAM" → "Transactie naam")\n   - Verwijder bedrijfsvormen: "BV", "NV", "B.V.", "N.V." etc.\n   - Hoofdlettergebruik: Eerste letter hoofdletter, rest kleine letters (bijv. "ALBERT HEIJN" → "Albert Heijn")\n   - Behouden van belangrijke woorden: Behoud merknamen en belangrijke delen van de naam\n   - Voorbeelden: "Starbucks", "ING BANK N.V." → "ING Bank"';
+
+		// Only include merchant name options for individual categorization (not batch)
+		if (includeMerchantNameOptions) {
+			cleanedMerchantNameInstruction += '\n\n8. Merchant Name Options: Geef OOK een array "merchantNameOptions" met precies 3 variaties van de merchant naam:\n   - Optie 1: De meest waarschijnlijke schone naam (hetzelfde als cleanedMerchantName)\n   - Optie 2: Een iets formelere of langere versie (indien van toepassing) of een alternatieve schrijfwijze\n   - Optie 3: Een kortere, meer casual versie of alleen de merknaam\n   - Zorg dat ze uniek zijn en nuttig voor de gebruiker om uit te kiezen.';
+		}
+	}
 
 	const reasoningInstruction = includeReasoning
 		? `\n6. ${template.instructions.reasoning}`
@@ -242,8 +258,9 @@ export function createCategorizationPrompt(
 		? 'Selectieplicht: Je MOET voor elke transactie de meest geschikte categoryName selecteren uit de lijst hierboven. Gebruik de exacte categorie naam zoals getoond (bijv. "Uit eten", "Lunch", "Koffie"). Gebruik NOOIT "Category X" of nummers. Alleen als een categorie absoluut niet past, gebruik je "Niet gecategoriseerd".'
 		: `${template.instructions.selection}\n   BELANGRIJK: Gebruik de exacte categorie naam.`;
 
+	// Search grounding instruction (only if enabled)
 	const searchInstruction = enableSearchGrounding
-		? `\n9. ${template.instructions.search}`
+		? '\n9. Zoek grounding: Gebruik indien mogelijk je kennis van bekende Nederlandse bedrijven en merken om transacties correct te categoriseren.'
 		: '';
 
 	// Build the prompt with the new structure

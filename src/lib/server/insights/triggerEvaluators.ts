@@ -80,10 +80,12 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
 
     /**
      * High uncategorized percentage (default: 20%)
+     * Doesn't trigger at 100% (fresh import) since import success message handles that
      */
     uncategorized_high: (data, params) => {
         const threshold = (params?.threshold_percent as number) ?? 20;
-        const triggered = data.uncategorizedPercentage > threshold;
+        // Don't trigger at 100% - that's a fresh import, handled by import success message
+        const triggered = data.uncategorizedPercentage > threshold && data.uncategorizedPercentage < 100;
 
         if (!triggered) return { triggered: false };
 
@@ -107,6 +109,15 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
     }),
 
     /**
+     * Fresh import - all transactions are uncategorized (100%)
+     * This indicates a new import where no categorization has been done yet
+     */
+    fresh_import: (data) => ({
+        triggered: data.totalTransactions > 0 && data.uncategorizedPercentage === 100,
+        data: { count: data.totalTransactions }
+    }),
+
+    /**
      * Positive savings this month
      */
     savings_positive: (data) => ({
@@ -120,6 +131,7 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
 
     /**
      * Spending change vs last month (default threshold: 15%)
+     * DEPRECATED: Use same_period_change or complete_month_change instead
      */
     spending_change: (data, params) => {
         const threshold = (params?.threshold_percent as number) ?? 15;
@@ -143,6 +155,104 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
                 direction: changePercent > 0 ? 'up' : 'down',
                 currentAmount: data.currentMonthSpending.toFixed(0),
                 lastAmount: data.lastMonthSpending.toFixed(0)
+            }
+        };
+    },
+
+    /**
+     * Same period spending comparison (first X days of this month vs last month)
+     * More accurate than full month comparison since current month is incomplete
+     */
+    same_period_change: (data, params) => {
+        const threshold = (params?.threshold_percent as number) ?? 30; // Higher threshold for significance
+        const direction = params?.direction as 'up' | 'down' | 'any' ?? 'any';
+        const minDays = (params?.min_days as number) ?? 3; // Need at least 3 days of data
+
+        // Don't trigger if we don't have enough days
+        if (data.dayOfMonth < minDays) return { triggered: false };
+        // Don't trigger if last month has no data for same period
+        if (data.samePeriodLastMonth === 0) return { triggered: false };
+
+        const changePercent = data.samePeriodChangePercent;
+        const isUp = changePercent > threshold;
+        const isDown = changePercent < -threshold;
+
+        let triggered = false;
+        if (direction === 'up') triggered = isUp;
+        else if (direction === 'down') triggered = isDown;
+        else triggered = isUp || isDown;
+
+        if (!triggered) return { triggered: false };
+
+        return {
+            triggered: true,
+            data: {
+                percent: Math.abs(Math.round(changePercent)),
+                direction: changePercent > 0 ? 'up' : 'down',
+                days: data.dayOfMonth,
+                currentAmount: data.samePeriodCurrentMonth.toFixed(0),
+                lastAmount: data.samePeriodLastMonth.toFixed(0)
+            }
+        };
+    },
+
+    /**
+     * Complete month comparison (last month vs 2 months ago)
+     * Fair comparison since both months are complete
+     */
+    complete_month_change: (data, params) => {
+        const threshold = (params?.threshold_percent as number) ?? 15;
+        const direction = params?.direction as 'up' | 'down' | 'any' ?? 'any';
+
+        // Don't trigger if we don't have 2 months of complete data
+        if (data.lastMonthComplete === 0 || data.twoMonthsAgoComplete === 0) {
+            return { triggered: false };
+        }
+
+        const changePercent = data.completeMonthChangePercent;
+        const isUp = changePercent > threshold;
+        const isDown = changePercent < -threshold;
+
+        let triggered = false;
+        if (direction === 'up') triggered = isUp;
+        else if (direction === 'down') triggered = isDown;
+        else triggered = isUp || isDown;
+
+        if (!triggered) return { triggered: false };
+
+        // Get month names
+        const now = new Date();
+        const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1).toLocaleString('en', { month: 'long' });
+        const twoMonthsAgoName = new Date(now.getFullYear(), now.getMonth() - 2).toLocaleString('en', { month: 'long' });
+
+        return {
+            triggered: true,
+            data: {
+                percent: Math.abs(Math.round(changePercent)),
+                direction: changePercent > 0 ? 'up' : 'down',
+                lastMonth: lastMonthName,
+                twoMonthsAgo: twoMonthsAgoName,
+                lastMonthAmount: data.lastMonthComplete.toFixed(0),
+                twoMonthsAgoAmount: data.twoMonthsAgoComplete.toFixed(0)
+            }
+        };
+    },
+
+    /**
+     * Top spending category this month
+     */
+    top_category: (data, params) => {
+        const minPercentage = (params?.min_percentage as number) ?? 25; // Category must be at least 25% of spending
+
+        if (!data.topCategory) return { triggered: false };
+        if (data.topCategory.percentage < minPercentage) return { triggered: false };
+
+        return {
+            triggered: true,
+            data: {
+                category: data.topCategory.name,
+                amount: data.topCategory.amount.toFixed(0),
+                percent: Math.round(data.topCategory.percentage)
             }
         };
     },

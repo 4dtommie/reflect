@@ -71,6 +71,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             {
                 includeReasoning: true,
                 includeCleanedMerchantName: true,
+                includeMerchantNameOptions: true, // Show 3 merchant name variations for individual categorization
                 enableSearchGrounding: true,
                 useCategoryNames: true,
                 temperature: 0.3,

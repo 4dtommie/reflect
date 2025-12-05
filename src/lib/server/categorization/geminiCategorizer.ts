@@ -65,6 +65,7 @@ export async function categorizeBatchWithGemini(
 		maxTokens?: number;
 		enableSearchGrounding?: boolean; // Enable/disable Google Search grounding
 		includeCleanedMerchantName?: boolean; // Request cleaned merchant name from AI
+		includeMerchantNameOptions?: boolean; // Include 3 merchant name variations (for individual categorization)
 		useCategoryNames?: boolean; // Use category names instead of IDs
 	}
 ): Promise<AICategorizationBatchResult> {
@@ -87,7 +88,9 @@ export async function categorizeBatchWithGemini(
 		const includeReasoning = options?.includeReasoning ?? false;
 		const includeCleanedMerchantName = options?.includeCleanedMerchantName ?? false;
 		const useCategoryNames = options?.useCategoryNames ?? false;
-		const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames);
+		const enableSearchGrounding = options?.enableSearchGrounding ?? false;
+		const includeMerchantNameOptions = options?.includeMerchantNameOptions ?? false;
+		const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames, enableSearchGrounding, includeMerchantNameOptions);
 
 		// Use model override if provided, otherwise use config
 		const modelToUse = modelOverride || geminiConfig.model;
@@ -144,7 +147,6 @@ export async function categorizeBatchWithGemini(
 
 		// Check if model supports search grounding (Gemini 2.5+ models)
 		const supportsSearchGrounding = modelToUse.includes('gemini-2.5') || modelToUse.includes('gemini-2.0');
-		const enableSearchGrounding = options?.enableSearchGrounding ?? false;
 
 		// Build tools array for search grounding if enabled
 		const tools = supportsSearchGrounding && enableSearchGrounding

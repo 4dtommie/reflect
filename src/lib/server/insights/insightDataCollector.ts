@@ -18,6 +18,24 @@ export interface InsightData {
     lastMonthSpending: number;
     spendingChangePercent: number;
 
+    // Same period comparison (first X days of this month vs last month)
+    samePeriodCurrentMonth: number;
+    samePeriodLastMonth: number;
+    samePeriodChangePercent: number;
+    dayOfMonth: number;
+
+    // Complete month comparison (last month vs 2 months ago)
+    lastMonthComplete: number;
+    twoMonthsAgoComplete: number;
+    completeMonthChangePercent: number;
+
+    // Top spending category
+    topCategory: {
+        name: string;
+        amount: number;
+        percentage: number;
+    } | null;
+
     // Recurring data
     upcomingPayments: Array<{
         id: number;
@@ -46,9 +64,16 @@ export interface InsightData {
  */
 export async function collectInsightData(userId: number): Promise<InsightData> {
     const now = new Date();
+    const dayOfMonth = now.getDate();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const startOfTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const endOfTwoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+
+    // Same period comparison dates (first X days of each month)
+    const samePeriodEndCurrent = new Date(now.getFullYear(), now.getMonth(), dayOfMonth, 23, 59, 59);
+    const samePeriodEndLast = new Date(now.getFullYear(), now.getMonth() - 1, dayOfMonth, 23, 59, 59);
 
     // Parallel fetch all data
     const [
@@ -58,7 +83,11 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
         lastMonthTransactions,
         recurringTransactions,
         topUncategorizedMerchants,
-        incomeTransactions
+        incomeTransactions,
+        samePeriodCurrentTransactions,
+        samePeriodLastTransactions,
+        twoMonthsAgoTransactions,
+        categorySpending
     ] = await Promise.all([
         // Total transactions
         db.transactions.count({ where: { user_id: userId } }),
@@ -84,7 +113,7 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
             select: { amount: true }
         }),
 
-        // Last month spending
+        // Last month spending (complete)
         db.transactions.findMany({
             where: {
                 user_id: userId,
@@ -126,6 +155,53 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
                 date: { gte: startOfMonth }
             },
             select: { amount: true }
+        }),
+
+        // Same period current month (first X days)
+        db.transactions.findMany({
+            where: {
+                user_id: userId,
+                is_debit: true,
+                date: { gte: startOfMonth, lte: samePeriodEndCurrent }
+            },
+            select: { amount: true }
+        }),
+
+        // Same period last month (first X days)
+        db.transactions.findMany({
+            where: {
+                user_id: userId,
+                is_debit: true,
+                date: { gte: startOfLastMonth, lte: samePeriodEndLast }
+            },
+            select: { amount: true }
+        }),
+
+        // Two months ago spending (complete)
+        db.transactions.findMany({
+            where: {
+                user_id: userId,
+                is_debit: true,
+                date: { gte: startOfTwoMonthsAgo, lte: endOfTwoMonthsAgo }
+            },
+            select: { amount: true }
+        }),
+
+        // Top spending by category this month
+        db.transactions.groupBy({
+            by: ['category_id'],
+            where: {
+                user_id: userId,
+                is_debit: true,
+                date: { gte: startOfMonth },
+                category_id: { not: null },
+                categories: {
+                    name: { notIn: ['Niet gecategoriseerd', 'Uncategorized'] }
+                }
+            },
+            _sum: { amount: true },
+            orderBy: { _sum: { amount: 'desc' } },
+            take: 1
         })
     ]);
 
@@ -143,11 +219,58 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
         0
     );
 
-    // Calculate spending change
+    // Calculate spending change (full month comparison - keep for backwards compatibility)
     const spendingChangePercent =
         lastMonthSpending > 0
             ? ((currentMonthSpending - lastMonthSpending) / lastMonthSpending) * 100
             : 0;
+
+    // Calculate same period comparison
+    const samePeriodCurrentMonth = samePeriodCurrentTransactions.reduce(
+        (sum, t) => sum + Math.abs(Number(t.amount)),
+        0
+    );
+    const samePeriodLastMonth = samePeriodLastTransactions.reduce(
+        (sum, t) => sum + Math.abs(Number(t.amount)),
+        0
+    );
+    const samePeriodChangePercent =
+        samePeriodLastMonth > 0
+            ? ((samePeriodCurrentMonth - samePeriodLastMonth) / samePeriodLastMonth) * 100
+            : 0;
+
+    // Calculate complete month comparison (last month vs 2 months ago)
+    const lastMonthComplete = lastMonthSpending;
+    const twoMonthsAgoComplete = twoMonthsAgoTransactions.reduce(
+        (sum, t) => sum + Math.abs(Number(t.amount)),
+        0
+    );
+    const completeMonthChangePercent =
+        twoMonthsAgoComplete > 0
+            ? ((lastMonthComplete - twoMonthsAgoComplete) / twoMonthsAgoComplete) * 100
+            : 0;
+
+    // Get top category info
+    let topCategory: InsightData['topCategory'] = null;
+    if (categorySpending.length > 0 && categorySpending[0]._sum.amount) {
+        const topCategoryId = categorySpending[0].category_id;
+        const topCategoryAmount = Math.abs(Number(categorySpending[0]._sum.amount));
+
+        if (topCategoryId && currentMonthSpending > 0) {
+            const category = await db.categories.findUnique({
+                where: { id: topCategoryId },
+                select: { name: true }
+            });
+
+            if (category) {
+                topCategory = {
+                    name: category.name,
+                    amount: topCategoryAmount,
+                    percentage: (topCategoryAmount / currentMonthSpending) * 100
+                };
+            }
+        }
+    }
 
     // Process recurring transactions into upcoming and late
     const upcomingPayments: InsightData['upcomingPayments'] = [];
@@ -197,6 +320,14 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
         currentMonthSpending,
         lastMonthSpending,
         spendingChangePercent,
+        samePeriodCurrentMonth,
+        samePeriodLastMonth,
+        samePeriodChangePercent,
+        dayOfMonth,
+        lastMonthComplete,
+        twoMonthsAgoComplete,
+        completeMonthChangePercent,
+        topCategory,
         upcomingPayments,
         latePayments,
         topUncategorizedMerchants: topUncategorizedMerchants.map((m) => ({

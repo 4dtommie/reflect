@@ -207,7 +207,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                 {
                     id: -1,
                     role: 'assistant',
-                    content: `${timeGreeting}! I'm Penny 🍌, your financial buddy.`,
+                    content: `${timeGreeting}! I'm Penny, your financial buddy.`,
                     actionButtons: null,
                     insightId: null,
                     createdAt: now
