@@ -4,6 +4,7 @@
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import CategorizeModal from './CategorizeModal.svelte';
+	import ManualCategorizeModal from '$lib/components/ManualCategorizeModal.svelte';
 	import { Tags, AlertCircle, ChevronRight } from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -26,6 +27,11 @@
 	// Modal state
 	let isModalOpen = $state(false);
 	let selectedTransaction = $state<any>(null);
+
+	// Manual Modal state
+	let isManualModalOpen = $state(false);
+	let selectedManualTransaction = $state<any>(null);
+	let selectedManualTransactionCount = $state(0);
 
 	// View more state for uncategorized merchants
 	let showAllMerchants = $state(false);
@@ -121,14 +127,45 @@
 		isModalOpen = true;
 	}
 
-	function handleMerchantClick(merchantName: string) {
-		// selectedMerchantName = merchantName; // This variable was undefined in previous code, commenting out for now or need to define it?
-		// Actually, looking at previous code, selectedMerchantName was used but not defined in script.
-		// But the function was there. Let's restore it but maybe fix the undefined error if I can.
-		// Wait, the user mentioned "selectedMerchantName Lint Error" in the summary.
-		// I'll just log for now to avoid error, as the original code had it.
-		// Or better, let's just log.
-		console.log('Merchant clicked:', merchantName);
+	function handleMerchantClick(merchant: any) {
+		if (merchant.sampleTransaction) {
+			selectedManualTransaction = merchant.sampleTransaction;
+			selectedManualTransactionCount = merchant.count;
+			isManualModalOpen = true;
+		} else {
+			console.warn('No sample transaction found for merchant:', merchant.name);
+		}
+	}
+
+	async function handleManualSave(transactionId: number, categoryId: number, merchantName: string) {
+		// For the merchant list, we want to categorize ALL transactions for this merchant
+		// We use the original merchant name from the selected transaction to find matches
+		const originalMerchantName = selectedManualTransaction?.merchantName;
+
+		if (!originalMerchantName) return;
+
+		try {
+			const response = await fetch('/api/transactions/categorize-by-merchant', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					merchantName: originalMerchantName,
+					categoryId
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to categorize transactions');
+			}
+
+			const result = await response.json();
+			console.log(`Updated ${result.count} transactions for ${originalMerchantName}`);
+
+			await invalidateAll();
+		} catch (e) {
+			console.error('Error saving manual category:', e);
+			alert('Failed to save category. Please try again.');
+		}
 	}
 
 	async function handleSaveCategory(
@@ -189,7 +226,7 @@
 	<!-- Left Column (2/3 width) -->
 	<div class="space-y-6 lg:col-span-2">
 		<!-- Page Title -->
-		<PageTitleWidget title="Categorization" subtitle={randomSubtitle} />
+		<PageTitleWidget title="Recategorization" subtitle={randomSubtitle} />
 
 		<!-- 50/50 Split: Uncategorized Merchants | Manual Review Transactions -->
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -210,8 +247,8 @@
 							{#each displayedMerchants as merchant (merchant.name)}
 								<button
 									type="button"
-									onclick={() => handleMerchantClick(merchant.name)}
-									class="group flex w-full items-center justify-between rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-primary hover:bg-primary/5"
+									onclick={() => handleMerchantClick(merchant)}
+									class="group flex w-full cursor-pointer items-center justify-between rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-primary hover:bg-primary/5"
 								>
 									<div class="min-w-0 flex-1">
 										<div class="truncate font-medium">{merchant.name || 'Unknown'}</div>
@@ -231,7 +268,7 @@
 								<button
 									type="button"
 									onclick={() => (showAllMerchants = true)}
-									class="btn w-full btn-ghost btn-sm"
+									class="btn w-full cursor-pointer btn-ghost btn-sm"
 								>
 									Meer tonen ({data.uncategorizedMerchants.length - 10} meer)
 								</button>
@@ -267,7 +304,7 @@
 								<button
 									type="button"
 									onclick={() => handleTransactionClick(transaction)}
-									class="group flex w-full flex-col gap-2 rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-error hover:bg-error/5"
+									class="group flex w-full cursor-pointer flex-col gap-2 rounded-lg border border-base-300 bg-base-200/50 p-3 text-left transition-all hover:border-error hover:bg-error/5"
 								>
 									<!-- Top row: Merchant name with chevron -->
 									<div class="flex items-center gap-2">
@@ -342,4 +379,13 @@
 	similarCount={selectedTransaction
 		? merchantCounts.get(selectedTransaction.merchantName.trim()) || 0
 		: 0}
+/>
+
+<ManualCategorizeModal
+	isOpen={isManualModalOpen}
+	transaction={selectedManualTransaction}
+	transactionCount={selectedManualTransactionCount}
+	categories={data.categories}
+	onClose={() => (isManualModalOpen = false)}
+	onSave={handleManualSave}
 />

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
 	import { Sparkles, AlertCircle, ArrowRight } from 'lucide-svelte';
+	import confetti from 'canvas-confetti';
+	import { onMount } from 'svelte';
 
 	let {
 		totalTransactions,
@@ -17,6 +19,37 @@
 	} = $props();
 
 	const widgetSize = $derived(variant === 'compact' ? 'auto' : 'small');
+
+	// Fun emoticons based on percentage
+	const emoticon = $derived.by(() => {
+		if (categorizedPercentage >= 100) return '🦄';
+		if (categorizedPercentage > 95) return '🤩';
+		if (categorizedPercentage > 90) return '😎';
+		if (categorizedPercentage > 75) return '😃';
+		if (categorizedPercentage > 50) return '🙂';
+		return '🤔';
+	});
+
+	// Motivational messages
+	const message = $derived.by(() => {
+		if (categorizedPercentage >= 100) return 'Categorization Nirvana achieved!';
+		if (categorizedPercentage > 95) return 'So close to perfection!';
+		if (categorizedPercentage > 90) return 'You are crushing it!';
+		if (categorizedPercentage > 75) return 'Making great progress!';
+		if (categorizedPercentage > 50) return 'Halfway there!';
+		return "Let's get organized!";
+	});
+
+	// Trigger confetti on 100%
+	$effect(() => {
+		if (categorizedPercentage >= 100) {
+			confetti({
+				particleCount: 100,
+				spread: 70,
+				origin: { y: 0.6 }
+			});
+		}
+	});
 </script>
 
 <DashboardWidget size={widgetSize}>
@@ -31,10 +64,11 @@
 		<!-- Compact variant: Just percentage + pie + CTA -->
 		<div class="mb-4 flex items-center justify-between">
 			<div>
-				<div class="text-4xl font-bold text-primary">
-					{Math.round(categorizedPercentage)}%
+				<div class="flex items-center gap-2 text-4xl font-bold text-primary">
+					<span>{Math.round(categorizedPercentage)}%</span>
+					<span class="animate-bounce text-3xl">{emoticon}</span>
 				</div>
-				<div class="text-sm font-medium text-base-content/70">Categorized</div>
+				<div class="text-sm font-medium text-base-content/70">{message}</div>
 			</div>
 			<div
 				class="radial-progress text-primary/20"
@@ -45,7 +79,7 @@
 			</div>
 		</div>
 		<div class="border-t border-base-200 pt-3">
-			<a href="/categorize" class="group btn btn-sm btn-ghost w-full justify-between">
+			<a href="/categorize" class="group btn w-full justify-between btn-ghost btn-sm">
 				<span>Improve categorization</span>
 				<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
 			</a>
@@ -55,10 +89,11 @@
 		<div class="flex h-full flex-col">
 			<div class="mb-4 flex items-center justify-between">
 				<div>
-					<div class="text-4xl font-bold text-primary">
-						{Math.round(categorizedPercentage)}%
+					<div class="flex items-center gap-2 text-4xl font-bold text-primary">
+						<span>{Math.round(categorizedPercentage)}%</span>
+						<span class="animate-bounce text-3xl">{emoticon}</span>
 					</div>
-					<div class="text-sm font-medium text-base-content/70">Categorized</div>
+					<div class="text-sm font-medium text-base-content/70">{message}</div>
 				</div>
 				<div
 					class="radial-progress text-primary/20"

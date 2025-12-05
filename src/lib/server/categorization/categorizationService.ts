@@ -912,7 +912,7 @@ export async function updateTransactionCategory(
 			category_id: categoryId,
 			merchantName: merchantName, // Update the display name too
 			merchant_id: merchantId,
-			category_confidence: 1.0, // Manual update = 100% confidence
+			category_confidence: 0.95, // Manual update = 95% confidence (as requested)
 			is_category_manual: true, // Mark as manually categorized
 			updated_at: new Date()
 		}

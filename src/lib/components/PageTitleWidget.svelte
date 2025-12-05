@@ -12,13 +12,21 @@
 	}: {
 		title: string;
 		subtitle?: string;
-		monthlySpending?: { month: string; recurring: number; variable: number; remaining: number; savings: number; income: number }[];
+		monthlySpending?: {
+			month: string;
+			recurring: number;
+			variable: number;
+			remaining: number;
+			savings: number;
+			income: number;
+		}[];
 		class?: string;
 	} = $props();
 
 	let chartCanvas: HTMLCanvasElement;
 	let chartInstance: Chart | null = null;
-	let dataRef: { chartData: typeof chartData; monthlySpending: typeof monthlySpending } | null = null;
+	let dataRef: { chartData: typeof chartData; monthlySpending: typeof monthlySpending } | null =
+		null;
 
 	// Process monthly spending data for chart
 	const chartData = $derived.by(() => {
@@ -36,17 +44,21 @@
 		const variableValues = monthlySpending.map(({ variable }) => variable || 0);
 		const savingsValues = monthlySpending.map(({ savings }) => savings || 0);
 		const remainingValues = monthlySpending.map(({ remaining }) => remaining || 0);
-		
+
 		// Calculate cumulative values for proper stacked area chart visualization:
 		// Each layer's data point represents the cumulative height from the base
 		// Bottom: recurring (base)
 		// Second: variable stacked on recurring
-		// Third: savings stacked on variable + recurring  
+		// Third: savings stacked on variable + recurring
 		// Top: remaining stacked on savings + variable + recurring
 		const stackedVariable = recurringValues.map((recurring, i) => recurring + variableValues[i]);
-		const stackedSavings = stackedVariable.map((variableStack, i) => variableStack + savingsValues[i]);
-		const stackedRemaining = stackedSavings.map((savingsStack, i) => savingsStack + remainingValues[i]);
-		
+		const stackedSavings = stackedVariable.map(
+			(variableStack, i) => variableStack + savingsValues[i]
+		);
+		const stackedRemaining = stackedSavings.map(
+			(savingsStack, i) => savingsStack + remainingValues[i]
+		);
+
 		// Income line - real monthly income values
 		const incomeLineValues = monthlySpending.map(({ income }) => income || 0);
 
@@ -73,10 +85,10 @@
 		// Light purple: rgb(196, 181, 253) - #C4B5FD (variable)
 		// Yellow: rgb(234, 179, 8) - #EAB308 (savings)
 		// Light blue: rgb(14, 165, 233) - #0EA5E9 (remaining, matching sky-600)
-		
+
 		// Store reference to data for tooltip callbacks
 		dataRef = { chartData, monthlySpending };
-		
+
 		chartInstance = new Chart(chartCanvas, {
 			type: 'line',
 			data: {
@@ -183,7 +195,7 @@
 								const datasetIndex = context.datasetIndex;
 								let label = context.dataset.label || '';
 								let value = 0;
-								
+
 								if (datasetIndex === 0) {
 									// Recurring
 									value = dataRef.chartData.rawRecurring[index];
@@ -200,20 +212,24 @@
 									// Income
 									value = dataRef.chartData.rawIncome[index];
 								}
-								
+
 								const formatted = new Intl.NumberFormat('nl-NL', {
 									style: 'currency',
 									currency: 'EUR',
 									minimumFractionDigits: 0,
 									maximumFractionDigits: 0
 								}).format(value);
-								
+
 								return `${label}: ${formatted}`;
 							},
 							footer: (tooltipItems) => {
 								if (!dataRef?.chartData) return '';
 								const index = tooltipItems[0].dataIndex;
-								const total = dataRef.chartData.rawRecurring[index] + dataRef.chartData.rawVariable[index] + dataRef.chartData.rawSavings[index] + dataRef.chartData.rawRemaining[index];
+								const total =
+									dataRef.chartData.rawRecurring[index] +
+									dataRef.chartData.rawVariable[index] +
+									dataRef.chartData.rawSavings[index] +
+									dataRef.chartData.rawRemaining[index];
 								const formatted = new Intl.NumberFormat('nl-NL', {
 									style: 'currency',
 									currency: 'EUR',
@@ -273,18 +289,20 @@
 	});
 </script>
 
-<div class="card rounded-3xl bg-base-100 shadow-xl transition-all duration-300 hover:shadow-2xl {className}">
+<div
+	class="card rounded-3xl bg-base-100 shadow-xl transition-all duration-300 hover:shadow-2xl {className}"
+>
 	<div class="card-body justify-center px-8 py-6">
-		<h1 class="mb-2 text-6xl font-bold lg:text-7xl">{title}</h1>
+		<h1 class="-mb-2 pb-2 text-6xl leading-tight font-bold lg:text-7xl">{title}</h1>
 		{#if subtitle}
 			<p class="mb-4 text-2xl opacity-70">{subtitle}</p>
 		{/if}
-		
+
 		{#if chartData}
 			<!-- Stacked Area Chart -->
 			<div class="relative h-32 w-full">
 				<canvas bind:this={chartCanvas}></canvas>
-				
+
 				<!-- Month labels -->
 				<div class="absolute bottom-0 flex w-full justify-between px-2 text-[10px] opacity-50">
 					{#each chartData.labels as label}

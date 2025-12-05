@@ -23,6 +23,7 @@
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import Amount from '$lib/components/Amount.svelte';
+	import ManualCategorizeModal from '$lib/components/ManualCategorizeModal.svelte';
 
 	// Register Chart.js components
 	Chart.register(
@@ -56,6 +57,10 @@
 	let showDeleteConfirm = $state(false);
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
+
+	// Manual Categorization Modal State
+	let selectedTransaction = $state<any | null>(null);
+	let isModalOpen = $state(false);
 
 	// Filters
 	let selectedCategory = $state<string>('all');
@@ -130,6 +135,29 @@
 		} finally {
 			deleting = false;
 		}
+	}
+
+	async function handleSaveCategory(
+		transactionId: number,
+		categoryId: number,
+		merchantName: string
+	) {
+		const response = await fetch(`/api/transactions/${transactionId}/categorize`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ categoryId, merchantName })
+		});
+
+		if (!response.ok) {
+			throw new Error('Failed to update transaction');
+		}
+
+		await invalidateAll();
+	}
+
+	function handleTransactionClick(transaction: any) {
+		selectedTransaction = transaction;
+		isModalOpen = true;
 	}
 
 	// Group transactions by day
@@ -716,8 +744,9 @@
 									{@const CategoryIcon = transaction.category
 										? getCategoryIcon(transaction.category.icon)
 										: null}
-									<div
-										class="-mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-2 transition-colors hover:bg-base-100"
+									<button
+										class="-mx-2 flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-100"
+										onclick={() => handleTransactionClick(transaction)}
 									>
 										<div class="flex min-w-0 flex-1 items-center gap-3">
 											<div class="flex-shrink-0">
@@ -740,7 +769,7 @@
 												hideEuro={true}
 											/>
 										</div>
-									</div>
+									</button>
 								{/each}
 							</div>
 						</div>
@@ -890,4 +919,12 @@
 			></div>
 		</div>
 	{/if}
+
+	<ManualCategorizeModal
+		isOpen={isModalOpen}
+		transaction={selectedTransaction}
+		categories={data.categories}
+		onClose={() => (isModalOpen = false)}
+		onSave={handleSaveCategory}
+	/>
 </div>

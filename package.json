@@ -44,9 +44,11 @@
 	"dependencies": {
 		"@google/generative-ai": "^0.21.0",
 		"@prisma/client": "^6.19.0",
+		"@types/canvas-confetti": "^1.9.0",
 		"@vercel/analytics": "^1.5.0",
 		"@vercel/speed-insights": "^1.2.0",
 		"bcryptjs": "^3.0.3",
+		"canvas-confetti": "^1.9.4",
 		"chart.js": "^4.5.1",
 		"chartjs-plugin-zoom": "^2.2.0",
 		"dotenv": "^17.2.3",

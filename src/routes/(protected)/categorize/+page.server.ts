@@ -146,6 +146,42 @@ export const load: PageServerLoad = async ({ locals }) => {
 		})));
 	}
 
+	// Get the list of merchant names
+	const merchantNames = uncategorizedMerchants.map(m => m.merchantName).filter(n => n !== null);
+
+	// Fetch one sample transaction for each merchant
+	// We use findMany with distinct to get one per merchant efficiently
+	const sampleTransactions = await db.transactions.findMany({
+		where: {
+			user_id: userId,
+			merchantName: { in: merchantNames as string[] },
+			OR: [
+				{ category_id: null },
+				{ categories: { name: 'Niet gecategoriseerd' } }
+			]
+		},
+		distinct: ['merchantName'],
+		select: {
+			id: true,
+			date: true,
+			merchantName: true,
+			amount: true,
+			description: true,
+			category_id: true, // Include to be safe, though likely null
+			categories: {
+				select: {
+					id: true,
+					name: true,
+					icon: true,
+					color: true
+				}
+			}
+		}
+	});
+
+	// Create a map for easy lookup
+	const sampleMap = new Map(sampleTransactions.map(t => [t.merchantName, t]));
+
 	return {
 		stats: {
 			totalTransactions: totalCount,
@@ -164,10 +200,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 			color: c.color,
 			parentId: c.parent_id
 		})),
-		uncategorizedMerchants: uncategorizedMerchants.map((m) => ({
-			name: m.merchantName,
-			count: m._count._all
-		})),
+		uncategorizedMerchants: uncategorizedMerchants.map((m) => {
+			const sample = sampleMap.get(m.merchantName);
+			return {
+				name: m.merchantName,
+				count: m._count._all,
+				sampleTransaction: sample ? {
+					id: sample.id,
+					date: sample.date,
+					merchantName: sample.merchantName,
+					amount: sample.amount.toString(),
+					description: sample.description,
+					category: sample.categories ? {
+						id: sample.categories.id,
+						name: sample.categories.name,
+						icon: sample.categories.icon,
+						color: sample.categories.color
+					} : null
+				} : null
+			};
+		}),
 		manualReviewTransactions: manualReviewTransactions.map((t) => ({
 			id: t.id,
 			date: t.date,

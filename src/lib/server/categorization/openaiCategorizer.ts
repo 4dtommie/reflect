@@ -84,13 +84,13 @@ export async function categorizeBatchWithOpenAI(
         const includeReasoning = options?.includeReasoning ?? false;
         const includeCleanedMerchantName = options?.includeCleanedMerchantName ?? false;
         const useCategoryNames = options?.useCategoryNames ?? false;
-        const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames);
+        const enableSearchGrounding = options?.enableSearchGrounding ?? false;
+        const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames, enableSearchGrounding);
 
         // Use model override if provided, otherwise use config
         const modelToUse = modelOverride || aiConfig.model;
 
         // Build tools array for search grounding if enabled
-        const enableSearchGrounding = options?.enableSearchGrounding ?? false;
         const tools = enableSearchGrounding
             ? [{ type: "web_search" }]
             : undefined;

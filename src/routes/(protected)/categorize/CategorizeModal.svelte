@@ -3,6 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import { X, Search, Sparkles, Check, AlertCircle, Loader2, ChevronDown } from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
+	import CategorySelector from '$lib/components/CategorySelector.svelte';
 
 	interface Category {
 		id: number;
@@ -61,58 +62,17 @@
 	// Form state
 	let selectedCategoryId = $state<number | null>(null);
 	let merchantName = $state('');
-	let searchQuery = $state('');
-	let isCategoryDropdownOpen = $state(false);
 	let applyToAllSimilar = $state(false);
 
 	// AI state
 	let aiResult = $state<AIResult | null>(null);
 	let isAiLoading = $state(false);
 
-	// Derived state
-	let filteredCategories = $derived.by(() => {
-		const filtered = searchQuery
-			? categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-			: categories;
-
-		if (searchQuery) return filtered;
-
-		// Group by parent for display
-		const parents = filtered.filter((c) => !c.parentId);
-		const children = filtered.filter((c) => c.parentId);
-
-		const result: (Category & { isHeader?: boolean })[] = [];
-
-		for (const parent of parents) {
-			const myChildren = children.filter((c) => c.parentId === parent.id);
-
-			if (myChildren.length > 0) {
-				// Parent is a header because it has children
-				result.push({ ...parent, isHeader: true });
-				result.push(...myChildren);
-			} else {
-				// Parent has no children, so it's a selectable category
-				result.push(parent);
-			}
-		}
-
-		// Add any orphans (shouldn't happen ideally but good for safety)
-		const orphans = children.filter((c) => !parents.find((p) => p.id === c.parentId));
-		result.push(...orphans);
-
-		return result;
-	});
-
-	let selectedCategory = $derived(
-		selectedCategoryId ? categories.find((c) => c.id === selectedCategoryId) : null
-	);
-
 	// Reset state when transaction changes or modal opens
 	$effect(() => {
 		if (isOpen && transaction) {
 			merchantName = transaction.merchantName;
 			selectedCategoryId = transaction.category?.id || null;
-			searchQuery = '';
 			aiResult = null;
 			error = null;
 			applyToAllSimilar = similarCount > 1; // Default to true if multiple exist
@@ -187,58 +147,29 @@
 		}
 	}
 
-	let triggerButton: HTMLButtonElement;
-	let dropdownPosition = $state({ top: 0, left: 0, width: 0 });
-
-	function toggleDropdown() {
-		if (isCategoryDropdownOpen) {
-			isCategoryDropdownOpen = false;
-		} else {
-			if (triggerButton) {
-				const rect = triggerButton.getBoundingClientRect();
-				dropdownPosition = {
-					top: rect.bottom + 4, // 4px gap
-					left: rect.left,
-					width: rect.width
-				};
-			}
-			isCategoryDropdownOpen = true;
-			searchQuery = '';
-			setTimeout(() => document.getElementById('category-search-input')?.focus(), 0);
-		}
-	}
-
-	function handleScroll() {
-		if (isCategoryDropdownOpen && triggerButton) {
-			// Update position on scroll to keep it attached
-			const rect = triggerButton.getBoundingClientRect();
-			dropdownPosition = {
-				top: rect.bottom + 4,
-				left: rect.left,
-				width: rect.width
-			};
-		}
+	function selectCategory(category: Category) {
+		selectedCategoryId = category.id;
 	}
 </script>
-
-<svelte:window on:scroll={handleScroll} on:resize={handleScroll} />
 
 {#if isOpen && transaction}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
-			class="modal-box h-[600px] w-11/12 max-w-5xl p-0"
+			class="modal-box flex h-[600px] w-11/12 max-w-5xl flex-col overflow-hidden p-0"
 			in:scale={{ duration: 200, start: 0.95 }}
 			out:scale={{ duration: 150, start: 0.95 }}
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-base-300 bg-base-200 px-6 py-4">
+			<div
+				class="flex flex-none items-center justify-between border-b border-base-300 bg-base-200 px-6 py-4"
+			>
 				<h3 class="text-lg font-bold">Categorize Transaction</h3>
 				<button class="btn btn-circle btn-ghost btn-sm" onclick={onClose}>
 					<X size={20} />
 				</button>
 			</div>
 
-			<div class="grid h-[calc(600px-64px)] grid-cols-1 gap-0 md:grid-cols-2">
+			<div class="grid min-h-0 flex-1 grid-cols-1 gap-0 md:grid-cols-2">
 				<!-- Left Column: Transaction & AI -->
 				<div class="space-y-6 overflow-y-auto border-r border-base-300 bg-base-200/30 p-6">
 					<!-- Transaction Details Card -->
@@ -289,13 +220,14 @@
 				<!-- Right Column: Inputs & Actions -->
 				<div class="flex h-full flex-col p-6">
 					<!-- Scrollable content area -->
-					<div class="flex-1 space-y-6 overflow-y-auto" onscroll={handleScroll}>
+					<div class="flex-1 space-y-6 overflow-y-auto">
 						<!-- Merchant Name Input -->
 						<div class="form-control w-full">
-							<label class="label">
+							<label class="label" for="merchant-name-input">
 								<span class="label-text font-medium">Merchant Name</span>
 							</label>
 							<input
+								id="merchant-name-input"
 								type="text"
 								bind:value={merchantName}
 								class="input-bordered input w-full"
@@ -318,66 +250,11 @@
 
 						<!-- Category Selection (Search Select) -->
 						<div class="form-control w-full">
-							<label class="label">
+							<label class="label" for="category-selector">
 								<span class="label-text font-medium">Category</span>
 							</label>
-
-							<div class="relative">
-								{#if !isCategoryDropdownOpen && selectedCategory}
-									<!-- Display Mode (Selected) -->
-									<button
-										bind:this={triggerButton}
-										class="input-bordered input flex w-full items-center justify-between px-3 text-left focus:border-primary focus:outline-none"
-										onclick={toggleDropdown}
-										type="button"
-									>
-										<div class="flex items-center gap-2">
-											<div
-												class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] text-white"
-												style="background-color: {selectedCategory.color || 'hsl(var(--p))'}"
-											>
-												{#if selectedCategory.icon && selectedCategory.icon.length <= 2}
-													{selectedCategory.icon}
-												{:else}
-													{selectedCategory.name[0]}
-												{/if}
-											</div>
-											<span class="font-medium">{selectedCategory.name}</span>
-										</div>
-										<ChevronDown size={16} class="opacity-50" />
-									</button>
-								{:else}
-									<!-- Search Mode (Input) -->
-									<div class="relative">
-										<Search class="absolute top-3 left-3 opacity-50" size={18} />
-										<input
-											bind:this={triggerButton}
-											id="category-search-input"
-											type="text"
-											class="input-bordered input w-full pl-10"
-											placeholder={selectedCategory ? 'Change category...' : 'Select category...'}
-											bind:value={searchQuery}
-											onfocus={() => {
-												if (!isCategoryDropdownOpen) toggleDropdown();
-											}}
-											onclick={() => {
-												if (!isCategoryDropdownOpen) toggleDropdown();
-											}}
-										/>
-										{#if isCategoryDropdownOpen}
-											<button
-												class="absolute top-3 right-3 opacity-50 hover:opacity-100"
-												onclick={(e) => {
-													e.stopPropagation();
-													isCategoryDropdownOpen = false;
-													searchQuery = '';
-												}}
-											>
-												<X size={18} />
-											</button>
-										{/if}
-									</div>
-								{/if}
+							<div id="category-selector">
+								<CategorySelector {categories} bind:selectedCategoryId />
 							</div>
 						</div>
 
@@ -409,65 +286,5 @@
 			</div>
 		</div>
 		<div class="modal-backdrop bg-black/50" onclick={onClose}></div>
-
-		<!-- Fixed Dropdown Portal -->
-		{#if isCategoryDropdownOpen}
-			<!-- Backdrop to close -->
-			<div
-				class="fixed inset-0 z-[9998]"
-				onclick={() => (isCategoryDropdownOpen = false)}
-				role="button"
-				tabindex="-1"
-			></div>
-
-			<div
-				class="fixed z-[9999] rounded-lg border border-base-300 bg-base-100 p-2 shadow-xl"
-				style="top: {dropdownPosition.top}px; left: {dropdownPosition.left}px; width: {dropdownPosition.width}px;"
-				transition:fade={{ duration: 100 }}
-			>
-				<div class="max-h-60 divide-y divide-base-200 overflow-y-auto">
-					{#each filteredCategories as category}
-						{#if category.isHeader}
-							<div
-								class="bg-base-200/50 px-3 py-1.5 text-xs font-bold tracking-wider uppercase opacity-50"
-							>
-								{category.name}
-							</div>
-						{:else}
-							<button
-								class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-base-200 {selectedCategoryId ===
-								category.id
-									? 'bg-base-200'
-									: ''} {category.parentId ? 'pl-6' : ''}"
-								onclick={() => {
-									selectCategory(category);
-									isCategoryDropdownOpen = false;
-								}}
-								type="button"
-							>
-								<div
-									class="flex h-6 w-6 items-center justify-center rounded-full text-[10px] text-white"
-									style="background-color: {category.color || 'hsl(var(--p))'}"
-								>
-									{#if category.icon && category.icon.length <= 2}
-										{category.icon}
-									{:else}
-										{category.name[0]}
-									{/if}
-								</div>
-								<span class="flex-1 text-sm">{category.name}</span>
-								{#if selectedCategoryId === category.id}
-									<Check size={14} class="text-primary" />
-								{/if}
-							</button>
-						{/if}
-					{/each}
-
-					{#if filteredCategories.length === 0}
-						<div class="p-3 text-center text-sm opacity-50">No categories found</div>
-					{/if}
-				</div>
-			</div>
-		{/if}
 	</div>
 {/if}

@@ -138,6 +138,7 @@ export function createCategorizationPrompt(
 	includeReasoning: boolean = true,
 	includeCleanedMerchantName: boolean = false,
 	useCategoryNames: boolean = false, // If true, use category names instead of IDs
+	enableSearchGrounding: boolean = false // If true, include search instructions
 ): string {
 	// Filter to only show subcategories (categories with parent_id) and standalone categories (no parent, no children)
 	// Hide parent categories that have subcategories
@@ -241,6 +242,10 @@ export function createCategorizationPrompt(
 		? 'Selectieplicht: Je MOET voor elke transactie de meest geschikte categoryName selecteren uit de lijst hierboven. Gebruik de exacte categorie naam zoals getoond (bijv. "Uit eten", "Lunch", "Koffie"). Gebruik NOOIT "Category X" of nummers. Alleen als een categorie absoluut niet past, gebruik je "Niet gecategoriseerd".'
 		: `${template.instructions.selection}\n   BELANGRIJK: Gebruik de exacte categorie naam.`;
 
+	const searchInstruction = enableSearchGrounding
+		? `\n9. ${template.instructions.search}`
+		: '';
+
 	// Build the prompt with the new structure
 	const prompt = `${template.intro}
 
@@ -260,7 +265,7 @@ ${batchWarning}
 3. ${template.instructions.timeBased}
 4. ${template.instructions.confidence}
 5. Transacties tussen personen: Transacties die lijken alsof ze tussen personen zijn (persoon-naar-persoon overboekingen) moeten op "Niet gecategoriseerd" worden gezet, TENZIJ uit de beschrijving heel duidelijk een categorie op te maken is (bijvoorbeeld "Tikkie koffie" → Koffie, "Betaalverzoek restaurant" → Uit eten).
-${reasoningInstruction}${cleanedMerchantNameInstruction}
+${reasoningInstruction}${cleanedMerchantNameInstruction}${searchInstruction}
 
 ### Vereist JSON Output Formaat
 

@@ -18,8 +18,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     }
 
     // Limit batch size to prevent timeouts
-    if (transactionIds.length > 10) {
-        return json({ error: 'Batch size limit exceeded (max 10)' }, { status: 400 });
+    if (transactionIds.length > 5) {
+        return json({ error: 'Batch size limit exceeded (max 5)' }, { status: 400 });
     }
 
     console.log(`[Batch AI] Processing ${transactionIds.length} transactions for user ${userId}`);
