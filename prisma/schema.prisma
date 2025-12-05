@@ -18,6 +18,11 @@ model User {
   user_categories user_categories[]
   recurring_transactions RecurringTransaction[]
   variable_spending_patterns VariableSpendingPattern[]
+  chat_conversations ChatConversation[]
+  
+  // Activity tracking for smart greetings
+  last_active_at  DateTime          @default(now())
+  daily_visit_count Int             @default(0)
 
   @@map("users")
 }
@@ -180,6 +185,53 @@ model category_keywords {
   @@unique([category_id, keyword])
   @@index([category_id])
   @@index([keyword])
+}
+
+model InsightDefinition {
+  id               String   @id
+  category         String   // urgent, action, insight, celebration, tip
+  priority         Int      @default(50)
+  trigger          String   // trigger type ID
+  trigger_params   Json?    // parameters for trigger evaluation
+  message_template String   // message with placeholders: "{{amount}} due in {{days}} days"
+  icon             String?  // emoji or icon name
+  action_label     String?  // CTA button text
+  action_href      String?  // CTA link
+  contexts         String[] // where to show: ['chat', 'card', 'widget']
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("insight_definitions")
+}
+
+model ChatConversation {
+  id          Int           @id @default(autoincrement())
+  user_id     Int
+  title       String?       // Optional title for the conversation
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  
+  users       User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+
+  @@map("chat_conversations")
+  @@index([user_id])
+}
+
+model ChatMessage {
+  id              Int              @id @default(autoincrement())
+  conversation_id Int
+  role            String           // "user" | "assistant" | "system"
+  content         String
+  insight_id      String?          // If message was triggered by an insight
+  action_buttons  Json?            // Array of {label, href} for CTA buttons
+  created_at      DateTime         @default(now())
+  
+  conversation    ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+  @@index([conversation_id])
 }
 
 enum TransactionType {

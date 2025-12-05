@@ -1,13 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import WelcomeWidget from '$lib/components/WelcomeWidget.svelte';
+	import ChatWidget from '$lib/components/ChatWidget.svelte';
 	import UploadCTAWidget from '$lib/components/UploadCTAWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
 	import RecurringWidget from '$lib/components/RecurringWidget.svelte';
 	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
-	import { TrendingUp, PieChart, Target, PiggyBank } from 'lucide-svelte';
+	import { TrendingUp, Target, PiggyBank } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
@@ -29,12 +30,7 @@
 
 			<!-- Right sub-column -->
 			<div class="space-y-8">
-				<PlaceholderWidget
-					title="Top categories"
-					description="See where your money goes most"
-					size="small"
-					icon={PieChart}
-				/>
+				<ChatWidget insight={data.chatInsight} />
 
 				<PlaceholderWidget
 					title="Savings goals"

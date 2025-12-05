@@ -68,6 +68,14 @@ export async function seedDatabase() {
 		const recurringCount = await prisma.recurringTransaction.deleteMany({});
 		log(`   ✓ Deleted ${recurringCount.count} recurring transactions`);
 
+		// Delete chat messages first (references conversations)
+		const chatMessageCount = await (prisma as any).chatMessage.deleteMany({});
+		log(`   ✓ Deleted ${chatMessageCount.count} chat messages`);
+
+		// Delete chat conversations (references users)
+		const chatConversationCount = await (prisma as any).chatConversation.deleteMany({});
+		log(`   ✓ Deleted ${chatConversationCount.count} chat conversations`);
+
 		// Delete category_keywords (references categories)
 		const keywordCount = await (prisma as any).category_keywords.deleteMany({});
 		log(`   ✓ Deleted ${keywordCount.count} category keywords`);
@@ -88,7 +96,7 @@ export async function seedDatabase() {
 		const merchantCount = await prisma.merchants.deleteMany({});
 		log(`   ✓ Deleted ${merchantCount.count} merchants`);
 
-		log('✅ Database cleared - all transactions and categories removed');
+		log('✅ Database cleared - all transactions, categories, and chats removed');
 
 		// Verify category_keywords table is accessible
 		try {
