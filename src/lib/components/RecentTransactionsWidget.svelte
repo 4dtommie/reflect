@@ -27,9 +27,9 @@
 	</DashboardWidget>
 {:else}
 	<!-- Transaction List -->
-	<DashboardWidget size="medium">
+	<DashboardWidget size="auto">
 		<div class="space-y-1">
-			<h3 class="mb-4 text-lg font-semibold opacity-70">Recent transactions</h3>
+			<h3 class="mb-3 text-lg font-semibold">Recent transactions</h3>
 
 			<div class="space-y-2">
 				{#each transactions as transaction}
@@ -60,7 +60,7 @@
 				{/each}
 			</div>
 
-			<div class="mt-4 border-t border-base-200 pt-2">
+			<div class="mt-2 border-t border-base-200 pt-1">
 				<a href="/transactions" class="group btn btn-block justify-between btn-ghost btn-sm">
 					Show all transactions
 					<LucideIcons.ArrowRight

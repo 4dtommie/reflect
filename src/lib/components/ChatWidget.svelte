@@ -244,7 +244,7 @@
 	}
 </script>
 
-<DashboardWidget size="auto" enableHover={false}>
+<DashboardWidget size="auto" enableHover={false} title="Penny for your thoughts">
 	<div class="flex flex-col gap-2 p-1">
 		<!-- Messages area wrapper -->
 		<div class="relative">

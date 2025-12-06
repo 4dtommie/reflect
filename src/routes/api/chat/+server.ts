@@ -1,8 +1,10 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import OpenAI from 'openai';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { getChatContext, parseActionButtons, cleanMessageContent } from '$lib/server/insights/chatContext';
 import { getTopInsight } from '$lib/server/insights/insightEngine';
+import { CHAT_FUNCTIONS, MAX_FUNCTION_ROUNDS, executeFunction } from '$lib/server/insights/chatFunctions';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
@@ -57,7 +59,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const { systemPrompt } = await getChatContext(userId);
 
         // Build message history for OpenAI
-        const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        const messages: ChatCompletionMessageParam[] = [
             { role: 'system', content: systemPrompt }
         ];
 
@@ -81,15 +83,63 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             }
         });
 
-        // Call OpenAI
-        const completion = await openai.chat.completions.create({
+        // Call OpenAI with function calling
+        let completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages,
-            max_tokens: 300,
+            tools: CHAT_FUNCTIONS,
+            tool_choice: 'auto',
+            max_tokens: 500,
             temperature: 0.7
         });
 
-        const aiResponse = completion.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+        // Handle function calls (max 3 rounds)
+        let responseMessage = completion.choices[0]?.message;
+        let iterations = 0;
+
+        while (responseMessage?.tool_calls && iterations < MAX_FUNCTION_ROUNDS) {
+            // Add assistant message with tool calls to history
+            messages.push(responseMessage);
+
+            // Execute each function call
+            for (const toolCall of responseMessage.tool_calls) {
+                // Skip non-function tool calls
+                if (toolCall.type !== 'function') continue;
+
+                try {
+                    const args = JSON.parse(toolCall.function.arguments);
+                    const result = await executeFunction(toolCall.function.name, args, userId);
+
+                    messages.push({
+                        role: 'tool',
+                        content: JSON.stringify(result),
+                        tool_call_id: toolCall.id
+                    });
+                } catch (err) {
+                    console.error(`Function ${toolCall.function.name} error:`, err);
+                    messages.push({
+                        role: 'tool',
+                        content: JSON.stringify({ error: 'Function execution failed' }),
+                        tool_call_id: toolCall.id
+                    });
+                }
+            }
+
+            // Get next response
+            completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages,
+                tools: CHAT_FUNCTIONS,
+                tool_choice: 'auto',
+                max_tokens: 500,
+                temperature: 0.7
+            });
+
+            responseMessage = completion.choices[0]?.message;
+            iterations++;
+        }
+
+        const aiResponse = responseMessage?.content || "Sorry, I couldn't generate a response.";
 
         // Parse action buttons from response
         const actionButtons = parseActionButtons(aiResponse);

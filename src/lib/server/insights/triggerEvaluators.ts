@@ -307,3 +307,124 @@ export function evaluateTrigger(
 export function getAvailableTriggers(): string[] {
     return Object.keys(triggerEvaluators);
 }
+
+/**
+ * Trigger metadata for admin UI
+ */
+interface TriggerParam {
+    name: string;
+    type: 'number' | 'string' | 'boolean';
+    description: string;
+    default?: unknown;
+}
+
+interface TriggerMeta {
+    id: string;
+    description: string;
+    params: TriggerParam[];
+    templateVars: string[];
+}
+
+const TRIGGER_METADATA: Record<string, Omit<TriggerMeta, 'id'>> = {
+    no_transactions: {
+        description: 'Triggers when user has no transactions',
+        params: [],
+        templateVars: []
+    },
+    has_transactions: {
+        description: 'Triggers when user has any transactions',
+        params: [],
+        templateVars: ['count']
+    },
+    payment_due_soon: {
+        description: 'Triggers when a recurring payment is due within N days',
+        params: [
+            { name: 'days', type: 'number', description: 'Days until due (default: 3)', default: 3 }
+        ],
+        templateVars: ['name', 'amount', 'days', 'daysText']
+    },
+    payment_late: {
+        description: 'Triggers when a recurring payment is overdue',
+        params: [
+            { name: 'max_days', type: 'number', description: 'Max days late to trigger (default: 7)', default: 7 }
+        ],
+        templateVars: ['name', 'amount', 'daysLate', 'daysText']
+    },
+    uncategorized_high: {
+        description: 'Triggers when uncategorized transactions exceed threshold (but not 100%)',
+        params: [
+            { name: 'threshold_percent', type: 'number', description: 'Min percentage to trigger (default: 20)', default: 20 }
+        ],
+        templateVars: ['percent', 'count', 'topMerchant', 'topMerchantCount']
+    },
+    categorization_complete: {
+        description: 'Triggers when all transactions are categorized',
+        params: [],
+        templateVars: ['count']
+    },
+    fresh_import: {
+        description: 'Triggers when all transactions are uncategorized (100% = fresh import)',
+        params: [],
+        templateVars: ['count']
+    },
+    savings_positive: {
+        description: 'Triggers when monthly savings are positive',
+        params: [],
+        templateVars: ['amount', 'income', 'expenses']
+    },
+    spending_change: {
+        description: '[DEPRECATED] Use same_period_change or complete_month_change instead',
+        params: [
+            { name: 'threshold_percent', type: 'number', description: 'Change threshold (default: 15)', default: 15 },
+            { name: 'direction', type: 'string', description: 'up, down, or any (default: any)', default: 'any' }
+        ],
+        templateVars: ['percent', 'direction', 'currentAmount', 'lastAmount']
+    },
+    same_period_change: {
+        description: 'Compares first X days of this month vs same period last month',
+        params: [
+            { name: 'threshold_percent', type: 'number', description: 'Change threshold (default: 30)', default: 30 },
+            { name: 'direction', type: 'string', description: 'up, down, or any (default: any)', default: 'any' },
+            { name: 'min_days', type: 'number', description: 'Min days before triggering (default: 3)', default: 3 }
+        ],
+        templateVars: ['percent', 'direction', 'days', 'currentAmount', 'lastAmount']
+    },
+    complete_month_change: {
+        description: 'Compares last month vs 2 months ago (fair comparison)',
+        params: [
+            { name: 'threshold_percent', type: 'number', description: 'Change threshold (default: 15)', default: 15 },
+            { name: 'direction', type: 'string', description: 'up, down, or any (default: any)', default: 'any' }
+        ],
+        templateVars: ['percent', 'direction', 'lastMonth', 'twoMonthsAgo', 'lastMonthAmount', 'twoMonthsAgoAmount']
+    },
+    top_category: {
+        description: 'Triggers for top spending category if above threshold',
+        params: [
+            { name: 'min_percentage', type: 'number', description: 'Min category % of spending (default: 25)', default: 25 }
+        ],
+        templateVars: ['category', 'amount', 'percent']
+    },
+    time_of_day: {
+        description: 'Triggers based on current hour',
+        params: [
+            { name: 'start_hour', type: 'number', description: 'Start hour 0-23 (default: 0)', default: 0 },
+            { name: 'end_hour', type: 'number', description: 'End hour 0-24 (default: 24)', default: 24 }
+        ],
+        templateVars: ['greeting']
+    },
+    always: {
+        description: 'Always triggers (for fallback tips)',
+        params: [],
+        templateVars: []
+    }
+};
+
+/**
+ * Get metadata for all triggers
+ */
+export function getTriggerMetadata(): TriggerMeta[] {
+    return Object.entries(TRIGGER_METADATA).map(([id, meta]) => ({
+        id,
+        ...meta
+    }));
+}

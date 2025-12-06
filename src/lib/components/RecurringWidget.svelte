@@ -5,16 +5,25 @@
 
 	let { recurringTransactions = [] }: { recurringTransactions: RecurringTransaction[] } = $props();
 
-	// Sort by next payment date
-	let sortedTransactions = $derived(
-		[...recurringTransactions]
+	// Filter to transactions within -10 to +10 days, sort by next payment date, max 2
+	let sortedTransactions = $derived.by(() => {
+		const now = new Date();
+		const minDate = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+		const maxDate = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
+
+		return [...recurringTransactions]
+			.filter((tx) => {
+				if (!tx.next_expected_date) return false;
+				const txDate = new Date(tx.next_expected_date);
+				return txDate >= minDate && txDate <= maxDate;
+			})
 			.sort((a, b) => {
 				if (!a.next_expected_date) return 1;
 				if (!b.next_expected_date) return -1;
 				return new Date(a.next_expected_date).getTime() - new Date(b.next_expected_date).getTime();
 			})
-			.slice(0, 3)
-	);
+			.slice(0, 2);
+	});
 
 	function formatDate(date: Date | null) {
 		if (!date) return 'Unknown';
@@ -31,7 +40,7 @@
 	}
 </script>
 
-<DashboardWidget size="medium" title="Upcoming Payments">
+<DashboardWidget size="auto" title="Upcoming payments">
 	{#if recurringTransactions.length === 0}
 		<div class="flex h-full flex-col items-center justify-center py-6 text-center">
 			<RefreshCw size={48} class="mb-4 opacity-50" />
@@ -40,35 +49,40 @@
 			<a href="/recurring/detect" class="btn btn-primary"> Detect subscriptions </a>
 		</div>
 	{:else}
-		<div class="flex h-full flex-col">
-			<div class="flex-1 space-y-3">
-				{#each sortedTransactions as tx}
-					<div
-						class="flex items-center justify-between border-b border-base-200 pb-2 last:border-0 last:pb-0"
-					>
-						<div class="flex items-center gap-3">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"
-							>
-								<Calendar size={18} />
-							</div>
-							<div>
-								<p class="line-clamp-1 max-w-[120px] font-medium">{tx.name}</p>
-								<p class="text-xs text-base-content/60">
-									{formatDate(tx.next_expected_date)} • {getDaysUntil(tx.next_expected_date)}
-								</p>
-							</div>
+		<div class="space-y-3">
+			{#each sortedTransactions as tx}
+				{@const isPositive = Number(tx.amount) > 0}
+				<div
+					class="flex items-center justify-between border-b border-base-200 pb-2 last:border-0 last:pb-0"
+				>
+					<div class="flex items-center gap-3">
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+						>
+							<Calendar size={18} />
 						</div>
-						<div class="text-right">
-							<p class="font-semibold">€{Math.abs(Number(tx.amount)).toFixed(2)}</p>
-							<p class="text-xs text-base-content/60 capitalize">{tx.interval}</p>
+						<div>
+							<p class="line-clamp-1 max-w-[120px] font-medium">{tx.name}</p>
+							<p class="text-xs text-base-content/60">
+								{formatDate(tx.next_expected_date)} • {getDaysUntil(tx.next_expected_date)}
+							</p>
 						</div>
 					</div>
-				{/each}
-			</div>
+					<div class="text-right">
+						<p
+							class={isPositive
+								? 'inline-block rounded-lg bg-success/10 px-2 py-0.5 font-semibold text-success'
+								: 'font-semibold'}
+						>
+							{isPositive ? '+' : ''}€ {Math.abs(Number(tx.amount)).toFixed(2).replace('.', ',')}
+						</p>
+						<p class="text-xs text-base-content/60 capitalize">{tx.interval}</p>
+					</div>
+				</div>
+			{/each}
 
-			<div class="mt-4 border-t border-base-200 pt-2">
-				<a href="/subscriptions" class="group btn btn-block justify-between btn-ghost btn-sm">
+			<div class="border-t border-base-200 pt-1">
+				<a href="/recurring" class="group btn btn-block justify-between btn-ghost btn-sm">
 					View all subscriptions
 					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
 				</a>

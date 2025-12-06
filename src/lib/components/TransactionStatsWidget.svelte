@@ -52,7 +52,7 @@
 	});
 </script>
 
-<DashboardWidget size={widgetSize}>
+<DashboardWidget size={widgetSize} title="Getting organized">
 	{#if uncategorizedCount === totalTransactions && totalTransactions > 0}
 		<!-- CTA when no categorization -->
 		<div class="flex h-full flex-col items-center justify-center gap-4 py-4">

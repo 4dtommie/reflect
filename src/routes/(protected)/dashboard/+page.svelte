@@ -24,8 +24,19 @@
 
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
 			<!-- Left sub-column -->
-			<div>
-				<RecentTransactionsWidget transactions={data.recentTransactions} />
+			<div class="space-y-8">
+				<RecentTransactionsWidget transactions={data.recentTransactions.slice(0, 2)} />
+
+				{#if data.stats.categorizedCount > 0}
+					<RecurringWidget recurringTransactions={data.recurringTransactions} />
+				{:else if data.stats.totalTransactions > 0}
+					<PlaceholderWidget
+						title="Upcoming payments"
+						description="Categorize transactions to detect recurring payments"
+						size="small"
+						icon={TrendingUp}
+					/>
+				{/if}
 			</div>
 
 			<!-- Right sub-column -->
@@ -61,17 +72,6 @@
 				title="Transaction stats"
 				description="See your transaction statistics here"
 				size="medium"
-				icon={TrendingUp}
-			/>
-		{/if}
-
-		{#if data.stats.categorizedCount > 0}
-			<RecurringWidget recurringTransactions={data.recurringTransactions} />
-		{:else if data.stats.totalTransactions > 0}
-			<PlaceholderWidget
-				title="Upcoming payments"
-				description="Categorize transactions to detect recurring payments"
-				size="small"
 				icon={TrendingUp}
 			/>
 		{/if}
