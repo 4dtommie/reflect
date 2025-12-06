@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Chart, registerables } from 'chart.js';
+	import chartColors from '$lib/config/chartColors';
 
 	Chart.register(...registerables);
 
@@ -8,7 +9,8 @@
 		title,
 		subtitle,
 		monthlySpending = [],
-		class: className = ''
+		class: className = '',
+		compact = false
 	}: {
 		title: string;
 		subtitle?: string;
@@ -21,6 +23,7 @@
 			income: number;
 		}[];
 		class?: string;
+		compact?: boolean;
 	} = $props();
 
 	let chartCanvas: HTMLCanvasElement;
@@ -81,11 +84,6 @@
 	onMount(() => {
 		if (!chartCanvas || !chartData) return;
 
-		// Dark purple: rgb(139, 92, 246) - #8B5CF6 (recurring)
-		// Light purple: rgb(196, 181, 253) - #C4B5FD (variable)
-		// Yellow: rgb(234, 179, 8) - #EAB308 (savings)
-		// Light blue: rgb(14, 165, 233) - #0EA5E9 (remaining, matching sky-600)
-
 		// Store reference to data for tooltip callbacks
 		dataRef = { chartData, monthlySpending };
 
@@ -97,8 +95,8 @@
 					{
 						label: 'Recurring expenses',
 						data: chartData.recurring,
-						borderColor: 'rgb(139, 92, 246)',
-						backgroundColor: 'rgba(139, 92, 246, 0.6)',
+						borderColor: chartColors.border.recurring,
+						backgroundColor: chartColors.areaFill.recurring,
 						fill: true,
 						tension: 0.4,
 						pointRadius: 0,
@@ -108,8 +106,8 @@
 					{
 						label: 'Variable expenses',
 						data: chartData.variable,
-						borderColor: 'rgb(196, 181, 253)',
-						backgroundColor: 'rgba(196, 181, 253, 0.5)',
+						borderColor: chartColors.border.variable,
+						backgroundColor: chartColors.areaFill.variable,
 						fill: '-1',
 						tension: 0.4,
 						pointRadius: 0,
@@ -119,8 +117,8 @@
 					{
 						label: 'Savings & Investments',
 						data: chartData.savings,
-						borderColor: 'rgb(234, 179, 8)',
-						backgroundColor: 'rgba(234, 179, 8, 0.6)',
+						borderColor: chartColors.border.savings,
+						backgroundColor: chartColors.areaFill.savings,
 						fill: '-1',
 						tension: 0.4,
 						pointRadius: 0,
@@ -130,8 +128,8 @@
 					{
 						label: 'Remaining expenses',
 						data: chartData.remaining,
-						borderColor: 'rgb(14, 165, 233)',
-						backgroundColor: 'rgba(14, 165, 233, 0.4)',
+						borderColor: chartColors.border.remaining,
+						backgroundColor: chartColors.areaFill.remaining,
 						fill: '-1',
 						tension: 0.4,
 						pointRadius: 0,
@@ -142,7 +140,7 @@
 					{
 						label: 'Income',
 						data: chartData.income,
-						borderColor: 'rgb(34, 197, 94)',
+						borderColor: chartColors.border.income,
 						backgroundColor: 'transparent',
 						borderWidth: 2,
 						borderDash: [5, 5],
@@ -157,6 +155,7 @@
 					}
 				]
 			},
+
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
@@ -293,7 +292,13 @@
 	class="card rounded-3xl bg-base-100 shadow-xl transition-all duration-300 hover:shadow-2xl {className}"
 >
 	<div class="card-body justify-center px-8 py-6">
-		<h1 class="-mb-2 pb-2 text-6xl leading-tight font-bold lg:text-7xl">{title}</h1>
+		<h1
+			class="-mb-2 pb-2 leading-tight font-bold {compact
+				? 'text-3xl lg:text-4xl'
+				: 'text-6xl lg:text-7xl'}"
+		>
+			{title}
+		</h1>
 		{#if subtitle}
 			<p class="mb-4 text-2xl opacity-70">{subtitle}</p>
 		{/if}

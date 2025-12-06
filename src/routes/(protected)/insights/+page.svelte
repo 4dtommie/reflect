@@ -439,172 +439,234 @@
 				}}
 				class="space-y-4"
 			>
-				<!-- ID (only for create) -->
-				{#if isCreating}
-					<div class="form-control">
-						<label class="label" for="insight-id">
-							<span class="label-text">ID (unique)</span>
-						</label>
-						<input
-							id="insight-id"
-							type="text"
-							class="input-bordered input"
-							bind:value={formId}
-							placeholder="e.g. my_custom_insight"
-							required
-						/>
-					</div>
-				{/if}
+				<!-- Section: Basics -->
+				<div class="space-y-3">
+					<h4 class="text-sm font-semibold text-base-content/70">Basics</h4>
 
-				<!-- Category & Priority row -->
-				<div class="grid grid-cols-2 gap-4">
-					<div class="form-control">
-						<label class="label" for="insight-category">
-							<span class="label-text">Category</span>
-						</label>
-						<select id="insight-category" class="select-bordered select" bind:value={formCategory}>
-							{#each categories as cat}
-								<option value={cat}>{cat}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="form-control">
-						<label class="label" for="insight-priority">
-							<span class="label-text">Priority (1-100)</span>
-						</label>
-						<input
-							id="insight-priority"
-							type="number"
-							class="input-bordered input"
-							bind:value={formPriority}
-							min="1"
-							max="100"
-						/>
+					<!-- ID (only for create) -->
+					{#if isCreating}
+						<div class="form-control">
+							<label class="label py-1" for="insight-id">
+								<span class="label-text">ID (unique)</span>
+							</label>
+							<input
+								id="insight-id"
+								type="text"
+								class="input-bordered input input-sm w-full"
+								bind:value={formId}
+								placeholder="e.g. my_custom_insight"
+								required
+							/>
+						</div>
+					{/if}
+
+					<!-- Category, Priority, Active in one row -->
+					<div class="grid grid-cols-3 gap-3">
+						<div class="form-control">
+							<label class="label py-1" for="insight-category">
+								<span class="label-text text-xs">Category</span>
+							</label>
+							<select
+								id="insight-category"
+								class="select-bordered select w-full select-sm"
+								bind:value={formCategory}
+							>
+								{#each categories as cat}
+									<option value={cat}>{cat}</option>
+								{/each}
+							</select>
+						</div>
+						<div class="form-control">
+							<label class="label py-1" for="insight-priority">
+								<span class="label-text text-xs">Priority (1-100)</span>
+							</label>
+							<input
+								id="insight-priority"
+								type="number"
+								class="input-bordered input input-sm w-full"
+								bind:value={formPriority}
+								min="1"
+								max="100"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label py-1">
+								<span class="label-text text-xs">Status</span>
+							</label>
+							<label class="label cursor-pointer justify-start gap-2 py-1">
+								<input
+									type="checkbox"
+									class="toggle toggle-sm toggle-success"
+									bind:checked={formIsActive}
+								/>
+								<span class="text-sm">{formIsActive ? 'Active' : 'Inactive'}</span>
+							</label>
+						</div>
 					</div>
 				</div>
 
-				<!-- Trigger -->
-				<div class="form-control">
-					<label class="label" for="insight-trigger">
-						<span class="label-text">Trigger</span>
-					</label>
-					<select id="insight-trigger" class="select-bordered select" bind:value={formTrigger}>
-						{#each triggers as t}
-							<option value={t.id}>{t.id}</option>
-						{/each}
-					</select>
+				<div class="divider my-2"></div>
+
+				<!-- Section: Trigger -->
+				<div class="space-y-3">
+					<h4 class="text-sm font-semibold text-base-content/70">Trigger</h4>
+
+					<div class="grid grid-cols-2 gap-3">
+						<div class="form-control">
+							<label class="label py-1" for="insight-trigger">
+								<span class="label-text text-xs">Trigger type</span>
+							</label>
+							<select
+								id="insight-trigger"
+								class="select-bordered select w-full select-sm"
+								bind:value={formTrigger}
+							>
+								{#each triggers as t}
+									<option value={t.id}>{t.id}</option>
+								{/each}
+							</select>
+						</div>
+						<div class="form-control">
+							<label class="label py-1" for="insight-params">
+								<span class="label-text text-xs">Parameters (JSON)</span>
+							</label>
+							<input
+								id="insight-params"
+								type="text"
+								class="input-bordered input input-sm w-full font-mono text-xs"
+								bind:value={formTriggerParams}
+								placeholder="JSON"
+							/>
+						</div>
+					</div>
 					{#if selectedTriggerMeta}
-						<div class="mt-1 text-xs text-base-content/60">
-							{selectedTriggerMeta.description}
+						<div class="rounded-lg bg-base-200 p-2 text-xs">
+							<span class="text-base-content/60">{selectedTriggerMeta.description}</span>
+							{#if selectedTriggerMeta.params.length > 0}
+								<div class="mt-1 text-base-content/50">
+									Params: {#each selectedTriggerMeta.params as p}<code
+											class="ml-1 rounded bg-base-300 px-1">{p.name}</code
+										>{/each}
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
 
-				<!-- Trigger Params -->
-				<div class="form-control">
-					<label class="label" for="insight-params">
-						<span class="label-text">Trigger params (JSON)</span>
-					</label>
-					<textarea
-						id="insight-params"
-						class="textarea-bordered textarea font-mono text-sm"
-						bind:value={formTriggerParams}
-						rows="3"
-						placeholder={'{}'}
-					></textarea>
-					{#if selectedTriggerMeta && selectedTriggerMeta.params.length > 0}
-						<div class="mt-1 text-xs text-base-content/60">
-							Available:
-							{#each selectedTriggerMeta.params as p}
-								<code class="ml-1">{p.name}</code> ({p.type})
-							{/each}
-						</div>
-					{/if}
-				</div>
+				<div class="divider my-2"></div>
 
-				<!-- Message Template -->
-				<div class="form-control">
-					<label class="label" for="insight-message">
-						<span class="label-text">Message template</span>
-					</label>
-					<textarea
-						id="insight-message"
-						class="textarea-bordered textarea"
-						bind:value={formMessageTemplate}
-						rows="2"
-						placeholder={'Use {{variable}} for placeholders'}
-						required
-					></textarea>
-					{#if selectedTriggerMeta && selectedTriggerMeta.templateVars.length > 0}
-						<div class="mt-1 text-xs text-base-content/60">
-							Variables:
-							{#each selectedTriggerMeta.templateVars as templateVar}
-								<code class="ml-1">{`{{${templateVar}}}`}</code>
-							{/each}
-						</div>
-					{/if}
-				</div>
+				<!-- Section: Message -->
+				<div class="space-y-3">
+					<h4 class="text-sm font-semibold text-base-content/70">Message</h4>
 
-				<!-- Action row -->
-				<div class="grid grid-cols-2 gap-4">
 					<div class="form-control">
-						<label class="label" for="insight-action-label">
-							<span class="label-text">Action label (optional)</span>
+						<label class="label py-1" for="insight-message">
+							<span class="label-text text-xs">Message template</span>
 						</label>
-						<input
-							id="insight-action-label"
-							type="text"
-							class="input-bordered input"
-							bind:value={formActionLabel}
-							placeholder="e.g. View details"
-						/>
-					</div>
-					<div class="form-control">
-						<label class="label" for="insight-action-href">
-							<span class="label-text">Action href (optional)</span>
-						</label>
-						<input
-							id="insight-action-href"
-							type="text"
-							class="input-bordered input"
-							bind:value={formActionHref}
-							placeholder="e.g. /transactions"
-						/>
+						<textarea
+							id="insight-message"
+							class="textarea-bordered textarea text-sm"
+							bind:value={formMessageTemplate}
+							rows="2"
+							placeholder="Use &#123;&#123;variable&#125;&#125; for placeholders"
+							required
+						></textarea>
+						{#if selectedTriggerMeta && selectedTriggerMeta.templateVars.length > 0}
+							<div class="mt-2 flex flex-wrap items-center gap-1">
+								<span class="text-xs text-base-content/50">Click to insert:</span>
+								{#each selectedTriggerMeta.templateVars as templateVar}
+									<button
+										type="button"
+										class="badge cursor-pointer bg-base-300 badge-sm font-mono transition-colors hover:bg-primary hover:text-primary-content"
+										onclick={() => {
+											formMessageTemplate += `{{${templateVar}}}`;
+										}}
+									>
+										{templateVar}
+									</button>
+								{/each}
+							</div>
+						{/if}
+						<!-- Preview -->
+						{#if formMessageTemplate}
+							<div class="mt-2 rounded-lg border border-base-300 bg-base-200/50 p-2">
+								<div class="mb-1 text-xs text-base-content/50">Preview:</div>
+								<div class="flex flex-wrap items-center gap-1 text-sm">
+									{#each parseMessageParts(formMessageTemplate) as part}
+										{#if part.type === 'var'}
+											<span
+												class="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-xs text-primary"
+												>{part.value}</span
+											>
+										{:else}
+											<span>{part.value}</span>
+										{/if}
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 
-				<!-- Contexts -->
-				<div class="form-control">
-					<label class="label">
-						<span class="label-text">Contexts</span>
-					</label>
+				<div class="divider my-2"></div>
+
+				<!-- Section: Action Button -->
+				<div class="space-y-3">
+					<h4 class="text-sm font-semibold text-base-content/70">Action button (optional)</h4>
+
+					<div class="grid grid-cols-2 gap-3">
+						<div class="form-control">
+							<label class="label py-1" for="insight-action-label">
+								<span class="label-text text-xs">Button label</span>
+							</label>
+							<input
+								id="insight-action-label"
+								type="text"
+								class="input-bordered input input-sm w-full"
+								bind:value={formActionLabel}
+								placeholder="e.g. View details"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label py-1" for="insight-action-href">
+								<span class="label-text text-xs">Button link</span>
+							</label>
+							<input
+								id="insight-action-href"
+								type="text"
+								class="input-bordered input input-sm w-full"
+								bind:value={formActionHref}
+								placeholder="e.g. /transactions"
+							/>
+						</div>
+					</div>
+				</div>
+
+				<div class="divider my-2"></div>
+
+				<!-- Section: Display Contexts -->
+				<div class="space-y-3">
+					<h4 class="text-sm font-semibold text-base-content/70">Display contexts</h4>
+
 					<div class="flex gap-4">
 						{#each ['chat', 'card', 'widget'] as ctx}
-							<label class="label cursor-pointer gap-2">
+							<label class="label cursor-pointer gap-2 py-0">
 								<input
 									type="checkbox"
 									class="checkbox checkbox-sm"
 									checked={formContexts.includes(ctx)}
 									onchange={() => toggleContext(ctx)}
 								/>
-								<span class="label-text">{ctx}</span>
+								<span class="text-sm capitalize">{ctx}</span>
 							</label>
 						{/each}
 					</div>
 				</div>
 
-				<!-- Active toggle -->
-				<div class="form-control">
-					<label class="label cursor-pointer justify-start gap-4">
-						<input type="checkbox" class="toggle toggle-success" bind:checked={formIsActive} />
-						<span class="label-text">Active</span>
-					</label>
-				</div>
-
 				<!-- Actions -->
-				<div class="modal-action">
-					<button type="button" class="btn" onclick={closeEditor}>Cancel</button>
-					<button type="submit" class="btn btn-primary" disabled={saving}>
+				<div class="modal-action pt-2">
+					<button type="button" class="btn btn-sm" onclick={closeEditor}>Cancel</button>
+					<button type="submit" class="btn btn-sm btn-primary" disabled={saving}>
 						{#if saving}
 							<span class="loading loading-sm loading-spinner"></span>
 						{/if}

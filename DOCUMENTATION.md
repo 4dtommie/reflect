@@ -36,7 +36,7 @@ Penny can query user financial data dynamically using OpenAI function calling. Q
 |----------|-------------|
 | `get_spending` | Spending totals by category/month/merchant |
 | `get_transactions` | List transactions with filters |
-| `get_stats` | Summary stats (top categories, comparisons) |
+| `get_stats` | Summary stats, comparisons, and **yearly trends** |
 | `search_transactions` | Free-text search |
 | `get_categories` | List available category names |
 
@@ -48,9 +48,29 @@ Penny can query user financial data dynamically using OpenAI function calling. Q
 5. Results sent back to OpenAI for natural language response
 6. Loop continues (max 3 rounds) until text response
 
+## Architecture Note
+> **Why Function Calling?**
+> We deliberately chose specific function calling (tools) over generic "Text-to-SQL". While Text-to-SQL offers more flexibility, it poses risks for accuracy and security in a fintech context.
+>
+> **Strategy:**
+> *   **Reliability:** Math/aggregation is handled by trusted code, not the LLM.
+> *   **Scalability:** We build generic data-fetching functions (like `get_stats(type='monthly_trend')`) rather than specific hardcoded queries.
+
+## Insight Display System
+Insights are now visually distinct in the chat with "Badges":
+
+| Category | Badge | Icon | Color |
+|----------|-------|------|-------|
+| `urgent` | Heads up! | ⚠️ | Red (Error) |
+| `action` | Action needed | ⚡ | Amber (Warning) |
+| `insight` | Insight | 💡 | Blue (Info) |
+| `celebration` | Nice! | 🎉 | Green (Success) |
+| `tip` | Tip | ✨ | Primary |
+
 ## Files
 - `src/lib/server/insights/chatFunctions.ts` - Function definitions & handlers
 - `src/routes/api/chat/+server.ts` - Function calling loop
+- `src/lib/components/ChatWidget.svelte` - UI rendering & badges
 
 ## Contextual CTAs
 - `[view_category:X]` → `/transactions?category=X`

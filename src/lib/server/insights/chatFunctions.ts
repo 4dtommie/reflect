@@ -67,10 +67,11 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
                 properties: {
                     stat_type: {
                         type: 'string',
-                        enum: ['top_categories', 'monthly_comparison', 'category_breakdown', 'merchant_breakdown'],
-                        description: 'Type of statistics to retrieve'
+                        enum: ['top_categories', 'monthly_comparison', 'category_breakdown', 'merchant_breakdown', 'monthly_trend'],
+                        description: 'Type of statistics to retrieve. Use "monthly_trend" for full year comparisons.'
                     },
                     month: { type: 'string', description: 'Month for stats (YYYY-MM or current/last)' },
+                    year: { type: 'integer', description: 'Year for yearly stats (e.g. 2024)' },
                     limit: { type: 'integer', description: 'How many items to return (default 5)' }
                 },
                 required: ['stat_type']
@@ -318,9 +319,10 @@ async function executeGetStats(
     userId: number,
     args: Record<string, unknown>
 ): Promise<unknown> {
-    const { stat_type, month, limit } = args as {
+    const { stat_type, month, year, limit } = args as {
         stat_type: string;
         month?: string;
+        year?: number;
         limit?: number;
     };
 
@@ -434,6 +436,50 @@ async function executeGetStats(
                     }))
                 };
             }
+        }
+
+        case 'monthly_trend': {
+            const targetYear = year || new Date().getFullYear();
+            const startOfYear = new Date(targetYear, 0, 1);
+            const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59);
+
+            const transactions = await db.transactions.findMany({
+                where: {
+                    user_id: userId,
+                    is_debit: true,
+                    date: { gte: startOfYear, lte: endOfYear }
+                },
+                select: { date: true, amount: true }
+            });
+
+            const monthlyTotals = new Array(12).fill(0);
+            transactions.forEach(t => {
+                monthlyTotals[t.date.getMonth()] += Number(t.amount);
+            });
+
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentMonth = new Date().getMonth();
+            const isCurrentYear = targetYear === new Date().getFullYear();
+
+            // Create trend data
+            const trend = months.map((name, i) => {
+                // Skip future months if it's the current year
+                if (isCurrentYear && i > currentMonth) return null;
+
+                return {
+                    month: name,
+                    total: Math.round(monthlyTotals[i]) || 0
+                };
+            }).filter(Boolean);
+
+            const totalYearly = monthlyTotals.reduce((a, b) => a + b, 0);
+
+            return {
+                year: targetYear,
+                total_spending: Math.round(totalYearly * 100) / 100,
+                monthly_trend: trend,
+                average_per_month: Math.round((totalYearly / (isCurrentYear ? currentMonth + 1 : 12)) * 100) / 100
+            };
         }
 
         default:

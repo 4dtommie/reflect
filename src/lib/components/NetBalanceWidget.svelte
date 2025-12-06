@@ -2,6 +2,7 @@
 	import DashboardWidget from './DashboardWidget.svelte';
 	import { formatNumber } from '$lib/utils/locale';
 	import { ArrowRight } from 'lucide-svelte';
+	import chartColors from '$lib/config/chartColors';
 
 	let {
 		monthlyIncome = 0,
@@ -68,8 +69,8 @@
 				<span class="w-16 text-right text-xs opacity-50">Income</span>
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
 					<div
-						class="absolute inset-y-0 left-0 flex items-center justify-end rounded bg-success/70 px-2 transition-all duration-500"
-						style="width: {incomeBarWidth}%"
+						class="absolute inset-y-0 left-0 flex items-center justify-end rounded px-2 transition-all duration-500"
+						style="width: {incomeBarWidth}%; background-color: {chartColors.bg.income};"
 					>
 						<span class="text-xs font-medium text-success-content">
 							€ {formatNumber(Math.round(monthlyIncome))}
@@ -86,7 +87,8 @@
 					{#if recurringBarWidth > 0}
 						<div
 							class="absolute inset-y-0 left-0 flex items-center justify-end rounded-l px-2 transition-all duration-500"
-							style="width: {Math.min(recurringBarWidth, 100)}%; background-color: rgba(139, 92, 246, 0.8);"
+							style="width: {Math.min(recurringBarWidth, 100)}%; background-color: {chartColors.bg
+								.recurring};"
 						>
 							{#if recurringBarWidth > 15 && expenseBarWidth > 30}
 								<span class="text-xs font-medium text-white">
@@ -99,7 +101,10 @@
 					{#if variableBarWidth > 0}
 						<div
 							class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
-							style="left: {Math.min(recurringBarWidth, 100)}%; width: {Math.min(variableBarWidth, 100 - Math.min(recurringBarWidth, 100))}%; background-color: rgba(196, 181, 253, 0.7);"
+							style="left: {Math.min(recurringBarWidth, 100)}%; width: {Math.min(
+								variableBarWidth,
+								100 - Math.min(recurringBarWidth, 100)
+							)}%; background-color: {chartColors.bg.variable};"
 						>
 							{#if variableBarWidth > 15 && expenseBarWidth > 30 && recurringBarWidth <= 15}
 								<span class="text-xs font-medium text-purple-900">
@@ -110,12 +115,12 @@
 					{/if}
 					<!-- Total label if bars are too small -->
 					{#if expenseBarWidth <= 20}
-						<span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium">
+						<span class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-medium">
 							€ {formatNumber(Math.round(monthlyExpenses))}
 						</span>
 					{:else if expenseBarWidth > 20 && recurringBarWidth > 20 && variableBarWidth > 20}
 						<span
-							class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-error-content"
+							class="absolute top-1/2 right-2 -translate-y-1/2 text-xs font-medium text-error-content"
 						>
 							€ {formatNumber(Math.round(monthlyExpenses))}
 						</span>
@@ -130,7 +135,10 @@
 					<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
 						<div
 							class="absolute inset-y-0 flex items-center justify-end rounded px-2 transition-all duration-500"
-							style="left: {Math.min(expenseBarWidth, 100)}%; width: {Math.min(savingsBarWidth, 100 - Math.min(expenseBarWidth, 100))}%; background-color: rgba(234, 179, 8, 0.8);"
+							style="left: {Math.min(expenseBarWidth, 100)}%; width: {Math.min(
+								savingsBarWidth,
+								100 - Math.min(expenseBarWidth, 100)
+							)}%; background-color: {chartColors.bg.savings};"
 						>
 							{#if savingsBarWidth > 20}
 								<span class="text-xs font-medium text-yellow-900">
@@ -140,7 +148,7 @@
 						</div>
 						{#if savingsBarWidth <= 20 && monthlySavings > 0}
 							<span
-								class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-medium"
+								class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-medium"
 								style="left: {Math.min(expenseBarWidth + 2, 98)}%;"
 							>
 								€ {formatNumber(Math.round(monthlySavings))}
@@ -156,7 +164,10 @@
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
 					<div
 						class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
-						style="left: {Math.min(expenseBarWidth + savingsBarWidth, 100)}%; width: {Math.min(freeBarWidth, 100 - Math.min(expenseBarWidth + savingsBarWidth, 100))}%; background-color: rgba(14, 165, 233, 0.8);"
+						style="left: {Math.min(expenseBarWidth + savingsBarWidth, 100)}%; width: {Math.min(
+							freeBarWidth,
+							100 - Math.min(expenseBarWidth + savingsBarWidth, 100)
+						)}%; background-color: {chartColors.bg.remaining};"
 					>
 						{#if freeBarWidth > 20}
 							<span class="text-xs font-medium text-white">
@@ -165,7 +176,7 @@
 						{/if}
 					</div>
 					{#if freeBarWidth <= 20 && freeToSpend > 0}
-						<span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium">
+						<span class="absolute top-1/2 right-2 -translate-y-1/2 text-xs font-medium">
 							€ {formatNumber(Math.round(freeToSpend))}
 						</span>
 					{/if}
@@ -176,7 +187,7 @@
 		<!-- Yearly projection or action button -->
 		{#if showAction}
 			<div class="border-t border-base-200 pt-3">
-				<a href={actionHref} class="btn btn-sm btn-ghost w-full justify-between group">
+				<a href={actionHref} class="group btn w-full justify-between btn-ghost btn-sm">
 					<span>{actionLabel}</span>
 					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
 				</a>

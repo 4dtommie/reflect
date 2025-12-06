@@ -2608,3 +2608,87 @@
 [2025-12-06T10:11:26.141Z] lastInsightMsg: undefined
 [2025-12-06T10:11:26.142Z] 🔍 DEBUG: lastInsightMsg ID: undefined
 [2025-12-06T10:11:26.142Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:27:57.159Z] Load function started
+[2025-12-06T10:27:57.260Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:27:57.278Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:27:57.286Z] Conversation found: true, messages: 5
+[2025-12-06T10:27:57.286Z] lastInsightMsg: top_category
+[2025-12-06T10:27:57.287Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:27:57.287Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:32:19.066Z] Load function started
+[2025-12-06T10:32:19.193Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:32:19.283Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:32:19.357Z] Conversation found: true, messages: 5
+[2025-12-06T10:32:19.358Z] lastInsightMsg: undefined
+[2025-12-06T10:32:19.358Z] 🔍 DEBUG: lastInsightMsg ID: undefined
+[2025-12-06T10:32:19.358Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:39:23.465Z] Load function started
+[2025-12-06T10:39:23.562Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:39:23.646Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:39:23.723Z] Conversation found: true, messages: 5
+[2025-12-06T10:39:23.723Z] lastInsightMsg: top_category
+[2025-12-06T10:39:23.724Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:39:23.724Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:41:30.973Z] Load function started
+[2025-12-06T10:41:31.090Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:41:31.177Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:41:31.249Z] Conversation found: true, messages: 5
+[2025-12-06T10:41:31.250Z] lastInsightMsg: top_category
+[2025-12-06T10:41:31.250Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:41:31.250Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:43:06.849Z] Load function started
+[2025-12-06T10:43:06.948Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:43:06.971Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:43:06.978Z] Conversation found: true, messages: 5
+[2025-12-06T10:43:06.978Z] lastInsightMsg: top_category
+[2025-12-06T10:43:06.978Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:43:06.978Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:46:12.629Z] Load function started
+[2025-12-06T10:46:12.805Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:46:12.876Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:46:12.886Z] Conversation found: true, messages: 5
+[2025-12-06T10:46:12.886Z] lastInsightMsg: top_category
+[2025-12-06T10:46:12.887Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:46:12.887Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:50:08.827Z] Load function started
+[2025-12-06T10:50:08.929Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:50:08.940Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:50:08.945Z] Conversation found: true, messages: 5
+[2025-12-06T10:50:08.946Z] lastInsightMsg: top_category
+[2025-12-06T10:50:08.946Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:50:08.946Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:52:32.876Z] Load function started
+[2025-12-06T10:52:33.166Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:52:33.173Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:52:33.181Z] Conversation found: true, messages: 5
+[2025-12-06T10:52:33.181Z] lastInsightMsg: top_category
+[2025-12-06T10:52:33.181Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:52:33.181Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:52:34.873Z] Load function started
+[2025-12-06T10:52:34.910Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:52:34.927Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:52:34.936Z] Conversation found: true, messages: 5
+[2025-12-06T10:52:34.936Z] lastInsightMsg: top_category
+[2025-12-06T10:52:34.937Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:52:34.937Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:57:38.019Z] Load function started
+[2025-12-06T10:57:38.122Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:57:38.209Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:57:38.277Z] Conversation found: true, messages: 5
+[2025-12-06T10:57:38.278Z] lastInsightMsg: top_category
+[2025-12-06T10:57:38.278Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:57:38.278Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T10:59:31.535Z] Load function started
+[2025-12-06T10:59:31.638Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T10:59:31.712Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T10:59:31.721Z] Conversation found: true, messages: 5
+[2025-12-06T10:59:31.721Z] lastInsightMsg: top_category
+[2025-12-06T10:59:31.721Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T10:59:31.721Z] 🔍 DEBUG: currentInsight ID: top_category
+[2025-12-06T11:04:49.294Z] Load function started
+[2025-12-06T11:04:49.627Z] Promise.all completed - chatInsight: top_category
+[2025-12-06T11:04:49.638Z] Entering transition logic - currentInsight: top_category
+[2025-12-06T11:04:49.645Z] Conversation found: true, messages: 5
+[2025-12-06T11:04:49.645Z] lastInsightMsg: top_category
+[2025-12-06T11:04:49.645Z] 🔍 DEBUG: lastInsightMsg ID: top_category
+[2025-12-06T11:04:49.645Z] 🔍 DEBUG: currentInsight ID: top_category

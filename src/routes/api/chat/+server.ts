@@ -207,6 +207,20 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                 return json({ error: 'Conversation not found' }, { status: 404 });
             }
 
+            // Lookup insight categories for messages with insight_id
+            const insightIds = conversation.messages
+                .map(m => m.insight_id)
+                .filter((id): id is string => !!id);
+
+            const insightDefs = insightIds.length > 0
+                ? await db.insightDefinition.findMany({
+                    where: { id: { in: insightIds } },
+                    select: { id: true, category: true }
+                })
+                : [];
+
+            const categoryMap = new Map(insightDefs.map(d => [d.id, d.category]));
+
             return json({
                 conversationId: conversation.id,
                 messages: conversation.messages.reverse().map(m => ({
@@ -215,6 +229,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                     content: m.content,
                     actionButtons: m.action_buttons,
                     insightId: m.insight_id,
+                    insightCategory: m.insight_id ? categoryMap.get(m.insight_id) : null,
                     createdAt: m.created_at
                 })),
                 hasMore: conversation.messages.length === limit
@@ -233,6 +248,20 @@ export const GET: RequestHandler = async ({ url, locals }) => {
             });
 
             if (latestConversation) {
+                // Lookup insight categories for messages with insight_id
+                const insightIds = latestConversation.messages
+                    .map(m => m.insight_id)
+                    .filter((id): id is string => !!id);
+
+                const insightDefs = insightIds.length > 0
+                    ? await db.insightDefinition.findMany({
+                        where: { id: { in: insightIds } },
+                        select: { id: true, category: true }
+                    })
+                    : [];
+
+                const categoryMap = new Map(insightDefs.map(d => [d.id, d.category]));
+
                 return json({
                     conversationId: latestConversation.id,
                     messages: latestConversation.messages.reverse().map(m => ({
@@ -241,6 +270,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                         content: m.content,
                         actionButtons: m.action_buttons,
                         insightId: m.insight_id,
+                        insightCategory: m.insight_id ? categoryMap.get(m.insight_id) : null,
                         createdAt: m.created_at
                     })),
                     hasMore: latestConversation.messages.length === limit
@@ -253,16 +283,25 @@ export const GET: RequestHandler = async ({ url, locals }) => {
             const hour = now.getHours();
             const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-            const starterMessages = [
-                {
-                    id: -1,
-                    role: 'assistant',
-                    content: `${timeGreeting}! I'm Penny, your financial buddy.`,
-                    actionButtons: null,
-                    insightId: null,
-                    createdAt: now
-                }
-            ];
+            const starterMessages: Array<{
+                id: number;
+                role: string;
+                content: string;
+                actionButtons: Array<{ label: string; href: string }> | null;
+                insightId: string | null;
+                insightCategory: string | null;
+                createdAt: Date;
+            }> = [
+                    {
+                        id: -1,
+                        role: 'assistant',
+                        content: `${timeGreeting}! I'm Penny, your financial buddy.`,
+                        actionButtons: null,
+                        insightId: null,
+                        insightCategory: null,
+                        createdAt: now
+                    }
+                ];
 
             if (topInsight) {
                 starterMessages.push({
@@ -273,6 +312,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                         ? [{ label: topInsight.actionLabel, href: topInsight.actionHref }]
                         : null,
                     insightId: topInsight.id,
+                    insightCategory: topInsight.category,
                     createdAt: now
                 });
             }

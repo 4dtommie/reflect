@@ -1,13 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import DashboardWidget from './DashboardWidget.svelte';
-	import { ArrowRight, Send, ChevronDown, Loader2 } from 'lucide-svelte';
+	import {
+		ArrowRight,
+		Send,
+		ChevronDown,
+		Loader2,
+		AlertTriangle,
+		Zap,
+		Lightbulb,
+		PartyPopper,
+		Sparkles
+	} from 'lucide-svelte';
 
 	interface Message {
 		id: number;
 		role: 'user' | 'assistant';
 		content: string;
 		actionButtons?: Array<{ label: string; href: string }> | null;
+		insightCategory?: 'urgent' | 'action' | 'insight' | 'celebration' | 'tip' | null;
 		createdAt: Date;
 	}
 
@@ -54,6 +65,15 @@
 		tip: 'border-l-primary'
 	};
 
+	// Badge configuration for insight types
+	const insightBadges = {
+		urgent: { label: 'Heads up!', color: 'badge-error', icon: AlertTriangle },
+		action: { label: 'Action needed', color: 'badge-warning', icon: Zap },
+		insight: { label: 'Insight', color: 'badge-info', icon: Lightbulb },
+		celebration: { label: 'Nice!', color: 'badge-success', icon: PartyPopper },
+		tip: { label: 'Tip', color: 'badge-primary', icon: Sparkles }
+	};
+
 	// Load conversation on mount
 	onMount(() => {
 		loadConversation();
@@ -89,6 +109,7 @@
 								insight.actionLabel && insight.actionHref
 									? [{ label: insight.actionLabel, href: insight.actionHref }]
 									: null,
+							insightCategory: insight.category,
 							createdAt: new Date()
 						}
 					];
@@ -289,8 +310,17 @@
 								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny</p>
 							{/if}
 							<div
-								class="rounded-xl rounded-tl-none border-l-4 border-l-primary bg-base-200 px-3 py-2"
+								class="rounded-xl rounded-tl-none border-l-4 {msg.insightCategory
+									? categoryStyles[msg.insightCategory]
+									: 'border-l-primary'} bg-base-200 px-3 py-2"
 							>
+								{#if msg.insightCategory && insightBadges[msg.insightCategory]}
+									{@const badge = insightBadges[msg.insightCategory]}
+									<span class="mb-1.5 badge gap-1 text-xs {badge.color}">
+										<svelte:component this={badge.icon} class="h-3 w-3" />
+										{badge.label}
+									</span>
+								{/if}
 								<p class="text-sm">{msg.content}</p>
 
 								{#if msg.actionButtons && msg.actionButtons.length > 0}

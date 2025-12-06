@@ -24,6 +24,7 @@
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import ManualCategorizeModal from '$lib/components/ManualCategorizeModal.svelte';
+	import chartColors from '$lib/config/chartColors';
 
 	// Register Chart.js components
 	Chart.register(
@@ -436,8 +437,8 @@
 							{
 								label: 'Income',
 								data: chartDataValue.income,
-								backgroundColor: 'rgba(16, 185, 129, 0.8)',
-								borderColor: '#10B981',
+								backgroundColor: chartColors.bg.income,
+								borderColor: chartColors.border.income,
 								borderWidth: 1,
 								borderRadius: 4,
 								maxBarThickness: 40,
@@ -449,8 +450,8 @@
 							{
 								label: 'Expenses',
 								data: chartDataValue.spending,
-								backgroundColor: 'rgba(244, 63, 94, 0.8)',
-								borderColor: '#F43F5E',
+								backgroundColor: chartColors.bg.expenses,
+								borderColor: chartColors.border.expenses,
 								borderWidth: 1,
 								borderRadius: 4,
 								maxBarThickness: 40,
@@ -462,8 +463,8 @@
 							{
 								label: 'Savings',
 								data: chartDataValue.savings,
-								backgroundColor: 'rgba(250, 204, 21, 0.8)', // Yellow-400
-								borderColor: '#FACC15',
+								backgroundColor: chartColors.bg.savings,
+								borderColor: chartColors.border.savings,
 								borderWidth: 1,
 								borderRadius: 4,
 								maxBarThickness: 40,
@@ -667,7 +668,7 @@
 		<!-- Left Column: Stats Widgets -->
 		<div class="flex flex-col gap-8">
 			<!-- Title Widget -->
-			<PageTitleWidget title="Transactions" />
+			<PageTitleWidget title="Transactions" compact={true} />
 			<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
 			{#if data.stats}
 				<TransactionStatsWidget
