@@ -7,7 +7,8 @@ export const load: PageServerLoad = async ({ locals }) => {
         orderBy: [
             { priority: 'desc' },
             { category: 'asc' }
-        ]
+        ],
+
     });
 
     const triggers = getTriggerMetadata();

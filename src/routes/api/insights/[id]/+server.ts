@@ -19,7 +19,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
         }
 
         const body = await request.json();
-        const { category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, is_active } = body;
+        const { category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
 
         const insight = await db.insightDefinition.update({
             where: { id },
@@ -33,6 +33,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
                 ...(action_label !== undefined && { action_label }),
                 ...(action_href !== undefined && { action_href }),
                 ...(contexts !== undefined && { contexts }),
+                ...(cooldown_hours !== undefined && { cooldown_hours }),
+                ...(body.related_insight_id !== undefined && { related_insight_id: body.related_insight_id || null }),
                 ...(is_active !== undefined && { is_active })
             }
         });

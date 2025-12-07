@@ -21,8 +21,10 @@ model User {
   chat_conversations ChatConversation[]
   
   // Activity tracking for smart greetings
-  last_active_at  DateTime          @default(now())
-  daily_visit_count Int             @default(0)
+  last_active_at    DateTime   @default(now())
+  daily_visit_count Int        @default(0)
+  login_streak      Int        @default(0)   // Consecutive days logged in
+  streak_updated_at DateTime?                // Date streak was last updated
 
   @@map("users")
 }
@@ -198,7 +200,12 @@ model InsightDefinition {
   action_label     String?  // CTA button text
   action_href      String?  // CTA link
   contexts         String[] // where to show: ['chat', 'card', 'widget']
+  cooldown_hours   Int      @default(0) // Minimum hours to wait before showing again
+  related_insight_id String? // Optional link to another insight (e.g. action this celebration follows)
+  related_insight    InsightDefinition? @relation("RelatedInsights", fields: [related_insight_id], references: [id])
+  related_to         InsightDefinition[] @relation("RelatedInsights")
   is_active        Boolean  @default(true)
+  non_exclusive    Boolean  @default(false) // If true, can show alongside other insights
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 

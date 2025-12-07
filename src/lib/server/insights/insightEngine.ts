@@ -13,6 +13,7 @@ export interface EvaluatedInsight {
     icon?: string;
     actionLabel?: string;
     actionHref?: string;
+    nonExclusive?: boolean; // If true, can show alongside other insights
 }
 
 /**
@@ -43,10 +44,64 @@ export async function getActiveInsights(
         orderBy: { priority: 'desc' }
     });
 
+    // Fetch last seen timestamps for these insights
+    const lastSeenData = await db.chatMessage.groupBy({
+        by: ['insight_id'],
+        where: {
+            conversation: { user_id: userId },
+            insight_id: { in: definitions.map(d => d.id) }
+        },
+        _max: { created_at: true }
+    });
+
+    const lastSeenMap = new Map<string, Date>();
+    lastSeenData.forEach(item => {
+        if (item.insight_id && item._max.created_at) {
+            lastSeenMap.set(item.insight_id, item._max.created_at);
+        }
+    });
+
+    // Check global cooldown (5 minutes)
+    const lastInsightMessage = await db.chatMessage.findFirst({
+        where: {
+            conversation: { user_id: userId },
+            insight_id: { not: null }
+        },
+        orderBy: { created_at: 'desc' },
+        select: { created_at: true }
+    });
+
+    const now = new Date();
+    const GLOBAL_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+    let isGlobalCooldown = false;
+    if (lastInsightMessage) {
+        const timeSinceLast = now.getTime() - lastInsightMessage.created_at.getTime();
+        if (timeSinceLast < GLOBAL_COOLDOWN_MS) {
+            isGlobalCooldown = true;
+        }
+    }
+
     // Evaluate each definition
     const evaluated: EvaluatedInsight[] = [];
 
     for (const def of definitions) {
+        // Global cooldown check: allow urgent, action, and celebration insights to bypass
+        if (isGlobalCooldown && !['urgent', 'action', 'celebration'].includes(def.category)) {
+            continue;
+        }
+
+        // Check insight-specific cooldown
+        if (def.cooldown_hours > 0) {
+            const lastSeen = lastSeenMap.get(def.id);
+            if (lastSeen) {
+                const hoursSinceSeen = (now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60);
+                if (hoursSinceSeen < def.cooldown_hours) {
+                    continue; // Skip this insight
+                }
+            }
+        }
+
         const triggerParams = def.trigger_params as Record<string, unknown> | null;
         const result = evaluateTrigger(def.trigger, userData, triggerParams ?? undefined);
 
@@ -58,7 +113,8 @@ export async function getActiveInsights(
                 message: fillTemplate(def.message_template, result.data ?? {}),
                 icon: def.icon ?? undefined,
                 actionLabel: def.action_label ?? undefined,
-                actionHref: def.action_href ? fillTemplate(def.action_href, result.data ?? {}) : undefined
+                actionHref: def.action_href ? fillTemplate(def.action_href, result.data ?? {}) : undefined,
+                nonExclusive: def.non_exclusive
             });
         }
     }

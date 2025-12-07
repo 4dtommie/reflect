@@ -13,6 +13,7 @@
 		AlertCircle
 	} from 'lucide-svelte';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
+	import VariableInput from '$lib/components/VariableInput.svelte';
 
 	interface TriggerParam {
 		name: string;
@@ -32,19 +33,36 @@
 		id: string;
 		category: string;
 		priority: number;
-		trigger: string;
-		trigger_params: Record<string, unknown> | null;
-		message_template: string;
-		icon: string | null;
-		action_label: string | null;
-		action_href: string | null;
-		contexts: string[];
+		trigger: string; // trigger type ID
+		trigger_params: Record<string, unknown> | null; // parameters for trigger evaluation
+		message_template: string; // message with placeholders: "{{amount}} due in {{days}} days"
+		icon: string | null; // emoji or icon name
+		action_label: string | null; // CTA button text
+		action_href: string | null; // CTA link
+		contexts: string[]; // where to show: ['chat', 'card', 'widget']
+		cooldown_hours: number;
+		related_insight_id: string | null;
 		is_active: boolean;
+		// UI only
+		children?: InsightDefinition[];
 	}
 
 	let { data } = $props();
-	let insights = $state<InsightDefinition[]>(data.insights as unknown as InsightDefinition[]);
+	let rawInsights = $state<InsightDefinition[]>(data.insights as unknown as InsightDefinition[]);
 	let triggers = $state<TriggerMeta[]>(data.triggers);
+
+	// Derived hierarchical insights
+	const hierarchicalInsights = $derived.by(() => {
+		const roots = rawInsights.filter((i) => !i.related_insight_id);
+		const children = rawInsights.filter((i) => i.related_insight_id);
+
+		return roots
+			.map((root) => ({
+				...root,
+				children: children.filter((c) => c.related_insight_id === root.id)
+			}))
+			.sort((a, b) => b.priority - a.priority);
+	});
 
 	// Modal state
 	let showEditor = $state(false);
@@ -56,13 +74,16 @@
 	let formCategory = $state('insight');
 	let formPriority = $state(50);
 	let formTrigger = $state('always');
-	let formTriggerParams = $state('{}');
+	let formTriggerParams = $state<Record<string, unknown>>({});
 	let formMessageTemplate = $state('');
 	let formIcon = $state('');
 	let formActionLabel = $state('');
 	let formActionHref = $state('');
 	let formContexts = $state<string[]>(['chat', 'card']);
+	let formCooldown = $state(0);
+	let formRelatedInsightId = $state('');
 	let formIsActive = $state(true);
+	let variableInput = $state<VariableInput>();
 
 	// Test state
 	let testingId = $state<string | null>(null);
@@ -71,9 +92,6 @@
 		message: string;
 		triggerData: Record<string, unknown>;
 	} | null>(null);
-
-	// Trigger info expanded
-	let showTriggerInfo = $state(false);
 
 	// Saving/deleting state
 	let saving = $state(false);
@@ -128,12 +146,14 @@
 		formCategory = 'insight';
 		formPriority = 50;
 		formTrigger = 'always';
-		formTriggerParams = '{}';
+		formTriggerParams = {};
 		formMessageTemplate = '';
 		formIcon = '';
 		formActionLabel = '';
 		formActionHref = '';
 		formContexts = ['chat', 'card'];
+		formCooldown = 0;
+		formRelatedInsightId = '';
 		formIsActive = true;
 		showEditor = true;
 	}
@@ -145,12 +165,14 @@
 		formCategory = insight.category;
 		formPriority = insight.priority;
 		formTrigger = insight.trigger;
-		formTriggerParams = JSON.stringify(insight.trigger_params ?? {}, null, 2);
+		formTriggerParams = insight.trigger_params ? { ...insight.trigger_params } : {};
 		formMessageTemplate = insight.message_template;
 		formIcon = insight.icon ?? '';
 		formActionLabel = insight.action_label ?? '';
 		formActionHref = insight.action_href ?? '';
 		formContexts = [...insight.contexts];
+		formCooldown = insight.cooldown_hours ?? 0;
+		formRelatedInsightId = insight.related_insight_id ?? '';
 		formIsActive = insight.is_active;
 		showEditor = true;
 	}
@@ -166,27 +188,19 @@
 		saving = true;
 
 		try {
-			let triggerParams: Record<string, unknown> | null = null;
-			try {
-				const parsed = JSON.parse(formTriggerParams);
-				triggerParams = Object.keys(parsed).length > 0 ? parsed : null;
-			} catch {
-				error = 'Invalid JSON in trigger params';
-				saving = false;
-				return;
-			}
-
 			const payload = {
 				id: formId,
 				category: formCategory,
 				priority: formPriority,
 				trigger: formTrigger,
-				trigger_params: triggerParams,
+				trigger_params: Object.keys(formTriggerParams).length > 0 ? formTriggerParams : null,
 				message_template: formMessageTemplate,
 				icon: formIcon || null,
 				action_label: formActionLabel || null,
 				action_href: formActionHref || null,
 				contexts: formContexts,
+				cooldown_hours: formCooldown,
+				related_insight_id: formRelatedInsightId || null,
 				is_active: formIsActive
 			};
 
@@ -205,7 +219,7 @@
 			}
 
 			await invalidateAll();
-			insights = (await (await fetch('/api/insights')).json()).insights;
+			rawInsights = (await (await fetch('/api/insights')).json()).insights;
 			closeEditor();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Unknown error';
@@ -224,7 +238,7 @@
 				const data = await response.json();
 				throw new Error(data.error || 'Failed to delete');
 			}
-			insights = insights.filter((i) => i.id !== id);
+			rawInsights = rawInsights.filter((i) => i.id !== id);
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'Delete failed');
 		} finally {
@@ -241,7 +255,7 @@
 			});
 			if (!response.ok) throw new Error('Failed to toggle');
 			insight.is_active = !insight.is_active;
-			insights = [...insights];
+			rawInsights = [...rawInsights];
 		} catch (err) {
 			alert('Failed to toggle active state');
 		}
@@ -299,9 +313,10 @@
 	<div class="grid gap-6 lg:grid-cols-3">
 		<!-- Insights List (2/3) -->
 		<div class="lg:col-span-2">
-			<DashboardWidget title="All insights ({insights.length})" enableHover={false}>
+			<DashboardWidget title="All insights ({rawInsights.length})" enableHover={false}>
 				<div class="space-y-3">
-					{#each insights as insight}
+					{#each hierarchicalInsights as insight}
+						<!-- Parent Insight -->
 						<div
 							class="group flex items-start gap-3 rounded-xl border border-base-300 p-3 {insight.is_active
 								? 'bg-base-100'
@@ -383,6 +398,78 @@
 								/>
 							</div>
 						</div>
+
+						<!-- Children Insights (Indented) -->
+						{#if insight.children?.length}
+							{#each insight.children as child}
+								<div class="relative ml-8 flex items-start gap-2">
+									<!-- Connecting line -->
+									<div
+										class="absolute top-4 -left-5 h-8 w-4 rounded-bl-lg border-b border-l border-base-300"
+									></div>
+
+									<div
+										class="group flex flex-1 items-start gap-3 rounded-xl border border-base-300 p-2 text-sm {child.is_active
+											? 'bg-base-100'
+											: 'bg-base-200/50 opacity-60'}"
+									>
+										<!-- Left: Category -->
+										<div class="flex min-w-16 flex-col items-center gap-1 pr-1">
+											<span class="badge badge-xs {getCategoryBadgeClass(child.category)}">
+												{child.category}
+											</span>
+										</div>
+
+										<!-- Center: Message content -->
+										<div class="min-w-0 flex-1">
+											<div class="flex flex-wrap items-center gap-1">
+												{#each parseMessageParts(child.message_template) as part}
+													{#if part.type === 'var'}
+														<span
+															class="rounded bg-base-300 px-1 py-0.5 font-mono text-[10px] text-base-content/80"
+															>{part.value}</span
+														>
+													{:else}
+														<span>{part.value}</span>
+													{/if}
+												{/each}
+											</div>
+											<div class="mt-0.5 flex items-center gap-2 text-[10px] text-base-content/50">
+												<span class="font-mono">{child.id}</span>
+												<span>•</span>
+												<span class="font-mono">{child.trigger}</span>
+											</div>
+										</div>
+
+										<!-- Right: Actions -->
+										<div class="flex items-center gap-1">
+											<div
+												class="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+											>
+												<button
+													class="btn btn-square btn-ghost btn-xs"
+													onclick={() => openEditModal(child)}
+												>
+													<Pencil size={12} />
+												</button>
+												<button
+													class="btn btn-square text-error btn-ghost btn-xs"
+													onclick={() => handleDelete(child.id)}
+												>
+													<Trash2 size={12} />
+												</button>
+											</div>
+											<input
+												type="checkbox"
+												class="toggle toggle-success toggle-xs"
+												checked={child.is_active}
+												onchange={() => handleToggleActive(child)}
+											/>
+										</div>
+									</div>
+								</div>
+							{/each}
+						{/if}
 					{/each}
 				</div>
 			</DashboardWidget>
@@ -527,16 +614,56 @@
 							</select>
 						</div>
 						<div class="form-control">
-							<label class="label py-1" for="insight-params">
-								<span class="label-text text-xs">Parameters (JSON)</span>
-							</label>
-							<input
-								id="insight-params"
-								type="text"
-								class="input-bordered input input-sm w-full font-mono text-xs"
-								bind:value={formTriggerParams}
-								placeholder="JSON"
-							/>
+							{#if selectedTriggerMeta && selectedTriggerMeta.params.length > 0}
+								<label class="label py-1">
+									<span class="label-text text-xs">Parameters</span>
+								</label>
+								<div class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-2">
+									{#each selectedTriggerMeta.params as param}
+										<div class="form-control">
+											<label class="label py-1" for="param-{param.name}">
+												<span class="label-text text-xs">{param.name}</span>
+												{#if param.description}
+													<span class="label-text-alt text-xs text-base-content/50"
+														>{param.description}</span
+													>
+												{/if}
+											</label>
+											{#if param.type === 'number'}
+												<input
+													id="param-{param.name}"
+													type="number"
+													class="input-bordered input input-sm w-full"
+													bind:value={formTriggerParams[param.name]}
+													placeholder={String(param.default ?? '')}
+												/>
+											{:else if param.type === 'boolean'}
+												<input
+													id="param-{param.name}"
+													type="checkbox"
+													class="toggle toggle-primary toggle-sm"
+													bind:checked={formTriggerParams[param.name]}
+												/>
+											{:else}
+												<input
+													id="param-{param.name}"
+													type="text"
+													class="input-bordered input input-sm w-full"
+													bind:value={formTriggerParams[param.name]}
+													placeholder={String(param.default ?? '')}
+												/>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<label class="label py-1">
+									<span class="label-text text-xs">Parameters</span>
+								</label>
+								<div class="px-1 text-xs text-base-content/50 italic">
+									No parameters required for this trigger.
+								</div>
+							{/if}
 						</div>
 					</div>
 					{#if selectedTriggerMeta}
@@ -563,14 +690,14 @@
 						<label class="label py-1" for="insight-message">
 							<span class="label-text text-xs">Message template</span>
 						</label>
-						<textarea
-							id="insight-message"
-							class="textarea-bordered textarea text-sm"
-							bind:value={formMessageTemplate}
-							rows="2"
-							placeholder="Use &#123;&#123;variable&#125;&#125; for placeholders"
-							required
-						></textarea>
+						<div class="mb-1">
+							<VariableInput
+								bind:this={variableInput}
+								bind:value={formMessageTemplate}
+								placeholder="Use &#123;&#123;variable&#125;&#125; for placeholders"
+								availableVariables={selectedTriggerMeta?.templateVars ?? []}
+							/>
+						</div>
 						{#if selectedTriggerMeta && selectedTriggerMeta.templateVars.length > 0}
 							<div class="mt-2 flex flex-wrap items-center gap-1">
 								<span class="text-xs text-base-content/50">Click to insert:</span>
@@ -579,30 +706,12 @@
 										type="button"
 										class="badge cursor-pointer bg-base-300 badge-sm font-mono transition-colors hover:bg-primary hover:text-primary-content"
 										onclick={() => {
-											formMessageTemplate += `{{${templateVar}}}`;
+											variableInput?.insertVariable(templateVar);
 										}}
 									>
 										{templateVar}
 									</button>
 								{/each}
-							</div>
-						{/if}
-						<!-- Preview -->
-						{#if formMessageTemplate}
-							<div class="mt-2 rounded-lg border border-base-300 bg-base-200/50 p-2">
-								<div class="mb-1 text-xs text-base-content/50">Preview:</div>
-								<div class="flex flex-wrap items-center gap-1 text-sm">
-									{#each parseMessageParts(formMessageTemplate) as part}
-										{#if part.type === 'var'}
-											<span
-												class="rounded bg-primary/20 px-1.5 py-0.5 font-mono text-xs text-primary"
-												>{part.value}</span
-											>
-										{:else}
-											<span>{part.value}</span>
-										{/if}
-									{/each}
-								</div>
 							</div>
 						{/if}
 					</div>
@@ -646,20 +755,60 @@
 
 				<!-- Section: Display Contexts -->
 				<div class="space-y-3">
-					<h4 class="text-sm font-semibold text-base-content/70">Display contexts</h4>
+					<h4 class="text-sm font-semibold text-base-content/70">Display settings</h4>
 
-					<div class="flex gap-4">
-						{#each ['chat', 'card', 'widget'] as ctx}
-							<label class="label cursor-pointer gap-2 py-0">
-								<input
-									type="checkbox"
-									class="checkbox checkbox-sm"
-									checked={formContexts.includes(ctx)}
-									onchange={() => toggleContext(ctx)}
-								/>
-								<span class="text-sm capitalize">{ctx}</span>
+					<div class="grid grid-cols-2 gap-4">
+						<div class="form-control">
+							<label class="label py-1" for="insight-cooldown">
+								<span class="label-text text-xs">Cooldown (hours)</span>
+								<span class="label-text-alt text-xs text-base-content/50">0 = always show</span>
 							</label>
-						{/each}
+							<input
+								id="insight-cooldown"
+								type="number"
+								class="input-bordered input input-sm w-full"
+								bind:value={formCooldown}
+								min="0"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label py-1" for="insight-related">
+								<span class="label-text text-xs">Related to (Parent)</span>
+								<span class="label-text-alt text-xs text-base-content/50">Optional link</span>
+							</label>
+							<select
+								id="insight-related"
+								class="select-bordered select w-full select-sm"
+								bind:value={formRelatedInsightId}
+							>
+								<option value="">None</option>
+								{#each rawInsights as insight}
+									{#if insight.id !== formId}
+										<!-- Prevent self-referencing -->
+										<option value={insight.id}>{insight.id} ({insight.category})</option>
+									{/if}
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-control">
+						<label class="label py-1">
+							<span class="label-text text-xs">Show in</span>
+						</label>
+						<div class="flex flex-wrap gap-4">
+							{#each ['chat', 'card', 'widget'] as ctx}
+								<label class="label cursor-pointer justify-start gap-2">
+									<input
+										type="checkbox"
+										class="checkbox checkbox-sm"
+										checked={formContexts.includes(ctx)}
+										onchange={() => toggleContext(ctx)}
+									/>
+									<span class="text-sm capitalize">{ctx}</span>
+								</label>
+							{/each}
+						</div>
 					</div>
 				</div>
 

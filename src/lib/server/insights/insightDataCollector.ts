@@ -57,6 +57,11 @@ export interface InsightData {
         name: string;
         count: number;
     }>;
+
+    // User activity tracking
+    loginStreak: number;
+    daysSinceLastActive: number;
+    currentMonth: number; // 1-12
 }
 
 /**
@@ -87,7 +92,8 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
         samePeriodCurrentTransactions,
         samePeriodLastTransactions,
         twoMonthsAgoTransactions,
-        categorySpending
+        categorySpending,
+        userActivity
     ] = await Promise.all([
         // Total transactions
         db.transactions.count({ where: { user_id: userId } }),
@@ -202,6 +208,15 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
             _sum: { amount: true },
             orderBy: { _sum: { amount: 'desc' } },
             take: 1
+        }),
+
+        // User activity data
+        db.user.findUnique({
+            where: { id: userId },
+            select: {
+                login_streak: true,
+                last_active_at: true
+            }
         })
     ]);
 
@@ -333,6 +348,12 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
         topUncategorizedMerchants: topUncategorizedMerchants.map((m) => ({
             name: m.merchantName,
             count: m._count._all
-        }))
+        })),
+        // User activity
+        loginStreak: userActivity?.login_streak ?? 0,
+        daysSinceLastActive: userActivity?.last_active_at
+            ? Math.floor((now.getTime() - new Date(userActivity.last_active_at).getTime()) / (1000 * 60 * 60 * 24))
+            : 0,
+        currentMonth: now.getMonth() + 1 // 1-12
     };
 }

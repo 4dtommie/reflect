@@ -109,6 +109,31 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
     }),
 
     /**
+     * Good categorization progress - between 50% and 96% categorized
+     * Celebrates progress without requiring perfection
+     */
+    categorization_good_progress: (data, params) => {
+        const minCategorized = (params?.min_percent as number) ?? 50;
+        const maxCategorized = (params?.max_percent as number) ?? 96;
+
+        const categorizedPercent = 100 - data.uncategorizedPercentage;
+        const triggered = data.totalTransactions > 0 &&
+            categorizedPercent > minCategorized &&
+            categorizedPercent < maxCategorized;
+
+        if (!triggered) return { triggered: false };
+
+        return {
+            triggered: true,
+            data: {
+                percent: Math.round(categorizedPercent),
+                remaining: data.uncategorizedCount,
+                total: data.totalTransactions
+            }
+        };
+    },
+
+    /**
      * Fresh import - all transactions are uncategorized (100%)
      * This indicates a new import where no categorization has been done yet
      */
@@ -277,6 +302,65 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
     },
 
     /**
+     * User login streak - triggers when streak >= min_days
+     */
+    user_streak: (data, params) => {
+        const minDays = (params?.min_days as number) ?? 5;
+        const triggered = data.loginStreak >= minDays;
+
+        return {
+            triggered,
+            data: {
+                days: data.loginStreak
+            }
+        };
+    },
+
+    /**
+     * User inactive - triggers when user hasn't been active for X days
+     */
+    user_inactive: (data, params) => {
+        const days = (params?.days as number) ?? 7;
+        const triggered = data.daysSinceLastActive >= days;
+
+        return {
+            triggered,
+            data: {
+                days: data.daysSinceLastActive
+            }
+        };
+    },
+
+    /**
+     * Christmas season - triggers in December
+     */
+    christmas_season: (data) => ({
+        triggered: data.currentMonth === 12,
+        data: {}
+    }),
+
+    /**
+     * Spending high compared to last month - already spent X% of last month's total
+     */
+    spending_high_early: (data, params) => {
+        const threshold = (params?.threshold_percent as number) ?? 80;
+
+        if (data.lastMonthSpending === 0) return { triggered: false };
+
+        const percentOfLastMonth = (data.currentMonthSpending / data.lastMonthSpending) * 100;
+        const triggered = percentOfLastMonth >= threshold && data.dayOfMonth <= 20; // Early in month
+
+        return {
+            triggered,
+            data: {
+                percent: Math.round(percentOfLastMonth),
+                currentSpending: data.currentMonthSpending.toFixed(0),
+                lastMonthSpending: data.lastMonthSpending.toFixed(0)
+            }
+        };
+    },
+
+    /**
      * Always true - for fallback tips
      */
     always: () => ({
@@ -411,6 +495,32 @@ const TRIGGER_METADATA: Record<string, Omit<TriggerMeta, 'id'>> = {
             { name: 'end_hour', type: 'number', description: 'End hour 0-24 (default: 24)', default: 24 }
         ],
         templateVars: ['greeting']
+    },
+    user_streak: {
+        description: 'Triggers when user login streak >= min_days',
+        params: [
+            { name: 'min_days', type: 'number', description: 'Min streak days to trigger (default: 5)', default: 5 }
+        ],
+        templateVars: ['days']
+    },
+    user_inactive: {
+        description: 'Triggers when user has been inactive for X days',
+        params: [
+            { name: 'days', type: 'number', description: 'Days of inactivity to trigger (default: 7)', default: 7 }
+        ],
+        templateVars: ['days']
+    },
+    christmas_season: {
+        description: 'Triggers in December',
+        params: [],
+        templateVars: []
+    },
+    spending_high_early: {
+        description: 'Triggers when you\'ve already spent X% of last month\'s total early in the month',
+        params: [
+            { name: 'threshold_percent', type: 'number', description: 'Percent of last month to trigger (default: 80)', default: 80 }
+        ],
+        templateVars: ['percent', 'currentSpending', 'lastMonthSpending']
     },
     always: {
         description: 'Always triggers (for fallback tips)',

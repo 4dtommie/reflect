@@ -14,7 +14,8 @@ export const GET: RequestHandler = async ({ locals }) => {
         orderBy: [
             { priority: 'desc' },
             { category: 'asc' }
-        ]
+        ],
+
     });
 
     return json({ insights });
@@ -30,7 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { id, category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, is_active } = body;
+        const { id, category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
 
         // Validate required fields
         if (!id || !category || !trigger || !message_template) {
@@ -40,7 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         // Check if ID already exists
         const existing = await db.insightDefinition.findUnique({ where: { id } });
         if (existing) {
-            return json({ error: `Insight with id "${id}" already exists` }, { status: 400 });
+            return json({ error: `Insight with id "${id}" already exists"`, status: 400 });
         }
 
         const insight = await db.insightDefinition.create({
@@ -55,6 +56,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 action_label: action_label ?? null,
                 action_href: action_href ?? null,
                 contexts: contexts ?? ['chat', 'card'],
+                cooldown_hours: cooldown_hours ?? 0,
+                related_insight_id: body.related_insight_id || null,
                 is_active: is_active ?? true
             }
         });

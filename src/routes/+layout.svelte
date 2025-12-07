@@ -221,6 +221,10 @@
 				<ul class="dropdown-content menu z-[1] w-52 rounded-box bg-base-100 p-2 shadow-lg">
 					<li><a href="/merchants" onclick={closeDropdownOnLinkClick}>Merchant management</a></li>
 					<li><a href="/insights" onclick={closeDropdownOnLinkClick}>Insight rules</a></li>
+					<li>
+						<a href="/insights/capabilities" onclick={closeDropdownOnLinkClick}>Chat capabilities</a
+						>
+					</li>
 					<li class="my-2">
 						<div class="border-t border-base-300"></div>
 					</li>
