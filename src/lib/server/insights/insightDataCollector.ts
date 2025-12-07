@@ -31,6 +31,7 @@ export interface InsightData {
 
     // Top spending category
     topCategory: {
+        id: number;
         name: string;
         amount: number;
         percentage: number;
@@ -279,6 +280,7 @@ export async function collectInsightData(userId: number): Promise<InsightData> {
 
             if (category) {
                 topCategory = {
+                    id: topCategoryId,
                     name: category.name,
                     amount: topCategoryAmount,
                     percentage: (topCategoryAmount / currentMonthSpending) * 100

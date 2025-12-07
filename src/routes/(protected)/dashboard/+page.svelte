@@ -8,7 +8,8 @@
 	import RecentTransactionsWidget from '$lib/components/RecentTransactionsWidget.svelte';
 	import RecurringWidget from '$lib/components/RecurringWidget.svelte';
 	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
-	import { TrendingUp, Target, PiggyBank } from 'lucide-svelte';
+	import ActionsWidget from '$lib/components/ActionsWidget.svelte';
+	import { TrendingUp } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
@@ -42,13 +43,6 @@
 			<!-- Right sub-column -->
 			<div class="space-y-8">
 				<ChatWidget insight={data.chatInsight} />
-
-				<PlaceholderWidget
-					title="Savings goals"
-					description="Track your savings milestones"
-					size="small"
-					icon={PiggyBank}
-				/>
 			</div>
 		</div>
 	</div>
@@ -83,7 +77,7 @@
 				recurringExpenses={data.balanceData.recurringExpenses}
 				variableExpenses={data.balanceData.variableExpenses}
 				monthlySavings={data.balanceData.monthlySavings}
-				actionLabel="View spending patterns"
+				actionLabel="Details"
 				actionHref="/recurring"
 			/>
 		{:else if data.stats.categorizedCount > 0}
@@ -95,11 +89,9 @@
 			/>
 		{/if}
 
-		<PlaceholderWidget
-			title="Budget tracker"
-			description="Monitor your budget goals and progress"
-			size="small"
-			icon={Target}
+		<ActionsWidget
+			hasTransactions={data.stats.totalTransactions > 0}
+			hasCategorizedTransactions={data.stats.categorizedCount > 0}
 		/>
 	</div>
 </div>

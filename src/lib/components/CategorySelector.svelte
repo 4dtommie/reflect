@@ -136,6 +136,7 @@
 				id="category-search-input"
 				type="text"
 				class="input-bordered input w-full pl-10"
+				autocomplete="off"
 				{placeholder}
 				bind:value={searchQuery}
 				onfocus={() => {

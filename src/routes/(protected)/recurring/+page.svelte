@@ -11,8 +11,20 @@
 	import { Search, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { formatDateShort } from '$lib/utils/locale';
+	import { detectionStore } from '$lib/stores/detectionStore';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	let { data }: { data: PageData } = $props();
+
+	// Auto-trigger detection if navigated with ?autostart=true
+	onMount(() => {
+		if ($page.url.searchParams.get('autostart') === 'true') {
+			detectionStore.runDetection();
+			// Clean up URL
+			window.history.replaceState({}, '', '/recurring');
+		}
+	});
 
 	const subtitles = [
 		'Your predictable expenses, all in one place',
@@ -141,26 +153,27 @@
 					We haven't detected any subscriptions or recurring income. Run the detection to find
 					patterns in your transactions.
 				</p>
-				<a href="/recurring/detect" class="btn btn-lg btn-primary">
+				<button onclick={() => detectionStore.runDetection()} class="btn btn-lg btn-primary">
 					<Search size={20} class="mr-2" />
 					Start detection
-				</a>
+				</button>
 			</div>
 		</DashboardWidget>
 	{:else}
 		<!-- Row 1: Title (2 cols) + Net Balance (1 col) -->
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 			<div class="lg:col-span-2">
-				<PageTitleWidget 
-					title="Spending patterns" 
-					subtitle={randomSubtitle} 
+				<PageTitleWidget
+					title="Spending patterns"
+					subtitle={randomSubtitle}
 					monthlySpending={data.monthlySpending || []}
-					class="h-full" 
+					class="h-full"
 				/>
 			</div>
 			<NetBalanceWidget
 				monthlyIncome={incomeStats.monthlyTotal}
-				monthlyExpenses={(data.stats?.monthlyTotal || 0) + (variableStats?.totalMonthlyAverage || 0)}
+				monthlyExpenses={(data.stats?.monthlyTotal || 0) +
+					(variableStats?.totalMonthlyAverage || 0)}
 				recurringExpenses={data.stats?.monthlyTotal || 0}
 				variableExpenses={variableStats?.totalMonthlyAverage || 0}
 				monthlySavings={data.monthlySavingsAverage || 0}
@@ -178,7 +191,13 @@
 							<h2 class="font-semibold">Income</h2>
 						</div>
 						<span class="text-lg font-bold text-success">
-							<Amount value={incomeStats.monthlyTotal} size="medium" showDecimals={false} isDebit={false} locale="NL" />
+							<Amount
+								value={incomeStats.monthlyTotal}
+								size="medium"
+								showDecimals={false}
+								isDebit={false}
+								locale="NL"
+							/>
 						</span>
 					</div>
 					<div class="h-0.5 w-full rounded-full bg-success"></div>
@@ -212,10 +231,19 @@
 							<h2 class="font-semibold">Variable expenses</h2>
 						</div>
 						<span class="text-lg font-bold text-warning">
-							<Amount value={variableStats?.totalMonthlyAverage || 0} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+							<Amount
+								value={variableStats?.totalMonthlyAverage || 0}
+								size="medium"
+								showDecimals={false}
+								isDebit={true}
+								locale="NL"
+							/>
 						</span>
 					</div>
-					<div class="h-0.5 w-full rounded-full" style="background-color: rgb(196, 181, 253);"></div>
+					<div
+						class="h-0.5 w-full rounded-full"
+						style="background-color: rgb(196, 181, 253);"
+					></div>
 				</div>
 
 				{#if variableSpending.length > 0}
@@ -238,13 +266,16 @@
 			<!-- Actions -->
 			<DashboardWidget size="small" title="Actions">
 				<div class="flex h-full flex-col justify-center gap-3">
-					<a href="/recurring/detect" class="group btn justify-between btn-primary">
+					<button
+						onclick={() => detectionStore.runDetection()}
+						class="group btn justify-between btn-primary"
+					>
 						<span class="flex items-center gap-2">
 							<Search size={18} />
 							Detect patterns
 						</span>
 						<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
-					</a>
+					</button>
 
 					<button
 						class="group btn justify-between btn-outline btn-error"

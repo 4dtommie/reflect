@@ -276,6 +276,7 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
             triggered: true,
             data: {
                 category: data.topCategory.name,
+                categoryId: data.topCategory.id,
                 amount: data.topCategory.amount.toFixed(0),
                 percent: Math.round(data.topCategory.percentage)
             }
@@ -356,6 +357,26 @@ const triggerEvaluators: Record<string, TriggerEvaluator> = {
                 percent: Math.round(percentOfLastMonth),
                 currentSpending: data.currentMonthSpending.toFixed(0),
                 lastMonthSpending: data.lastMonthSpending.toFixed(0)
+            }
+        };
+    },
+
+    /**
+     * Suggest reviewing recurring transactions when user has good categorization progress
+     */
+    review_recurring: (data, params) => {
+        const minCategorized = (params?.min_categorized_percent as number) ?? 50;
+        const categorizedPercent = data.totalTransactions > 0
+            ? 100 - data.uncategorizedPercentage
+            : 0;
+
+        // Trigger when user has made good categorization progress
+        const triggered = data.totalTransactions > 0 && categorizedPercent >= minCategorized;
+
+        return {
+            triggered,
+            data: {
+                categorizedPercent: Math.round(categorizedPercent)
             }
         };
     },
@@ -486,7 +507,7 @@ const TRIGGER_METADATA: Record<string, Omit<TriggerMeta, 'id'>> = {
         params: [
             { name: 'min_percentage', type: 'number', description: 'Min category % of spending (default: 25)', default: 25 }
         ],
-        templateVars: ['category', 'amount', 'percent']
+        templateVars: ['category', 'categoryId', 'amount', 'percent']
     },
     time_of_day: {
         description: 'Triggers based on current hour',
@@ -521,6 +542,13 @@ const TRIGGER_METADATA: Record<string, Omit<TriggerMeta, 'id'>> = {
             { name: 'threshold_percent', type: 'number', description: 'Percent of last month to trigger (default: 80)', default: 80 }
         ],
         templateVars: ['percent', 'currentSpending', 'lastMonthSpending']
+    },
+    review_recurring: {
+        description: 'Triggers when user has made good categorization progress',
+        params: [
+            { name: 'min_categorized_percent', type: 'number', description: 'Min categorized % to trigger (default: 50)', default: 50 }
+        ],
+        templateVars: ['categorizedPercent']
     },
     always: {
         description: 'Always triggers (for fallback tips)',

@@ -30,7 +30,8 @@ function fillTemplate(template: string, data: Record<string, unknown>): string {
  */
 export async function getActiveInsights(
     userId: number,
-    context?: string
+    context?: string,
+    options?: { skipCooldown?: boolean }
 ): Promise<EvaluatedInsight[]> {
     // Collect user data once
     const userData = await collectInsightData(userId);
@@ -87,12 +88,13 @@ export async function getActiveInsights(
 
     for (const def of definitions) {
         // Global cooldown check: allow urgent, action, and celebration insights to bypass
-        if (isGlobalCooldown && !['urgent', 'action', 'celebration'].includes(def.category)) {
+        // Also skip if skipCooldown option is set
+        if (!options?.skipCooldown && isGlobalCooldown && !['urgent', 'action', 'celebration'].includes(def.category)) {
             continue;
         }
 
-        // Check insight-specific cooldown
-        if (def.cooldown_hours > 0) {
+        // Check insight-specific cooldown (skip if option set)
+        if (!options?.skipCooldown && def.cooldown_hours > 0) {
             const lastSeen = lastSeenMap.get(def.id);
             if (lastSeen) {
                 const hoursSinceSeen = (now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60);

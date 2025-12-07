@@ -1,17 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import DashboardWidget from './DashboardWidget.svelte';
-	import {
-		ArrowRight,
-		Send,
-		ChevronDown,
-		Loader2,
-		AlertTriangle,
-		Zap,
-		Lightbulb,
-		PartyPopper,
-		Sparkles
-	} from 'lucide-svelte';
+	import { ArrowRight, Send, ChevronDown, Loader2 } from 'lucide-svelte';
 
 	interface Message {
 		id: number;
@@ -46,6 +36,39 @@
 	let userScrolledUp = $state(false);
 	let canScrollUp = $state(false);
 
+	// Typewriter effect state
+	let typingMessageId = $state<number | null>(null);
+	let typedLength = $state(0);
+	let typewriterInterval: ReturnType<typeof setInterval> | null = null;
+
+	// Start typewriter effect for a message
+	function startTypewriter(messageId: number, fullContent: string) {
+		if (typewriterInterval) clearInterval(typewriterInterval);
+		typingMessageId = messageId;
+		typedLength = 0;
+		const speed = Math.max(10, Math.min(30, 1500 / fullContent.length)); // Adaptive speed
+		typewriterInterval = setInterval(() => {
+			typedLength += 1;
+			if (typedLength >= fullContent.length) {
+				if (typewriterInterval) clearInterval(typewriterInterval);
+				typingMessageId = null;
+			}
+		}, speed);
+	}
+
+	// Get display content for a message (handles typewriter)
+	function getDisplayContent(msg: Message): string {
+		if (msg.id === typingMessageId) {
+			return msg.content.slice(0, typedLength);
+		}
+		return msg.content;
+	}
+
+	// Check if message is still typing
+	function isTyping(msg: Message): boolean {
+		return msg.id === typingMessageId;
+	}
+
 	// Time-aware greeting
 	const getTimeGreeting = () => {
 		const hour = new Date().getHours();
@@ -55,24 +78,6 @@
 	};
 
 	const timeGreeting = getTimeGreeting();
-
-	// Category-based styling
-	const categoryStyles = {
-		urgent: 'border-l-error',
-		action: 'border-l-warning',
-		insight: 'border-l-info',
-		celebration: 'border-l-success',
-		tip: 'border-l-primary'
-	};
-
-	// Badge configuration for insight types
-	const insightBadges = {
-		urgent: { label: 'Heads up!', color: 'badge-error', icon: AlertTriangle },
-		action: { label: 'Action needed', color: 'badge-warning', icon: Zap },
-		insight: { label: 'Insight', color: 'badge-info', icon: Lightbulb },
-		celebration: { label: 'Nice!', color: 'badge-success', icon: PartyPopper },
-		tip: { label: 'Tip', color: 'badge-primary', icon: Sparkles }
-	};
 
 	// Load conversation on mount
 	onMount(() => {
@@ -127,6 +132,8 @@
 			}
 		} catch (e) {
 			console.error('Failed to load conversation:', e);
+		} finally {
+			initialized = true;
 		}
 	}
 
@@ -193,6 +200,8 @@
 					createdAt: new Date(data.message.createdAt)
 				};
 				messages = [...messages, assistantMessage];
+				// Start typewriter effect for the new message
+				startTypewriter(assistantMessage.id, assistantMessage.content);
 			} else {
 				// Error response
 				messages = [
@@ -244,8 +253,10 @@
 		}));
 	});
 
-	// Auto-scroll to bottom when messages change
+	// Auto-scroll to bottom when messages change or during typing
 	$effect(() => {
+		// Track both messages and typedLength to scroll during typewriter
+		const _ = [messages.length, typedLength];
 		if (messages.length > 0 && messagesContainer && !userScrolledUp) {
 			// Use setTimeout to ensure DOM is updated
 			setTimeout(() => {
@@ -266,7 +277,11 @@
 </script>
 
 <DashboardWidget size="auto" enableHover={false} title="Penny for your thoughts">
-	<div class="flex flex-col gap-2 p-1">
+	<div
+		class="flex flex-col gap-2 p-1 transition-opacity duration-300 {initialized
+			? 'opacity-100'
+			: 'opacity-0'}"
+	>
 		<!-- Messages area wrapper -->
 		<div class="relative">
 			<!-- Top gradient (shows when can scroll up) -->
@@ -279,7 +294,7 @@
 			<div
 				bind:this={messagesContainer}
 				onscroll={handleScroll}
-				class="chat-messages flex max-h-64 flex-col gap-2 overflow-y-auto"
+				class="chat-messages flex max-h-80 flex-col gap-2 overflow-y-auto"
 			>
 				<!-- Show more button -->
 				{#if messages.length > 3 && !showAllMessages}
@@ -309,26 +324,18 @@
 							{#if msg.showLabel}
 								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny</p>
 							{/if}
-							<div
-								class="rounded-xl rounded-tl-none border-l-4 {msg.insightCategory
-									? categoryStyles[msg.insightCategory]
-									: 'border-l-primary'} bg-base-200 px-3 py-2"
-							>
-								{#if msg.insightCategory && insightBadges[msg.insightCategory]}
-									{@const badge = insightBadges[msg.insightCategory]}
-									<span class="mb-1.5 badge gap-1 text-xs {badge.color}">
-										<svelte:component this={badge.icon} class="h-3 w-3" />
-										{badge.label}
-									</span>
-								{/if}
-								<p class="text-sm">{msg.content}</p>
+							<div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-base-200/70 px-3 py-2">
+								<p class="text-sm">
+									{getDisplayContent(msg)}{#if isTyping(msg)}<span class="animate-pulse">▊</span
+										>{/if}
+								</p>
 
-								{#if msg.actionButtons && msg.actionButtons.length > 0}
+								{#if msg.actionButtons && msg.actionButtons.length > 0 && !isTyping(msg)}
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#each msg.actionButtons as button}
 											<a
 												href={button.href}
-												class="btn gap-1 text-primary btn-ghost btn-xs hover:bg-primary/10"
+												class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
 											>
 												{button.label}
 												<ArrowRight class="h-3 w-3" />

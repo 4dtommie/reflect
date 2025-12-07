@@ -80,6 +80,19 @@ export async function seedInsights() {
             contexts: ['chat', 'card'],
             cooldown_hours: 24
         },
+        {
+            id: 'detect_subscriptions',
+            category: 'action',
+            priority: 65,
+            trigger: 'review_recurring',
+            trigger_params: { min_categorized_percent: 50 },
+            message_template: "Ready to hunt for sneaky subscriptions? Let's find them! 🔍",
+            icon: null,
+            action_label: 'Detect subscriptions',
+            action_href: '/recurring?autostart=true',
+            contexts: ['chat', 'card'],
+            cooldown_hours: 24
+        },
 
         // ========== INSIGHT (40-59) ==========
         // Same period comparison (first X days of this month vs last month) - only extreme changes
@@ -142,7 +155,7 @@ export async function seedInsights() {
             message_template: '{{category}} is your biggest spending category at {{percent}}% of this month.',
             icon: null,
             action_label: 'View category',
-            action_href: '/transactions',
+            action_href: '/transactions?category={{categoryId}}',
             contexts: ['chat', 'card'],
             cooldown_hours: 72 // 3 days
         },

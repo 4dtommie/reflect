@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { getChatContext, parseActionButtons, cleanMessageContent } from '$lib/server/insights/chatContext';
-import { getTopInsight } from '$lib/server/insights/insightEngine';
+import { getTopInsight, getActiveInsights } from '$lib/server/insights/insightEngine';
 import { CHAT_FUNCTIONS, MAX_FUNCTION_ROUNDS, executeFunction } from '$lib/server/insights/chatFunctions';
 
 const openai = new OpenAI({
@@ -142,8 +142,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const aiResponse = responseMessage?.content || "Sorry, I couldn't generate a response.";
 
         // Parse action buttons from response
-        const actionButtons = parseActionButtons(aiResponse);
+        let actionButtons = parseActionButtons(aiResponse);
         const cleanContent = cleanMessageContent(aiResponse);
+
+        // AUTO-APPEND: If AI mentions action keywords but didn't include markers,
+        // append the top active insight's CTA (skip cooldown since user is actively asking)
+        const insights = await getActiveInsights(userId, 'chat', { skipCooldown: true });
+        const actionKeywords = [
+            // English
+            'categorize', 'categorise', 'upload', 'recurring', 'subscription', 'transactions',
+            // Dutch
+            'categoriseren', 'categorie', 'uploaden', 'transacties', 'transactie', 'terugkerend', 'abonnement'
+        ];
+        const mentionsAction = actionKeywords.some(kw => aiResponse.toLowerCase().includes(kw));
+
+        console.log('[CTA Debug] AI response:', aiResponse.substring(0, 100));
+        console.log('[CTA Debug] Mentions action:', mentionsAction);
+        console.log('[CTA Debug] Action buttons from parse:', actionButtons.length);
+        console.log('[CTA Debug] Insights count:', insights.length);
+
+        if (mentionsAction && actionButtons.length === 0) {
+            // Find top action/urgent insight with a CTA
+            const topActionInsight = insights.find(i =>
+                (i.category === 'action' || i.category === 'urgent') &&
+                i.actionLabel && i.actionHref
+            );
+            console.log('[CTA Debug] Top action insight:', topActionInsight?.id, topActionInsight?.actionLabel);
+            if (topActionInsight) {
+                actionButtons = [{ label: topActionInsight.actionLabel!, href: topActionInsight.actionHref! }];
+            }
+        }
 
         // Store assistant message
         const assistantMessage = await db.chatMessage.create({

@@ -2,6 +2,8 @@
 	import DashboardWidget from './DashboardWidget.svelte';
 	import { RefreshCw, Calendar, ArrowRight } from 'lucide-svelte';
 	import type { RecurringTransaction } from '@prisma/client';
+	import { detectionStore } from '$lib/stores/detectionStore';
+	import { recurringModalStore } from '$lib/stores/recurringModalStore';
 
 	let { recurringTransactions = [] }: { recurringTransactions: RecurringTransaction[] } = $props();
 
@@ -38,55 +40,65 @@
 		if (days < 0) return 'Overdue';
 		return `in ${days} days`;
 	}
+
+	function handleOpenModal(tx: RecurringTransaction) {
+		recurringModalStore.open({
+			id: tx.id,
+			name: tx.name,
+			amount: Number(tx.amount),
+			interval: tx.interval,
+			status: tx.status,
+			type: tx.type,
+			next_expected_date: tx.next_expected_date,
+			transactions: [],
+			isIncome: Number(tx.amount) > 0
+		});
+	}
 </script>
 
-<DashboardWidget size="auto" title="Upcoming payments">
+<DashboardWidget
+	size="auto"
+	title="Upcoming payments"
+	actionLabel="View all"
+	actionHref="/recurring"
+>
 	{#if recurringTransactions.length === 0}
 		<div class="flex h-full flex-col items-center justify-center py-6 text-center">
 			<RefreshCw size={48} class="mb-4 opacity-50" />
 			<h3 class="text-lg font-semibold opacity-50">Subscriptions</h3>
 			<p class="mb-4 text-sm opacity-50">Track your recurring payments</p>
-			<a href="/recurring/detect" class="btn btn-primary"> Detect subscriptions </a>
+			<button onclick={() => detectionStore.runDetection()} class="btn btn-primary"
+				>Detect subscriptions</button
+			>
 		</div>
 	{:else}
-		<div class="space-y-3">
+		<div class="flex flex-col gap-2">
 			{#each sortedTransactions as tx}
 				{@const isPositive = Number(tx.amount) > 0}
-				<div
-					class="flex items-center justify-between border-b border-base-200 pb-2 last:border-0 last:pb-0"
+				<button
+					class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
+					onclick={() => handleOpenModal(tx)}
 				>
-					<div class="flex items-center gap-3">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"
-						>
-							<Calendar size={18} />
-						</div>
-						<div>
-							<p class="line-clamp-1 max-w-[120px] font-medium">{tx.name}</p>
-							<p class="text-xs text-base-content/60">
-								{formatDate(tx.next_expected_date)} • {getDaysUntil(tx.next_expected_date)}
-							</p>
+					<div class="flex min-w-0 flex-1 flex-col">
+						<span class="truncate text-sm font-medium">{tx.name}</span>
+						<div class="flex items-center gap-2 text-xs text-base-content/60">
+							<Calendar size={12} />
+							<span
+								>{formatDate(tx.next_expected_date)} • {getDaysUntil(tx.next_expected_date)}</span
+							>
 						</div>
 					</div>
-					<div class="text-right">
+					<div class="flex-shrink-0 text-right">
 						<p
 							class={isPositive
-								? 'inline-block rounded-lg bg-success/10 px-2 py-0.5 font-semibold text-success'
-								: 'font-semibold'}
+								? 'inline-block rounded-lg bg-success/10 px-2 py-0.5 text-sm font-semibold text-success'
+								: 'text-sm font-semibold'}
 						>
 							{isPositive ? '+' : ''}€ {Math.abs(Number(tx.amount)).toFixed(2).replace('.', ',')}
 						</p>
-						<p class="text-xs text-base-content/60 capitalize">{tx.interval}</p>
 					</div>
-				</div>
+				</button>
 			{/each}
-
-			<div class="border-t border-base-200 pt-1">
-				<a href="/recurring" class="group btn btn-block justify-between btn-ghost btn-sm">
-					View all subscriptions
-					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
-				</a>
-			</div>
 		</div>
 	{/if}
 </DashboardWidget>

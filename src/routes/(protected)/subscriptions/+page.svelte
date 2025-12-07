@@ -5,12 +5,12 @@
 	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 	import RecurringExpensesWidget from '$lib/components/RecurringExpensesWidget.svelte';
 	import { formatNumber } from '$lib/utils/locale';
-	import { 
-		CreditCard, 
-		TrendingDown, 
-		Calendar, 
-		PieChart, 
-		Bell, 
+	import {
+		CreditCard,
+		TrendingDown,
+		Calendar,
+		PieChart,
+		Bell,
 		Search,
 		Plus,
 		Settings
@@ -33,7 +33,9 @@
 
 	// Summary stats
 	const totalSubscriptions = $derived(
-		data.subscriptions?.filter((s) => !s.isIncome && s.status === 'active' && s.type === 'subscription').length || 0
+		data.subscriptions?.filter(
+			(s) => !s.isIncome && s.status === 'active' && s.type === 'subscription'
+		).length || 0
 	);
 </script>
 
@@ -45,11 +47,7 @@
 	<!-- Row 1: Title (2 cols) + Stats (1 col) -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-2">
-			<PageTitleWidget
-				title="Subscriptions"
-				subtitle={randomSubtitle}
-				class="h-full"
-			/>
+			<PageTitleWidget title="Subscriptions" subtitle={randomSubtitle} class="h-full" />
 		</div>
 
 		<!-- Quick stats card -->
@@ -94,19 +92,22 @@
 		<!-- Actions panel -->
 		<DashboardWidget size="small" title="Quick actions">
 			<div class="flex h-full flex-col justify-center gap-3">
-				<a href="/recurring/detect" class="btn btn-sm btn-primary justify-start gap-2">
+				<a
+					href="/recurring/detect?autostart=true"
+					class="btn justify-start gap-2 btn-sm btn-primary"
+				>
 					<Search size={16} />
 					Detect subscriptions
 				</a>
-				<button class="btn btn-sm btn-outline justify-start gap-2" disabled>
+				<button class="btn justify-start gap-2 btn-outline btn-sm" disabled>
 					<Plus size={16} />
 					Add manually
 				</button>
-				<button class="btn btn-sm btn-outline justify-start gap-2" disabled>
+				<button class="btn justify-start gap-2 btn-outline btn-sm" disabled>
 					<Bell size={16} />
 					Set reminders
 				</button>
-				<button class="btn btn-sm btn-outline justify-start gap-2" disabled>
+				<button class="btn justify-start gap-2 btn-outline btn-sm" disabled>
 					<Settings size={16} />
 					Manage categories
 				</button>
@@ -155,5 +156,3 @@
 		/>
 	</div>
 </div>
-
-

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Amount from './Amount.svelte';
-	import { ChevronDown, ChevronUp } from 'lucide-svelte';
+	import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
 	import { formatDateShort } from '$lib/utils/locale';
+	import { recurringModalStore } from '$lib/stores/recurringModalStore';
 
 	type Transaction = {
 		id: number;
@@ -17,11 +18,12 @@
 		amount: number;
 		interval: string | null;
 		status: string;
+		type?: string | null;
 		next_expected_date: string | Date | null;
 		created_at: string | Date;
 		transactions: Transaction[];
 		merchants?: { name: string } | null;
-		categories?: { name: string; icon: string | null; color: string | null } | null;
+		categories?: { id: number; name: string; icon: string | null; color: string | null } | null;
 	};
 
 	let {
@@ -33,6 +35,14 @@
 	} = $props();
 
 	let expanded = $state(false);
+
+	function handleOpenModal(e: Event) {
+		e.stopPropagation();
+		recurringModalStore.open({
+			...subscription,
+			isIncome
+		});
+	}
 
 	// Calculate stats
 	const stats = $derived.by(() => {
@@ -85,7 +95,6 @@
 		return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 	});
 
-
 	function getIntervalLabel(interval: string | null): string {
 		if (!interval) return 'Unknown';
 		const labels: Record<string, string> = {
@@ -136,7 +145,13 @@
 		<!-- Right: Amount -->
 		<div class="flex-shrink-0">
 			<span class="font-semibold">
-				<Amount value={subscription.amount} size="small" showDecimals={true} isDebit={!isIncome} locale="NL" />
+				<Amount
+					value={subscription.amount}
+					size="small"
+					showDecimals={true}
+					isDebit={!isIncome}
+					locale="NL"
+				/>
 			</span>
 		</div>
 	</button>
@@ -151,19 +166,33 @@
 			<!-- Key Metrics Grid -->
 			<div class="mb-4 grid grid-cols-3 gap-4 border-b border-base-300/50 pb-3">
 				<div class="flex flex-col">
-					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Total {new Date().getFullYear()}</span>
+					<span class="mb-1 text-[10px] tracking-wide uppercase opacity-50"
+						>Total {new Date().getFullYear()}</span
+					>
 					<span class="text-base font-semibold">
-						<Amount value={stats.totalPaid} size="small" showDecimals={false} isDebit={!isIncome} locale="NL" />
+						<Amount
+							value={stats.totalPaid}
+							size="small"
+							showDecimals={false}
+							isDebit={!isIncome}
+							locale="NL"
+						/>
 					</span>
 				</div>
 				<div class="flex flex-col">
-					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Average</span>
+					<span class="mb-1 text-[10px] tracking-wide uppercase opacity-50">Average</span>
 					<span class="text-base font-semibold">
-						<Amount value={Math.round(stats.averageAmount)} size="small" showDecimals={false} isDebit={!isIncome} locale="NL" />
+						<Amount
+							value={Math.round(stats.averageAmount)}
+							size="small"
+							showDecimals={false}
+							isDebit={!isIncome}
+							locale="NL"
+						/>
 					</span>
 				</div>
 				<div class="flex flex-col">
-					<span class="mb-1 text-[10px] uppercase tracking-wide opacity-50">Frequency</span>
+					<span class="mb-1 text-[10px] tracking-wide uppercase opacity-50">Frequency</span>
 					<span class="text-base font-semibold">{getIntervalLabel(subscription.interval)}</span>
 				</div>
 			</div>
@@ -171,13 +200,19 @@
 			<!-- Transaction history -->
 			{#if subscription.transactions && subscription.transactions.length > 0}
 				<div class="mb-4 space-y-2">
-					<div class="mb-2 text-[10px] uppercase tracking-wide opacity-50">Recent transactions</div>
+					<div class="mb-2 text-[10px] tracking-wide uppercase opacity-50">Recent transactions</div>
 					{#each subscription.transactions.slice(0, 5) as tx (tx.id)}
 						<div class="flex items-center justify-between gap-4 text-xs">
 							<span class="opacity-70">{formatDateShort(tx.date)}</span>
 							<div class="flex-1 border-t border-dotted border-base-300/50"></div>
 							<span class="font-medium">
-								<Amount value={tx.amount} size="small" showDecimals={true} isDebit={!isIncome} locale="NL" />
+								<Amount
+									value={tx.amount}
+									size="small"
+									showDecimals={true}
+									isDebit={!isIncome}
+									locale="NL"
+								/>
 							</span>
 						</div>
 					{/each}
@@ -187,15 +222,18 @@
 				</div>
 			{/if}
 
-			<!-- Divider and Since date -->
-			<div class="border-t border-base-300/50 pt-3">
+			<!-- Footer with Since date and View details -->
+			<div class="flex items-center justify-between border-t border-base-300/50 pt-3">
 				{#if stats.firstSeen}
 					<p class="text-xs opacity-60">Since {formatDateShort(stats.firstSeen)}</p>
+				{:else}
+					<div></div>
 				{/if}
+				<button class="btn gap-1 btn-ghost btn-xs" onclick={handleOpenModal}>
+					<ExternalLink size={12} />
+					View details
+				</button>
 			</div>
 		</div>
 	{/if}
 </div>
-
-
-

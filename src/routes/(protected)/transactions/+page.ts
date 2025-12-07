@@ -1,8 +1,11 @@
-export async function load({ fetch, parent }: { fetch: typeof globalThis.fetch; parent: () => Promise<any> }) {
+export async function load({ fetch, parent, url }: { fetch: typeof globalThis.fetch; parent: () => Promise<any>; url: URL }) {
 	const { user } = await parent();
 
+	// Get category filter from URL query params
+	const categoryParam = url.searchParams.get('category');
+
 	if (!user) {
-		return { transactions: [], categories: [] };
+		return { transactions: [], categories: [], categoryParam };
 	}
 
 	try {
@@ -41,11 +44,12 @@ export async function load({ fetch, parent }: { fetch: typeof globalThis.fetch; 
 		return {
 			transactions: transactionsData.transactions || [],
 			stats: mappedStats,
-			categories: categoriesData.categories || []
+			categories: categoriesData.categories || [],
+			categoryParam
 		};
 	} catch (error) {
 		console.error('Error loading transactions data:', error);
-		return { transactions: [], stats: null, categories: [] };
+		return { transactions: [], stats: null, categories: [], categoryParam };
 	}
 }
 

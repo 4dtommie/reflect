@@ -23,7 +23,7 @@
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import Amount from '$lib/components/Amount.svelte';
-	import ManualCategorizeModal from '$lib/components/ManualCategorizeModal.svelte';
+	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 	import chartColors from '$lib/config/chartColors';
 
 	// Register Chart.js components
@@ -49,7 +49,16 @@
 		});
 	}
 
-	let { data }: { data: { transactions: any[]; stats: any | null; categories: any[] } } = $props();
+	let {
+		data
+	}: {
+		data: {
+			transactions: any[];
+			stats: any | null;
+			categories: any[];
+			categoryParam: string | null;
+		};
+	} = $props();
 	let chartCanvas: HTMLCanvasElement | null = $state(null);
 	let chartInstance: Chart | null = $state(null);
 	let chartContainer: HTMLDivElement | null = $state(null);
@@ -59,12 +68,8 @@
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 
-	// Manual Categorization Modal State
-	let selectedTransaction = $state<any | null>(null);
-	let isModalOpen = $state(false);
-
-	// Filters
-	let selectedCategory = $state<string>('all');
+	// Filters - initialize from URL param if provided
+	let selectedCategory = $state<string>(data.categoryParam ?? 'all');
 	let showUncategorizedOnly = $state(false);
 
 	// Calculate active categories with counts
@@ -138,27 +143,20 @@
 		}
 	}
 
-	async function handleSaveCategory(
-		transactionId: number,
-		categoryId: number,
-		merchantName: string
-	) {
-		const response = await fetch(`/api/transactions/${transactionId}/categorize`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ categoryId, merchantName })
-		});
-
-		if (!response.ok) {
-			throw new Error('Failed to update transaction');
-		}
-
-		await invalidateAll();
-	}
-
 	function handleTransactionClick(transaction: any) {
-		selectedTransaction = transaction;
-		isModalOpen = true;
+		transactionModalStore.open({
+			id: transaction.id,
+			date: transaction.date,
+			merchantName: transaction.merchantName ?? transaction.merchant?.name,
+			amount: transaction.amount,
+			description: transaction.description ?? '',
+			is_debit: transaction.is_debit ?? true,
+			category: transaction.category ?? null,
+			merchant: transaction.merchant ?? null,
+			type: transaction.type,
+			is_recurring: transaction.is_recurring,
+			recurring_transaction: transaction.recurring_transaction
+		});
 	}
 
 	// Group transactions by day
@@ -170,7 +168,7 @@
 				return !t.category || t.category.name === 'Niet gecategoriseerd';
 			}
 			if (selectedCategory !== 'all') {
-				return t.category?.id === selectedCategory;
+				return String(t.category?.id) === selectedCategory;
 			}
 			return true;
 		});
@@ -195,8 +193,62 @@
 		return sortedDays;
 	});
 
-	// Get monthly stats from server (all transactions) and structure by month
+	// Get monthly stats - compute from filtered transactions when category is selected
 	const monthlyStats = $derived(() => {
+		// When filtering by category, compute from transactions client-side
+		if (selectedCategory !== 'all' && !showUncategorizedOnly) {
+			const filtered = data.transactions.filter((t) => String(t.category?.id) === selectedCategory);
+
+			// Group by month
+			const monthMap = new Map<
+				string,
+				{ spending: number; income: number; date: Date; year: number; month: number }
+			>();
+
+			for (const t of filtered) {
+				const d = typeof t.date === 'string' ? new Date(t.date) : t.date;
+				const year = d.getFullYear();
+				const month = d.getMonth();
+				const monthKey = `${year}-${month}`;
+
+				if (!monthMap.has(monthKey)) {
+					monthMap.set(monthKey, {
+						spending: 0,
+						income: 0,
+						date: new Date(year, month, 1),
+						year,
+						month
+					});
+				}
+
+				const entry = monthMap.get(monthKey)!;
+				if (t.is_debit) {
+					entry.spending += Math.abs(t.amount);
+				} else {
+					entry.income += Math.abs(t.amount);
+				}
+			}
+
+			const monthlyData = Array.from(monthMap.values())
+				.map((m) => ({
+					...m,
+					monthKey: `${m.year}-${m.month}`,
+					total: m.spending,
+					savings: 0
+				}))
+				.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+			const totalSpending = monthlyData.reduce((sum, m) => sum + m.spending, 0);
+			const avgSpending = monthlyData.length > 0 ? totalSpending / monthlyData.length : 0;
+
+			return {
+				monthlyData,
+				averageMonthlySpending: avgSpending,
+				averageMonthlyIncome: 0
+			};
+		}
+
+		// Default: use server-side stats for all transactions
 		if (!data.stats) {
 			return { monthlyData: [], averageMonthlySpending: 0, averageMonthlyIncome: 0 };
 		}
@@ -626,6 +678,39 @@
 		};
 	});
 
+	// Update chart data when filter changes
+	$effect(() => {
+		const chartDataValue = chartData();
+		if (!chartInstance || !chartDataValue) return;
+
+		// Save current scale state before update
+		const xScale = chartInstance.scales?.x;
+		const currentMin = xScale?.min;
+		const currentMax = xScale?.max;
+
+		// Update chart datasets with new filtered data
+		chartInstance.data.labels = chartDataValue.labels;
+		chartInstance.data.datasets[0].data = chartDataValue.income;
+		chartInstance.data.datasets[1].data = chartDataValue.spending;
+		chartInstance.data.datasets[2].data = chartDataValue.savings;
+
+		// Use 'none' to prevent animation and keep view stable
+		chartInstance.update('none');
+
+		// Restore zoom state if it was set
+		if (currentMin !== undefined && currentMax !== undefined) {
+			try {
+				const chart = chartInstance as any;
+				if (chart.zoomScale) {
+					chart.zoomScale('x', { min: currentMin, max: currentMax });
+					chart.update('none');
+				}
+			} catch (e) {
+				// Ignore zoom restore errors
+			}
+		}
+	});
+
 	// Handle container resize to keep chart within bounds
 	$effect(() => {
 		const container = chartContainer;
@@ -793,7 +878,7 @@
 							>
 								<option value="all">All Categories</option>
 								{#each activeCategories() as category}
-									<option value={category.id}>{category.name} ({category.count})</option>
+									<option value={String(category.id)}>{category.name} ({category.count})</option>
 								{/each}
 							</select>
 
@@ -920,12 +1005,4 @@
 			></div>
 		</div>
 	{/if}
-
-	<ManualCategorizeModal
-		isOpen={isModalOpen}
-		transaction={selectedTransaction}
-		categories={data.categories}
-		onClose={() => (isModalOpen = false)}
-		onSave={handleSaveCategory}
-	/>
 </div>

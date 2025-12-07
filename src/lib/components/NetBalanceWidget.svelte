@@ -44,7 +44,12 @@
 	const showAction = $derived(actionLabel && actionHref);
 </script>
 
-<DashboardWidget size="small" title="Average income you can spend">
+<DashboardWidget
+	size="small"
+	title="Avg free to spend"
+	actionLabel={actionLabel || undefined}
+	actionHref={actionHref || undefined}
+>
 	<div class="flex h-full flex-col justify-center gap-4">
 		<!-- Free to spend display -->
 		<div class="text-center">
@@ -183,22 +188,5 @@
 				</div>
 			</div>
 		</div>
-
-		<!-- Yearly projection or action button -->
-		{#if showAction}
-			<div class="border-t border-base-200 pt-3">
-				<a href={actionHref} class="group btn w-full justify-between btn-ghost btn-sm">
-					<span>{actionLabel}</span>
-					<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
-				</a>
-			</div>
-		{:else}
-			<div class="border-t border-base-200 pt-3 text-center text-sm">
-				<span class="opacity-50">Yearly savings potential: </span>
-				<span class="font-semibold text-sky-600">
-					€ {formatNumber(Math.round(freeToSpend * 12))}
-				</span>
-			</div>
-		{/if}
 	</div>
 </DashboardWidget>

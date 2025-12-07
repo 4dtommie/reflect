@@ -359,6 +359,68 @@ export class RecurringService {
 
 		return monthlyTotal;
 	}
+
+	/**
+	 * Backfill categories for recurring patterns that don't have one set
+	 * Uses the most common category from linked transactions
+	 */
+	async backfillCategories(userId: number): Promise<number> {
+		// Find recurring patterns without a category that have linked transactions
+		const patternsToUpdate = await db.recurringTransaction.findMany({
+			where: {
+				user_id: userId,
+				category_id: null
+			},
+			include: {
+				transactions: {
+					where: {
+						category_id: { not: null }
+					},
+					select: {
+						category_id: true
+					}
+				}
+			}
+		});
+
+		let updatedCount = 0;
+
+		for (const pattern of patternsToUpdate) {
+			if (pattern.transactions.length === 0) continue;
+
+			// Find the most common category
+			const categoryCount = new Map<number, number>();
+			for (const tx of pattern.transactions) {
+				if (tx.category_id) {
+					categoryCount.set(tx.category_id, (categoryCount.get(tx.category_id) || 0) + 1);
+				}
+			}
+
+			if (categoryCount.size === 0) continue;
+
+			let maxCount = 0;
+			let mostCommonCategoryId: number | null = null;
+
+			for (const [categoryId, count] of categoryCount) {
+				if (count > maxCount) {
+					maxCount = count;
+					mostCommonCategoryId = categoryId;
+				}
+			}
+
+			if (mostCommonCategoryId) {
+				await db.recurringTransaction.update({
+					where: { id: pattern.id },
+					data: { category_id: mostCommonCategoryId }
+				});
+				updatedCount++;
+				console.log(`[RecurringService] Backfilled category ${mostCommonCategoryId} for pattern ${pattern.id} (${pattern.name})`);
+			}
+		}
+
+		console.log(`[RecurringService] Backfill complete: updated ${updatedCount} patterns`);
+		return updatedCount;
+	}
 }
 
 // Export singleton instance

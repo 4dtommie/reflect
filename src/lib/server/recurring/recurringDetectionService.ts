@@ -384,7 +384,7 @@ export class RecurringDetectionService {
         for (const tx of transactions) {
             // PHASE 1 FIX: Only process expenses (debits) in Known List
             if (!tx.is_debit) continue;
-            
+
             if (tx.merchant_id === 2183) {
                 nnTransactionCount++;
             }
@@ -483,7 +483,7 @@ export class RecurringDetectionService {
 
                 const minTransactionsRequired = categoryBehavior.minTransactions;
                 const significantClusters = amountClusters.filter(cluster => cluster.length >= minTransactionsRequired);
-                
+
                 if (significantClusters.length === 0 && categoryTxs.length > 0) {
                     console.log(`[RecurringDetection] "${providerName}" (${categoryName}) - No significant clusters. Cluster sizes: ${amountClusters.map(c => c.length).join(', ')}`);
                 }
@@ -872,6 +872,34 @@ export class RecurringDetectionService {
     }
 
 
+    /**
+     * Determine the most common category from a list of transactions
+     */
+    private getMostCommonCategoryId(transactions: { category_id: number | null }[]): number | null {
+        const categoryCount = new Map<number, number>();
+
+        for (const tx of transactions) {
+            if (tx.category_id) {
+                categoryCount.set(tx.category_id, (categoryCount.get(tx.category_id) || 0) + 1);
+            }
+        }
+
+        if (categoryCount.size === 0) return null;
+
+        // Find the category with the most occurrences
+        let maxCount = 0;
+        let mostCommonCategoryId: number | null = null;
+
+        for (const [categoryId, count] of categoryCount) {
+            if (count > maxCount) {
+                maxCount = count;
+                mostCommonCategoryId = categoryId;
+            }
+        }
+
+        return mostCommonCategoryId;
+    }
+
     private async saveRecurringTransactions(userId: number, candidates: RecurringCandidate[]) {
         const highConfidence = candidates.filter(c => c.confidence >= 0.75);
         console.log(`[RecurringDetection] Saving ${highConfidence.length} high-confidence candidates to DB...`);
@@ -880,7 +908,10 @@ export class RecurringDetectionService {
             // 1. ALWAYS get merchant_id (find or create)
             const merchantId = await this.findOrCreateMerchant(candidate);
 
-            // 2. Find ALL existing recurring txs for this merchant
+            // 2. Get the most common category from linked transactions
+            const categoryId = this.getMostCommonCategoryId(candidate.transactions);
+
+            // 3. Find ALL existing recurring txs for this merchant
             const existingTxs = await db.recurringTransaction.findMany({
                 where: {
                     user_id: userId,
@@ -889,7 +920,7 @@ export class RecurringDetectionService {
                 }
             });
 
-            // 3. Try to find a match by amount
+            // 4. Try to find a match by amount
             const match = existingTxs.find(existing => {
                 const amountA = Math.abs(Number(existing.amount));
                 const amountB = Math.abs(candidate.amount);
@@ -901,20 +932,22 @@ export class RecurringDetectionService {
             });
 
             if (match) {
-                // 4. Update
+                // 5. Update (only update category if not already set)
                 console.log(`[RecurringDetection] Updating existing recurring tx ${match.id} for merchant ${merchantId}`);
                 await db.recurringTransaction.update({
                     where: { id: match.id },
                     data: {
                         amount: candidate.amount,
                         interval: candidate.interval,
-                        type: candidate.type, // PHASE 3.6: Save type
+                        type: candidate.type,
                         next_expected_date: candidate.nextPaymentDate,
+                        // Only set category if not already set (preserve manual categorizations)
+                        ...(categoryId && !match.category_id ? { category_id: categoryId } : {}),
                         updated_at: new Date()
                     }
                 });
 
-                // 5. Link any new transactions
+                // 6. Link any new transactions
                 await db.transactions.updateMany({
                     where: {
                         id: { in: candidate.transactions.map(t => t.id) },
@@ -924,27 +957,28 @@ export class RecurringDetectionService {
                 });
 
             } else {
-                // 6. Create new
-                console.log(`[RecurringDetection] Creating new recurring tx for merchant ${merchantId}`);
+                // 7. Create new with category from transactions
+                console.log(`[RecurringDetection] Creating new recurring tx for merchant ${merchantId}${categoryId ? ` with category ${categoryId}` : ''}`);
                 const recurring = await db.recurringTransaction.create({
                     data: {
                         user_id: userId,
                         name: candidate.name,
                         amount: candidate.amount,
                         interval: candidate.interval,
-                        type: candidate.type, // PHASE 3.6: Save type
+                        type: candidate.type,
                         merchant_id: merchantId,
+                        category_id: categoryId, // Inherit category from transactions
                         next_expected_date: candidate.nextPaymentDate,
                         status: 'active'
                     }
                 });
 
-                // 7. Link all transactions
+                // 8. Link all transactions
                 await db.transactions.updateMany({
                     where: { id: { in: candidate.transactions.map(t => t.id) } },
                     data: {
                         recurring_transaction_id: recurring.id,
-                        merchant_id: merchantId // Also update transaction's merchant!
+                        merchant_id: merchantId
                     }
                 });
             }

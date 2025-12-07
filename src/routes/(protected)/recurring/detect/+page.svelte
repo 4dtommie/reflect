@@ -5,6 +5,8 @@
 	import { Settings, List, Activity, Play, ShoppingCart, Check } from 'lucide-svelte';
 	import RecurringExpenseItem from './RecurringExpenseItem.svelte';
 	import VariableSpendingItem from '$lib/components/VariableSpendingItem.svelte';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	const subtitles = [
 		'Elementary, my dear user.',
@@ -95,6 +97,14 @@
 			savingVariable = false;
 		}
 	}
+
+	// Auto-start detection if ?autostart=true
+	onMount(() => {
+		console.log('[DetectPage] onMount, autostart:', $page.url.searchParams.get('autostart'));
+		if ($page.url.searchParams.get('autostart') === 'true') {
+			startDetection();
+		}
+	});
 </script>
 
 <div class="flex flex-col gap-8 p-4">
@@ -211,7 +221,9 @@
 						<div>
 							<h2 class="text-xl font-bold">Variable spending</h2>
 							<p class="text-sm opacity-60">
-								{variablePatterns.length} spending categor{variablePatterns.length !== 1 ? 'ies' : 'y'}
+								{variablePatterns.length} spending categor{variablePatterns.length !== 1
+									? 'ies'
+									: 'y'}
 							</p>
 						</div>
 					</div>
@@ -233,7 +245,7 @@
 								<span class="text-sm font-medium">Saved</span>
 							</div>
 						{:else if savingVariable}
-							<span class="loading loading-spinner loading-sm text-primary"></span>
+							<span class="loading loading-sm loading-spinner text-primary"></span>
 						{/if}
 					</div>
 				</div>

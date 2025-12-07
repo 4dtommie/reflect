@@ -1,17 +1,8 @@
 <script lang="ts">
-	import {
-		Upload as UploadIcon,
-		FileText,
-		X,
-		LoaderCircle,
-		FileSpreadsheet,
-		CheckCircle,
-		AlertCircle
-	} from 'lucide-svelte';
+	import { Upload as UploadIcon, FileText, X, LoaderCircle } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { parseCSVFile, type ParseResult } from '$lib/utils/csvParser';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
-	import PlaceholderWidget from '$lib/components/PlaceholderWidget.svelte';
 
 	let selectedFile = $state<File | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>(undefined);
@@ -266,26 +257,4 @@
 			</div>
 		</DashboardWidget>
 	{/if}
-
-	<!-- Mapping Status Widgets (Placeholders) -->
-	<PlaceholderWidget
-		title="Mapping Status: Columns"
-		description="Your columns are feeling a bit unmapped right now"
-		size="full"
-		icon={FileSpreadsheet}
-	/>
-
-	<PlaceholderWidget
-		title="Mapping Status: Categories"
-		description="Categories are patiently waiting to be assigned"
-		size="full"
-		icon={CheckCircle}
-	/>
-
-	<PlaceholderWidget
-		title="Mapping Status: Validation"
-		description="No validation drama yet, but we're ready for it"
-		size="full"
-		icon={AlertCircle}
-	/>
 </div>

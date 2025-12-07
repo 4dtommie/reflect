@@ -52,7 +52,12 @@
 	});
 </script>
 
-<DashboardWidget size={widgetSize} title="Getting organized">
+<DashboardWidget
+	size={widgetSize}
+	title="Categorized"
+	actionLabel="Improve"
+	actionHref="/categorize"
+>
 	{#if uncategorizedCount === totalTransactions && totalTransactions > 0}
 		<!-- CTA when no categorization -->
 		<div class="flex h-full flex-col items-center justify-center gap-4 py-4">
@@ -77,12 +82,6 @@
 			>
 				<span class="text-xs font-bold text-primary">{Math.round(categorizedPercentage)}%</span>
 			</div>
-		</div>
-		<div class="border-t border-base-200 pt-3">
-			<a href="/categorize" class="group btn w-full justify-between btn-ghost btn-sm">
-				<span>Improve categorization</span>
-				<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
-			</a>
 		</div>
 	{:else}
 		<!-- Detailed variant: Full stats display -->

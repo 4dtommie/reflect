@@ -2,6 +2,7 @@
 	import DashboardWidget from './DashboardWidget.svelte';
 	import Amount from './Amount.svelte';
 	import * as LucideIcons from 'lucide-svelte';
+	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 
 	let { transactions }: { transactions: any[] } = $props();
 
@@ -13,6 +14,30 @@
 		const icon = (LucideIcons as any)[iconName];
 		return icon || LucideIcons.ShoppingCart;
 	};
+
+	function handleTransactionClick(transaction: any) {
+		// Dashboard provides category as a string (name), not an object
+		// Build the category object from available fields
+		const categoryObj = transaction.category
+			? typeof transaction.category === 'string'
+				? { id: 0, name: transaction.category, icon: transaction.categoryIcon }
+				: transaction.category
+			: null;
+
+		transactionModalStore.open({
+			id: transaction.id,
+			date: transaction.date,
+			merchantName: transaction.merchantName ?? transaction.merchant,
+			amount: transaction.amount,
+			description: transaction.description ?? '',
+			is_debit: transaction.isDebit ?? transaction.is_debit ?? true,
+			category: categoryObj,
+			merchant: transaction.merchant ? { name: transaction.merchant } : null,
+			type: transaction.type,
+			is_recurring: transaction.is_recurring,
+			recurring_transaction: transaction.recurring_transaction
+		});
+	}
 </script>
 
 {#if transactions.length === 0}
@@ -27,47 +52,32 @@
 	</DashboardWidget>
 {:else}
 	<!-- Transaction List -->
-	<DashboardWidget size="auto">
+	<DashboardWidget
+		size="auto"
+		title="Recent transactions"
+		actionLabel="View all"
+		actionHref="/transactions"
+	>
 		<div class="space-y-1">
-			<h3 class="mb-3 text-lg font-semibold">Recent transactions</h3>
-
-			<div class="space-y-2">
+			<div class="flex flex-col gap-2">
 				{#each transactions as transaction}
 					{@const Icon = getCategoryIcon(transaction.categoryIcon)}
-					<div
-						class="group flex cursor-pointer items-center gap-4 rounded-2xl bg-base-200/50 p-3 transition-all duration-200 hover:scale-[1.01] hover:bg-base-200"
+					<button
+						class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
+						onclick={() => handleTransactionClick(transaction)}
 					>
-						<!-- Category Icon -->
-						<div class="flex-shrink-0">
-							<div
-								class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20"
-							>
-								<Icon size={20} class="text-primary" />
+						<div class="flex min-w-0 flex-1 flex-col">
+							<span class="truncate text-sm font-medium">{transaction.merchant}</span>
+							<div class="flex items-center gap-2 text-xs text-base-content/60">
+								<Icon size={12} />
+								<span>{transaction.category}</span>
 							</div>
 						</div>
-
-						<!-- Merchant Name -->
-						<div class="min-w-0 flex-1">
-							<p class="truncate font-medium">{transaction.merchant}</p>
-							<p class="text-xs opacity-60">{transaction.category}</p>
+						<div class="flex-shrink-0 text-right">
+							<Amount value={transaction.amount} size="small" isDebit={transaction.isDebit} />
 						</div>
-
-						<!-- Amount -->
-						<div class="flex-shrink-0">
-							<Amount value={transaction.amount} size="medium" isDebit={transaction.isDebit} />
-						</div>
-					</div>
+					</button>
 				{/each}
-			</div>
-
-			<div class="mt-2 border-t border-base-200 pt-1">
-				<a href="/transactions" class="group btn btn-block justify-between btn-ghost btn-sm">
-					Show all transactions
-					<LucideIcons.ArrowRight
-						size={16}
-						class="transition-transform group-hover:translate-x-1"
-					/>
-				</a>
 			</div>
 		</div>
 	</DashboardWidget>

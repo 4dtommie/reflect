@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { ArrowRight } from 'lucide-svelte';
 
 	let {
 		title,
@@ -8,6 +9,8 @@
 		variant = 'default',
 		enableHover = true,
 		bgColor,
+		actionLabel,
+		actionHref,
 		children
 	}: {
 		title?: string;
@@ -16,6 +19,8 @@
 		variant?: 'default' | 'placeholder';
 		enableHover?: boolean;
 		bgColor?: string;
+		actionLabel?: string;
+		actionHref?: string;
 		children: Snippet;
 	} = $props();
 
@@ -55,13 +60,21 @@
 		: ''} {sizeClasses[size]} {variantClasses[variant]}"
 >
 	<div class="card-body flex flex-col">
-		{#if title || icon}
-			<div class="mb-2 flex items-center gap-2">
-				{#if icon}
-					{@render icon()}
-				{/if}
-				{#if title}
-					<h2 class="card-title">{title}</h2>
+		{#if title || icon || actionLabel}
+			<div class="mb-2 flex items-center justify-between gap-2">
+				<div class="flex items-center gap-2">
+					{#if icon}
+						{@render icon()}
+					{/if}
+					{#if title}
+						<h2 class="card-title">{title}</h2>
+					{/if}
+				</div>
+				{#if actionLabel && actionHref}
+					<a href={actionHref} class="btn gap-1 rounded-full btn-ghost btn-xs">
+						{actionLabel}
+						<ArrowRight size={12} />
+					</a>
 				{/if}
 			</div>
 		{/if}

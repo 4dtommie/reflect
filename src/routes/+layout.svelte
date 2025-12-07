@@ -4,7 +4,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { User, LayoutDashboard, List, FileText, BarChart3 } from 'lucide-svelte';
+	import { User, LayoutDashboard, List, Zap } from 'lucide-svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
@@ -162,8 +162,7 @@
 	const navItems = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/transactions', label: 'Transactions', icon: List },
-		{ href: '/reports', label: 'Reports', icon: FileText },
-		{ href: '/statistics', label: 'Statistics', icon: BarChart3 }
+		{ href: '/actions', label: 'Actions', icon: Zap }
 	];
 
 	const isActive = (href: string) => {
@@ -180,6 +179,14 @@
 		rel="stylesheet"
 	/>
 </svelte:head>
+
+<!-- Animated gradient blobs background -->
+<div class="gradient-blob-container" aria-hidden="true">
+	<div class="gradient-blob gradient-blob-1"></div>
+	<div class="gradient-blob gradient-blob-2"></div>
+	<div class="gradient-blob gradient-blob-3"></div>
+	<div class="gradient-blob gradient-blob-4"></div>
+</div>
 
 <div class="navbar mb-4">
 	<!-- Logo on left -->

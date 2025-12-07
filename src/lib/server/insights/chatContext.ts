@@ -1,4 +1,4 @@
-import { getInsightData, type InsightData } from './insightEngine';
+import { getInsightData, getActiveInsights, type InsightData, type EvaluatedInsight } from './insightEngine';
 
 /**
  * Available actions the AI can suggest via CTA buttons
@@ -33,23 +33,63 @@ export const AVAILABLE_ACTIONS = [
 export type ActionId = (typeof AVAILABLE_ACTIONS)[number]['id'];
 
 /**
- * Build system prompt with user's financial context
+ * Get category emoji for insight
  */
-export function buildSystemPrompt(insightData: InsightData): string {
+function getCategoryEmoji(category: string): string {
+    switch (category) {
+        case 'urgent': return '⚠️';
+        case 'action': return '🎯';
+        case 'insight': return '💡';
+        case 'celebration': return '🎉';
+        case 'tip': return '💡';
+        default: return '•';
+    }
+}
+
+/**
+ * Convert insight action_href to navigate action
+ */
+function getNavigateAction(actionHref?: string): string {
+    if (!actionHref) return '';
+
+    const actionMap: Record<string, string> = {
+        '/categorize': '[navigate_categorize]',
+        '/categorize-all': '[navigate_categorize]',
+        '/recurring': '[navigate_recurring]',
+        '/upload-transactions': '[navigate_upload]',
+        '/transactions': '[navigate_transactions]'
+    };
+
+    return actionMap[actionHref] || '';
+}
+
+/**
+ * Build system prompt with user's financial context and active insights
+ */
+export function buildSystemPrompt(insightData: InsightData, insights: EvaluatedInsight[]): string {
     const {
         totalTransactions,
-        categorizedCount,
         uncategorizedPercentage,
         monthlyIncome,
         monthlyExpenses,
-        monthlySavings,
-        currentMonthSpending,
-        lastMonthSpending,
-        spendingChangePercent,
-        upcomingPayments,
-        latePayments,
-        topUncategorizedMerchants
+        upcomingPayments
     } = insightData;
+
+    // Filter to actionable insights (urgent + action categories)
+    const actionableInsights = insights.filter(i =>
+        i.category === 'urgent' || i.category === 'action'
+    );
+
+    // Build actionable section from insights
+    const suggestions = actionableInsights.map(insight => {
+        const emoji = getCategoryEmoji(insight.category);
+        const action = getNavigateAction(insight.actionHref);
+        return `- ${emoji} **${insight.message}** ${action}`;
+    });
+
+    const actionableSection = suggestions.length > 0
+        ? `\n## 🎯 ACTIONABLE RIGHT NOW:\nWhen user asks about actions, help, or next steps, **ALWAYS include the action marker** in brackets:\n${suggestions.join('\n')}\n\n**CRITICAL:** Every time you mention an action (categorize, upload, recurring), include the marker like [navigate_categorize]. The user gets a clickable button from these!\n`
+        : '';
 
     return `You are a friendly financial assistant called "Penny" 🪙. You help users understand and manage their personal finances.
 
@@ -58,7 +98,7 @@ export function buildSystemPrompt(insightData: InsightData): string {
 - Use emojis occasionally but not excessively
 - Keep responses concise (2-3 sentences usually)
 - Be helpful without being preachy about saving money
-
+${actionableSection}
 ## QUICK CONTEXT (already loaded):
 - Total transactions: ${totalTransactions}
 - Monthly expenses: €${monthlyExpenses.toFixed(0)}
@@ -142,12 +182,18 @@ export function cleanMessageContent(content: string): string {
 }
 
 /**
- * Get financial context for chat
+ * Get financial context for chat - now includes active insights
  */
 export async function getChatContext(userId: number) {
-    const insightData = await getInsightData(userId);
+    // Fetch both insight data and active insights in parallel
+    const [insightData, insights] = await Promise.all([
+        getInsightData(userId),
+        getActiveInsights(userId, 'chat')
+    ]);
+
     return {
-        systemPrompt: buildSystemPrompt(insightData),
-        insightData
+        systemPrompt: buildSystemPrompt(insightData, insights),
+        insightData,
+        insights // Also return insights for potential use
     };
 }
