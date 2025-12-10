@@ -89,6 +89,16 @@ export async function categorizeBatchWithOpenAI(
         const includeMerchantNameOptions = options?.includeMerchantNameOptions ?? false;
         const prompt = createCategorizationPrompt(categories, transactions, includeReasoning, includeCleanedMerchantName, useCategoryNames, enableSearchGrounding, includeMerchantNameOptions);
 
+        // Log the full prompts being sent to AI
+        console.log('\n' + '='.repeat(80));
+        console.log('📤 FULL CATEGORIZATION PROMPT');
+        console.log('='.repeat(80));
+        console.log('\n--- SYSTEM PROMPT ---');
+        console.log(systemPrompt);
+        console.log('\n--- USER PROMPT ---');
+        console.log(prompt);
+        console.log('='.repeat(80) + '\n');
+
         // Use model override if provided, otherwise use config
         const modelToUse = modelOverride || aiConfig.model;
 

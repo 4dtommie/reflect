@@ -54,7 +54,7 @@
 
 <DashboardWidget
 	size={widgetSize}
-	title="Categorized"
+	title="Payments labeled"
 	actionLabel="Improve"
 	actionHref="/categorize"
 >

@@ -71,7 +71,10 @@
 					{/if}
 				</div>
 				{#if actionLabel && actionHref}
-					<a href={actionHref} class="btn gap-1 rounded-full btn-ghost btn-xs">
+					<a
+						href={actionHref}
+						class="btn items-center justify-center gap-1 rounded-full leading-none btn-ghost btn-xs"
+					>
 						{actionLabel}
 						<ArrowRight size={12} />
 					</a>
