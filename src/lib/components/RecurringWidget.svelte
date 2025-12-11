@@ -74,7 +74,7 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each sortedTransactions as tx}
-				{@const isPositive = Number(tx.amount) > 0}
+				{@const isIncome = tx.is_debit === false}
 				<button
 					class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
 					onclick={() => handleOpenModal(tx)}
@@ -90,11 +90,11 @@
 					</div>
 					<div class="flex-shrink-0 text-right">
 						<p
-							class={isPositive
+							class={isIncome
 								? 'inline-block rounded-lg bg-success/10 px-2 py-0.5 text-sm font-semibold text-success'
 								: 'text-sm font-semibold'}
 						>
-							{isPositive ? '+' : ''}€ {Math.abs(Number(tx.amount)).toFixed(2).replace('.', ',')}
+							{isIncome ? '+' : '-'}€ {Math.abs(Number(tx.amount)).toFixed(2).replace('.', ',')}
 						</p>
 					</div>
 				</button>

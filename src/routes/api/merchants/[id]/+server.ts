@@ -95,7 +95,7 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		if (!validationResult.success) {
 			return json({
 				message: 'Validation failed',
-				errors: validationResult.error.errors
+				errors: validationResult.error.issues
 			}, { status: 400 });
 		}
 

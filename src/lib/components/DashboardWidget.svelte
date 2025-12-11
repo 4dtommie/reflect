@@ -55,11 +55,15 @@
 </script>
 
 <div
-	class="card break-inside-avoid rounded-3xl transition-all duration-300 {enableHover
+	class="card flex break-inside-avoid flex-col rounded-3xl transition-all duration-300 {enableHover
 		? 'hover:scale-[1.01]'
 		: ''} {sizeClasses[size]} {variantClasses[variant]}"
 >
-	<div class="card-body flex flex-col">
+	<div
+		class="card-body flex h-full flex-1 flex-col {variant === 'placeholder'
+			? 'justify-center'
+			: ''}"
+	>
 		{#if title || icon || actionLabel}
 			<div class="mb-2 flex items-center justify-between gap-2">
 				<div class="flex items-center gap-2">

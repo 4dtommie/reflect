@@ -65,7 +65,7 @@
 			<PlaceholderWidget
 				title="Transaction stats"
 				description="See your transaction statistics here"
-				size="medium"
+				size="small"
 				icon={TrendingUp}
 			/>
 		{/if}

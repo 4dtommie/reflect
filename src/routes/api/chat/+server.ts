@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                             insight_id: topInsight.id,
                             action_buttons: topInsight.actionLabel && topInsight.actionHref
                                 ? [{ label: topInsight.actionLabel, href: topInsight.actionHref }]
-                                : null
+                                : undefined
                         } : undefined
                     }
                 },
@@ -96,6 +96,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         // Handle function calls (max 3 rounds)
         let responseMessage = completion.choices[0]?.message;
         let iterations = 0;
+        let lastFunctionResult: any = null;
 
         while (responseMessage?.tool_calls && iterations < MAX_FUNCTION_ROUNDS) {
             // Add assistant message with tool calls to history
@@ -109,6 +110,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 try {
                     const args = JSON.parse(toolCall.function.arguments);
                     const result = await executeFunction(toolCall.function.name, args, userId);
+                    console.log(`[Chat API] Executed ${toolCall.function.name}, result keys:`, Object.keys(result as object));
+
+                    if (toolCall.function.name === 'get_transactions' || toolCall.function.name === 'search_transactions') {
+                        lastFunctionResult = result;
+                        console.log('[Chat API] Captured lastFunctionResult for transactions');
+                    }
 
                     messages.push({
                         role: 'tool',
@@ -173,13 +180,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             }
         }
 
+        if (lastFunctionResult?.transactions) {
+            console.log('[Chat API] Saving message with transaction data, count:', lastFunctionResult.transactions.length);
+        } else {
+            console.log('[Chat API] No transaction data to save. lastFunctionResult keys:', lastFunctionResult ? Object.keys(lastFunctionResult) : 'null');
+        }
+
         // Store assistant message
         const assistantMessage = await db.chatMessage.create({
             data: {
                 conversation_id: conversation.id,
                 role: 'assistant',
                 content: cleanContent,
-                action_buttons: actionButtons.length > 0 ? actionButtons : null
+                action_buttons: actionButtons.length > 0 ? actionButtons : undefined,
+                data: lastFunctionResult?.transactions ? { transactions: lastFunctionResult.transactions } : undefined
             }
         });
 
@@ -195,6 +209,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 role: 'assistant',
                 content: cleanContent,
                 actionButtons: actionButtons.length > 0 ? actionButtons : null,
+                data: lastFunctionResult?.transactions ? { transactions: lastFunctionResult.transactions } : null,
                 createdAt: assistantMessage.created_at
             },
             conversationId: conversation.id
@@ -258,6 +273,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                     actionButtons: m.action_buttons,
                     insightId: m.insight_id,
                     insightCategory: m.insight_id ? categoryMap.get(m.insight_id) : null,
+                    data: m.data,
                     createdAt: m.created_at
                 })),
                 hasMore: conversation.messages.length === limit
@@ -299,6 +315,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
                         actionButtons: m.action_buttons,
                         insightId: m.insight_id,
                         insightCategory: m.insight_id ? categoryMap.get(m.insight_id) : null,
+                        data: m.data,
                         createdAt: m.created_at
                     })),
                     hasMore: latestConversation.messages.length === limit

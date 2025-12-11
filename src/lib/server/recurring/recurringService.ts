@@ -101,10 +101,16 @@ export function calculateYearlyAmount(amount: number, interval: string | null): 
 }
 
 /**
- * Check if a subscription is income based on category and transactions
+ * Check if a subscription is income based on is_debit field, category, and transactions
  */
 export function checkIsIncome(sub: SubscriptionWithRelations): boolean {
-	// Check category group first
+	// PRIORITY 1: Check is_debit field on the recurring transaction itself (new authoritative source)
+	// is_debit = false means it's income
+	if (sub.is_debit === false) return true;
+	if (sub.is_debit === true) return false;
+
+	// FALLBACK for legacy data without is_debit set:
+	// Check category group
 	if (sub.categories?.group === 'income') return true;
 
 	// Check linked transactions - if most are NOT debits, it's income

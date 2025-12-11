@@ -21,6 +21,7 @@
 			remaining: number;
 			savings: number;
 			income: number;
+			recurringIncome?: number;
 		}[];
 		class?: string;
 		compact?: boolean;
@@ -52,34 +53,36 @@
 		// Each layer's data point represents the cumulative height from the base
 		// Bottom: recurring (base)
 		// Second: variable stacked on recurring
-		// Third: savings stacked on variable + recurring
-		// Top: remaining stacked on savings + variable + recurring
+		// Third: remaining (income - expenses) stacked on variable + recurring
+
 		const stackedVariable = recurringValues.map((recurring, i) => recurring + variableValues[i]);
-		const stackedSavings = stackedVariable.map(
-			(variableStack, i) => variableStack + savingsValues[i]
-		);
-		const stackedRemaining = stackedSavings.map(
-			(savingsStack, i) => savingsStack + remainingValues[i]
-		);
 
 		// Income line - real monthly income values
-		const incomeLineValues = monthlySpending.map(({ income }) => income || 0);
+		const incomeLineValues = monthlySpending.map(({ recurringIncome }) => recurringIncome || 0);
+
+		// Remaining is effectively the income line (since it fills up to income)
+		// We use income values as the top of the "remaining" stack
+		const stackedRemaining = incomeLineValues;
 
 		return {
 			labels: monthLabels,
 			recurring: recurringValues,
 			variable: stackedVariable,
-			savings: stackedSavings,
 			remaining: stackedRemaining,
 			income: incomeLineValues,
 			// Keep raw individual values for tooltips
 			rawRecurring: recurringValues,
 			rawVariable: variableValues,
-			rawSavings: savingsValues,
-			rawRemaining: remainingValues,
+			// Calculate raw remaining as Income - (Recurring + Variable)
+			rawRemaining: incomeLineValues.map((income, i) =>
+				Math.max(0, income - recurringValues[i] - variableValues[i])
+			),
 			rawIncome: incomeLineValues
 		};
 	});
+
+	// Solid fill color for free-to-spend gap (same as remaining/free color)
+	const gapFillColor = chartColors.areaFill.remaining;
 
 	onMount(() => {
 		if (!chartCanvas || !chartData) return;
@@ -101,57 +104,46 @@
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 1
+						order: 0
 					},
 					{
 						label: 'Variable expenses',
 						data: chartData.variable,
 						borderColor: chartColors.border.variable,
-						backgroundColor: chartColors.areaFill.variable,
+						backgroundColor: chartColors.areaFill.variable, // Light purple from config
 						fill: '-1',
+						tension: 0.4,
+						pointRadius: 0,
+						pointHoverRadius: 4,
+						order: 1
+					},
+					{
+						label: 'Free to Spend',
+						data: chartData.remaining,
+						borderColor: 'transparent',
+						backgroundColor: gapFillColor,
+						fill: {
+							target: '-1',
+							above: gapFillColor, // Solid light blue
+							below: 'rgba(239, 68, 68, 0.5)' // Over budget red
+						},
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
 						order: 2
 					},
 					{
-						label: 'Savings & Investments',
-						data: chartData.savings,
-						borderColor: chartColors.border.savings,
-						backgroundColor: chartColors.areaFill.savings,
-						fill: '-1',
-						tension: 0.4,
-						pointRadius: 0,
-						pointHoverRadius: 4,
-						order: 3
-					},
-					{
-						label: 'Remaining expenses',
-						data: chartData.remaining,
-						borderColor: chartColors.border.remaining,
-						backgroundColor: chartColors.areaFill.remaining,
-						fill: '-1',
-						tension: 0.4,
-						pointRadius: 0,
-						pointHoverRadius: 4,
-						order: 4,
-						hidden: true
-					},
-					{
 						label: 'Income',
 						data: chartData.income,
-						borderColor: chartColors.border.income,
+						borderColor: '#22c55e', // Success Green
 						backgroundColor: 'transparent',
-						borderWidth: 2,
-						borderDash: [5, 5],
+						borderWidth: 3,
 						fill: false,
-						stepped: false,
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 5,
-						spanGaps: true,
-						hidden: true
+						order: 3, // Topmost
+						hidden: false
 					}
 				]
 			},
@@ -171,15 +163,22 @@
 						enabled: true,
 						mode: 'index',
 						intersect: false,
-						backgroundColor: 'rgba(0, 0, 0, 0.8)',
-						padding: 12,
+						position: 'average',
+						xAlign: 'right',
+						yAlign: 'center',
+						caretPadding: 20,
+						backgroundColor: 'rgba(0, 0, 0, 0.85)',
+						padding: { left: 12, right: 16, top: 10, bottom: 10 },
 						titleFont: {
 							size: 12,
 							weight: 'bold'
 						},
 						bodyFont: {
-							size: 11
+							size: 11,
+							family: 'monospace'
 						},
+						bodySpacing: 4,
+						itemSort: (a: any, b: any) => b.datasetIndex - a.datasetIndex, // Reverse order: Income, Free, Variable, Recurring
 						callbacks: {
 							title: (tooltipItems) => {
 								if (!dataRef?.chartData || !dataRef?.monthlySpending) return '';
@@ -202,12 +201,23 @@
 									// Variable
 									value = dataRef.chartData.rawVariable[index];
 								} else if (datasetIndex === 2) {
-									// Savings
-									value = dataRef.chartData.rawSavings[index];
-								} else if (datasetIndex === 3) {
-									// Remaining
+									// Free to Spend Gap
+									// Show the calculated raw remaining or implied gap?
+									// Raw remaining was calculated as Income - Expenses
 									value = dataRef.chartData.rawRemaining[index];
-								} else if (datasetIndex === 4) {
+									if (
+										value === 0 &&
+										dataRef.chartData.rawRecurring[index] + dataRef.chartData.rawVariable[index] >
+											dataRef.chartData.rawIncome[index]
+									) {
+										// Technically "Over Budget" by X
+										label = 'Over Budget';
+										value =
+											dataRef.chartData.rawRecurring[index] +
+											dataRef.chartData.rawVariable[index] -
+											dataRef.chartData.rawIncome[index];
+									}
+								} else if (datasetIndex === 3) {
 									// Income
 									value = dataRef.chartData.rawIncome[index];
 								}
@@ -219,23 +229,9 @@
 									maximumFractionDigits: 0
 								}).format(value);
 
-								return `${label}: ${formatted}`;
-							},
-							footer: (tooltipItems) => {
-								if (!dataRef?.chartData) return '';
-								const index = tooltipItems[0].dataIndex;
-								const total =
-									dataRef.chartData.rawRecurring[index] +
-									dataRef.chartData.rawVariable[index] +
-									dataRef.chartData.rawSavings[index] +
-									dataRef.chartData.rawRemaining[index];
-								const formatted = new Intl.NumberFormat('nl-NL', {
-									style: 'currency',
-									currency: 'EUR',
-									minimumFractionDigits: 0,
-									maximumFractionDigits: 0
-								}).format(total);
-								return `Total: ${formatted}`;
+								// Pad label for table-like alignment
+								const paddedLabel = label.padEnd(20, ' ');
+								return `${paddedLabel} ${formatted.padStart(10, ' ')}`;
 							}
 						}
 					}
@@ -269,15 +265,26 @@
 	$effect(() => {
 		if (chartInstance && chartData) {
 			chartInstance.data.labels = chartData.labels;
+
+			// Recurring
 			chartInstance.data.datasets[0].data = chartData.recurring;
+
+			// Variable
 			chartInstance.data.datasets[1].data = chartData.variable;
-			chartInstance.data.datasets[2].data = chartData.savings;
-			chartInstance.data.datasets[3].data = chartData.remaining;
-			chartInstance.data.datasets[3].hidden = true; // Hide remaining expenses
-			if (chartInstance.data.datasets[4]) {
-				chartInstance.data.datasets[4].data = chartData.income;
-				chartInstance.data.datasets[4].hidden = true; // Hide income line
+
+			// Free Gap / Over Budget
+			chartInstance.data.datasets[2].data = chartData.remaining;
+			chartInstance.data.datasets[2].backgroundColor = gapFillColor;
+			if (typeof chartInstance.data.datasets[2].fill === 'object') {
+				(chartInstance.data.datasets[2].fill as any).above = gapFillColor;
 			}
+
+			// Income Line
+			if (chartInstance.data.datasets[3]) {
+				chartInstance.data.datasets[3].data = chartData.income;
+				chartInstance.data.datasets[3].hidden = false;
+			}
+
 			// Update data reference for tooltips
 			if (dataRef) {
 				dataRef.chartData = chartData;

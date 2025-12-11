@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import DashboardWidget from './DashboardWidget.svelte';
-	import { ArrowRight, Send, ChevronDown, Loader2 } from 'lucide-svelte';
+	import { ArrowRight, Send, ChevronDown, Loader2, ArrowUpRight } from 'lucide-svelte';
+	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 
 	interface Message {
 		id: number;
@@ -9,6 +10,16 @@
 		content: string;
 		actionButtons?: Array<{ label: string; href: string }> | null;
 		insightCategory?: 'urgent' | 'action' | 'insight' | 'celebration' | 'tip' | null;
+		data?: {
+			transactions?: Array<{
+				id: number;
+				date: string;
+				merchant: string;
+				amount: number;
+				is_expense: boolean;
+				category: string;
+			}>;
+		};
 		createdAt: Date;
 	}
 
@@ -197,6 +208,7 @@
 					role: 'assistant',
 					content: data.message.content,
 					actionButtons: data.message.actionButtons,
+					data: data.message.data,
 					createdAt: new Date(data.message.createdAt)
 				};
 				messages = [...messages, assistantMessage];
@@ -325,10 +337,41 @@
 								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny</p>
 							{/if}
 							<div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-base-200/70 px-3 py-2">
-								<p class="text-sm">
+								<p class="pb-1 text-sm">
 									{getDisplayContent(msg)}{#if isTyping(msg)}<span class="animate-pulse">▊</span
 										>{/if}
 								</p>
+
+								{#if msg.data?.transactions && msg.data.transactions.length > 0 && !isTyping(msg)}
+									<div class="mt-2 flex flex-col gap-1 overflow-hidden rounded-lg bg-base-100/50">
+										{#each msg.data.transactions as t}
+											<button
+												class="flex w-full items-center justify-between gap-3 p-2 text-left text-xs transition-colors hover:bg-base-100"
+												onclick={() =>
+													transactionModalStore.open({
+														id: t.id,
+														date: t.date,
+														merchantName: t.merchant,
+														amount: t.amount,
+														description: t.merchant,
+														is_debit: t.is_expense,
+														category: { id: 0, name: t.category }
+													})}
+											>
+												<div class="flex flex-col overflow-hidden">
+													<div class="truncate font-medium">{t.merchant}</div>
+													<div class="text-[10px] opacity-60">{t.date}</div>
+												</div>
+												<div class="flex items-center gap-1 font-mono whitespace-nowrap">
+													<span class={t.is_expense ? '' : 'text-success'}>
+														{t.is_expense ? '-' : '+'}€{t.amount.toFixed(2)}
+													</span>
+													<ArrowUpRight class="h-3 w-3 opacity-30" />
+												</div>
+											</button>
+										{/each}
+									</div>
+								{/if}
 
 								{#if msg.actionButtons && msg.actionButtons.length > 0 && !isTyping(msg)}
 									<div class="mt-2 flex flex-wrap gap-1">

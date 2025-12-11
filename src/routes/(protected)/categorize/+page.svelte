@@ -139,17 +139,19 @@
 
 	async function handleManualSave(transactionId: number, categoryId: number, merchantName: string) {
 		// For the merchant list, we want to categorize ALL transactions for this merchant
-		// We use the original merchant name from the selected transaction to find matches
+		// We use the merchant_id from the selected transaction to find all related transactions
+		const merchantId = selectedManualTransaction?.merchantId;
 		const originalMerchantName = selectedManualTransaction?.merchantName;
 
-		if (!originalMerchantName) return;
+		if (!merchantId && !originalMerchantName) return;
 
 		try {
 			const response = await fetch('/api/transactions/categorize-by-merchant', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					merchantName: originalMerchantName,
+					merchantId, // Pass merchant_id for reliable matching
+					merchantName: originalMerchantName, // Fallback if no merchant_id
 					categoryId
 				})
 			});

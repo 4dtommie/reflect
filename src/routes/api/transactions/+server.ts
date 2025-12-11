@@ -11,6 +11,7 @@ import {
 } from '$lib/utils/transactionMapper';
 import { cleanMerchantName } from '$lib/server/categorization/merchantNameCleaner';
 import { normalizeDescription } from '$lib/server/categorization/descriptionCleaner';
+import { autoMergeDuplicates, type MergeResult } from '$lib/server/categorization/merchantMerger';
 
 /**
  * Get paginated transactions for the current user
@@ -289,6 +290,9 @@ interface ImportResult {
 	skipped: number;
 	errors: ImportError[];
 	duplicates: number;
+	// Merchant merge results
+	merchantsMerged?: number;
+	mergeResults?: MergeResult[];
 }
 
 
@@ -440,12 +444,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Combine all errors
 		const allErrors = [...mappingErrors, ...validationErrors, ...insertErrors];
 
+		// Run merchant deduplication after successful import
+		let merchantsMerged = 0;
+		let mergeResults: MergeResult[] = [];
+
+		if (importedCount > 0 && allErrors.length === 0) {
+			try {
+				// 1. Link merchants immediately (so we can deduplicate them)
+				await ensureMerchantsAndLink(userId);
+
+				// 2. Run deduplication
+				const mergeProgress = await autoMergeDuplicates();
+				merchantsMerged = mergeProgress.merchantsMerged;
+				mergeResults = mergeProgress.mergeResults;
+			} catch (err) {
+				console.warn('Merchant linking/deduplication failed (non-fatal):', err);
+			}
+		}
+
 		const result: ImportResult = {
 			success: allErrors.length === 0 && importedCount > 0,
 			imported: importedCount,
 			skipped: 0,
 			errors: allErrors,
-			duplicates: 0
+			duplicates: 0,
+			merchantsMerged,
+			mergeResults
 		};
 
 		return json(result);
@@ -520,4 +544,38 @@ export const DELETE: RequestHandler = async ({ locals }) => {
 		throw error(500, err.message || 'Failed to delete transactions');
 	}
 };
+
+/**
+ * Ensure merchants exist for unlinked transactions and link them
+ * Use raw SQL for performance
+ */
+async function ensureMerchantsAndLink(userId: number) {
+	console.log(`🔗 Linking merchants for user ${userId}...`);
+
+	// 1. Create merchants from cleaned names (if they match no existing merchant)
+	// We use ON CONFLICT DO NOTHING to avoid duplicates
+	await db.$executeRaw`
+		INSERT INTO merchants (name, is_active, updated_at, keywords, ibans)
+		SELECT DISTINCT cleaned_merchant_name, true, NOW(), '{}'::text[], '{}'::text[]
+		FROM transactions 
+		WHERE user_id = ${userId}
+		  AND merchant_id IS NULL 
+		  AND cleaned_merchant_name IS NOT NULL 
+		  AND cleaned_merchant_name != ''
+		ON CONFLICT (name) DO UPDATE SET is_active = true, updated_at = NOW()
+	`;
+
+	// 2. Link transactions to merchants matching the name (case-insensitive)
+	const linked = await db.$executeRaw`
+		UPDATE transactions t
+		SET merchant_id = m.id
+		FROM merchants m
+		WHERE t.user_id = ${userId}
+		  AND t.merchant_id IS NULL
+		  AND t.cleaned_merchant_name IS NOT NULL
+		  AND lower(t.cleaned_merchant_name) = lower(m.name)
+	`;
+
+	console.log(`   Linked ${linked} transactions to merchants.`);
+}
 

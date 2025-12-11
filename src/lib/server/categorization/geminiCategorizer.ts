@@ -42,7 +42,7 @@ async function retryWithBackoff<T>(
 
 			// Calculate wait time with exponential backoff
 			const waitTime = delay * Math.pow(2, attempt);
-			console.log(`   ⏳ Rate limit/server error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})...`);
+			// console.log(`   ⏳ Rate limit/server error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})...`);
 			await new Promise(resolve => setTimeout(resolve, waitTime));
 		}
 	}
@@ -77,12 +77,12 @@ export async function categorizeBatchWithGemini(
 		return { results: [], errors: [] };
 	}
 
-	console.log(`🤖 Categorizing ${transactions.length} transactions with Gemini...`);
+	// console.log(`🤖 Categorizing ${transactions.length} transactions with Gemini...`);
 
 	try {
 		// Load categories
 		const categories = await loadCategoriesForAI(userId);
-		console.log(`   📚 Loaded ${categories.length} categories`);
+		// console.log(`   📚 Loaded ${categories.length} categories`);
 
 		// Create prompt (with optional reasoning and cleaned merchant name)
 		const includeReasoning = options?.includeReasoning ?? false;
@@ -141,9 +141,9 @@ export async function categorizeBatchWithGemini(
 		// Combine system prompt and user prompt
 		const fullPrompt = `${systemPrompt}\n\n${prompt}`;
 
-		console.log('📝 Gemini Prompt Preview (first 500 chars):', fullPrompt.substring(0, 500));
-		console.log('📝 Gemini Prompt Length:', fullPrompt.length);
-		console.log('📝 Full Gemini Prompt:', fullPrompt); // Log full prompt as requested
+		// console.log('📝 Gemini Prompt Preview (first 500 chars):', fullPrompt.substring(0, 500));
+		// console.log('📝 Gemini Prompt Length:', fullPrompt.length);
+		// console.log('📝 Full Gemini Prompt:', fullPrompt); // Log full prompt as requested
 
 		// Check if model supports search grounding (Gemini 2.5+ models)
 		const supportsSearchGrounding = modelToUse.includes('gemini-2.5') || modelToUse.includes('gemini-2.0');
@@ -168,14 +168,14 @@ export async function categorizeBatchWithGemini(
 			: tools ? { tools } : undefined;
 
 		// Call Gemini API with retry logic
-		const timerLabel = `Gemini API Call ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-		console.time(timerLabel);
+		// const timerLabel = `Gemini API Call ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+		// console.time(timerLabel);
 		const response = await retryWithBackoff(
 			() => model.generateContent(fullPrompt, generateContentOptions as any),
 			3, // maxRetries
 			1000 // retryDelay
 		);
-		console.timeEnd(timerLabel);
+		// console.timeEnd(timerLabel);
 
 		// Parse response - try multiple methods to get text
 		let responseText: string = '';
@@ -184,7 +184,7 @@ export async function categorizeBatchWithGemini(
 		try {
 			responseText = response.response.text();
 		} catch (textError) {
-			console.log('⚠️ Standard text() method failed, trying alternative methods...');
+			// console.log('⚠️ Standard text() method failed, trying alternative methods...');
 		}
 
 		// Method 2: If text() didn't work, try to extract from candidates directly
@@ -200,7 +200,7 @@ export async function categorizeBatchWithGemini(
 
 					if (textParts && textParts.trim().length > 0) {
 						responseText = textParts;
-						console.log('✅ Extracted text from candidate content parts');
+						// console.log('✅ Extracted text from candidate content parts');
 					}
 				}
 			}
@@ -215,14 +215,16 @@ export async function categorizeBatchWithGemini(
 				const safetyRatings = candidate.safetyRatings;
 				const content = candidate.content;
 
-				console.error('❌ Gemini response has no text content:', {
-					model: modelToUse,
-					finishReason,
-					safetyRatings,
-					content: content ? JSON.stringify(content, null, 2) : 'No content',
-					candidate: JSON.stringify(candidate, null, 2),
-					usageMetadata: response.response.usageMetadata
-				});
+				/*
+									console.error('❌ Gemini response has no text content:', {
+									model: modelToUse,
+									finishReason,
+									safetyRatings,
+									content: content ? JSON.stringify(content, null, 2) : 'No content',
+									candidate: JSON.stringify(candidate, null, 2),
+									usageMetadata: response.response.usageMetadata
+								});
+				*/
 
 				if (finishReason === 'SAFETY') {
 					throw new Error('Gemini blocked the response due to safety concerns. Try adjusting your prompt.');
@@ -241,7 +243,7 @@ export async function categorizeBatchWithGemini(
 
 						if (textParts && textParts.trim().length > 0) {
 							responseText = textParts;
-							console.log('✅ Found text in content parts');
+							// console.log('✅ Found text in content parts');
 						} else {
 							throw new Error(`Gemini response completed (STOP) but no text content found. Content parts: ${JSON.stringify(content.parts)}`);
 						}
@@ -259,8 +261,8 @@ export async function categorizeBatchWithGemini(
 
 						if (textParts && textParts.trim().length > 0) {
 							responseText = textParts;
-							console.log('⚠️ Response was cut off (MAX_TOKENS), but extracted partial content');
-							console.log(`   Consider increasing maxOutputTokens (current: ${generationConfig.maxOutputTokens})`);
+							// console.log('⚠️ Response was cut off (MAX_TOKENS), but extracted partial content');
+							// console.log(`   Consider increasing maxOutputTokens (current: ${generationConfig.maxOutputTokens})`);
 						} else {
 							throw new Error(`Gemini response was cut off due to MAX_TOKENS limit (${generationConfig.maxOutputTokens} tokens). Try increasing maxOutputTokens or reducing the number of transactions.`);
 						}
@@ -280,13 +282,15 @@ export async function categorizeBatchWithGemini(
 		try {
 			// Try to parse as JSON
 			parsedResponse = JSON.parse(responseText);
-			console.log('📝 Gemini response parsed:', JSON.stringify(parsedResponse, null, 2).substring(0, 500));
+			// console.log('📝 Gemini response parsed:', JSON.stringify(parsedResponse, null, 2).substring(0, 500));
 		} catch (parseError) {
-			console.error('❌ Failed to parse Gemini response as JSON');
-			console.error('   Response length:', responseText.length);
-			console.error('   Response preview:', responseText.substring(0, 200));
-			console.error('   Response end:', responseText.substring(Math.max(0, responseText.length - 200)));
-			console.error('   Finish reason:', response.response.candidates?.[0]?.finishReason);
+			/*
+						console.error('❌ Failed to parse Gemini response as JSON');
+						console.error('   Response length:', responseText.length);
+						console.error('   Response preview:', responseText.substring(0, 200));
+						console.error('   Response end:', responseText.substring(Math.max(0, responseText.length - 200)));
+						console.error('   Finish reason:', response.response.candidates?.[0]?.finishReason);
+			*/
 
 			// Check if response was cut off due to token limit
 			const finishReason = response.response.candidates?.[0]?.finishReason;
@@ -300,7 +304,7 @@ export async function categorizeBatchWithGemini(
 
 		// Validate response structure
 		if (!parsedResponse.results || !Array.isArray(parsedResponse.results)) {
-			console.error('❌ Invalid response structure:', parsedResponse);
+			// console.error('❌ Invalid response structure:', parsedResponse);
 			throw new Error('Gemini response missing "results" array');
 		}
 
@@ -311,12 +315,7 @@ export async function categorizeBatchWithGemini(
 
 		for (let i = 0; i < parsedResponse.results.length; i++) {
 			const result = parsedResponse.results[i];
-			console.log(`🔍 Processing Gemini result ${i + 1}:`, {
-				transactionId: result.transactionId,
-				categoryId: result.categoryId,
-				categoryName: result.categoryName,
-				useCategoryNames: options?.useCategoryNames
-			});
+			// console.log(`🔍 Processing Gemini result ${i + 1}:`, { ... });
 
 			// Validate required fields
 			if (typeof result.transactionId !== 'number') {
@@ -354,7 +353,7 @@ export async function categorizeBatchWithGemini(
 						console.warn(`⚠️ Gemini returned "Category X" format instead of actual category name: "${categoryNameToMatch}"`);
 						categoryNameToMatch = null; // Don't try to match this
 					} else {
-						console.log(`⚠️ Gemini returned category name "${categoryNameToMatch}" in categoryId field instead of categoryName`);
+						// console.log(`⚠️ Gemini returned category name "${categoryNameToMatch}" in categoryId field instead of categoryName`);
 					}
 				}
 
@@ -389,11 +388,13 @@ export async function categorizeBatchWithGemini(
 
 					if (matchedCategory) {
 						categoryId = matchedCategory.id;
-						console.log(`✅ Matched category name "${categoryNameToMatch}" to ID ${categoryId} (${matchedCategory.name})`);
+						// console.log(`✅ Matched category name "${categoryNameToMatch}" to ID ${categoryId} (${matchedCategory.name})`);
 					} else {
-						console.warn(`⚠️ Category name "${categoryNameToMatch}" not found.`);
-						console.warn(`   Search name: "${normalizedSearchName}"`);
-						console.warn(`   Available categories (first 20):`, categories.map(c => c.name).slice(0, 20));
+						/*
+												console.warn(`⚠️ Category name "${categoryNameToMatch}" not found.`);
+												console.warn(`   Search name: "${normalizedSearchName}"`);
+												console.warn(`   Available categories (first 20):`, categories.map(c => c.name).slice(0, 20));
+						*/
 						// Don't skip the result, just set categoryId to null so it shows as uncategorized
 						categoryId = null;
 					}
@@ -470,10 +471,10 @@ export async function categorizeBatchWithGemini(
 			total: usageMetadata?.totalTokenCount || 0
 		};
 
-		console.log(`   ✅ Gemini categorization complete:`);
-		console.log(`      - Results: ${results.length}/${transactions.length}`);
-		console.log(`      - Errors: ${errors.length}`);
-		console.log(`      - Tokens: ${tokensUsed.total} (prompt: ${tokensUsed.prompt}, completion: ${tokensUsed.completion})`);
+		// console.log(`   ✅ Gemini categorization complete:`);
+		// console.log(`      - Results: ${results.length}/${transactions.length}`);
+		// console.log(`      - Errors: ${errors.length}`);
+		// console.log(`      - Tokens: ${tokensUsed.total} (prompt: ${tokensUsed.prompt}, completion: ${tokensUsed.completion})`);
 
 		return {
 			results,

@@ -213,7 +213,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 					log(`[${new Date().toISOString()}] 🔍 DEBUG: currentInsight ID: ${currentInsight?.id}`);
 
 					// Check if we should override with a success message
-					if (lastInsightMsg && SUCCESS_TRANSITIONS[lastInsightMsg.insight_id]) {
+					if (lastInsightMsg && lastInsightMsg.insight_id && SUCCESS_TRANSITIONS[lastInsightMsg.insight_id]) {
 						const successId = SUCCESS_TRANSITIONS[lastInsightMsg.insight_id];
 						log(`[${new Date().toISOString()}] 🔍 DEBUG: Attempting transition to: ${successId}`);
 
@@ -286,6 +286,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			name: t.name,
 			amount: Number(t.amount),
 			interval: t.interval,
+			type: t.type,
+			is_debit: t.is_debit,
 			status: t.status,
 			next_expected_date: t.next_expected_date,
 			merchant_id: t.merchant_id,

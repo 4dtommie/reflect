@@ -3,7 +3,6 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import {
 	categorizeBatchWithAI,
-	addSuggestedKeywords,
 	batchTransactions,
 	type TransactionForAI
 } from '$lib/server/categorization/aiCategorizer';
@@ -141,16 +140,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			}
 		}
 
-		// Add suggested keywords to database (for testing, we'll do this but log it)
-		let keywordsAdded = 0;
-		if (allResults.length > 0) {
-			try {
-				keywordsAdded = await addSuggestedKeywords(allResults);
-				console.log(`   ✅ Added ${keywordsAdded} suggested keywords to database`);
-			} catch (err) {
-				console.warn('   ⚠️  Failed to add suggested keywords:', err);
-			}
-		}
+		// Keywords feature removed - suggestedKeywords no longer used
+		const keywordsAdded = 0;
 
 		const success = allErrors.length === 0 && allResults.length > 0;
 

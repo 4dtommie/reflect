@@ -63,7 +63,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		if (!validationResult.success) {
 			return json({
 				message: 'Validation failed',
-				errors: validationResult.error.errors
+				errors: validationResult.error.issues
 			}, { status: 400 });
 		}
 

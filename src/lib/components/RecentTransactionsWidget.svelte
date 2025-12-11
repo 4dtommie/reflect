@@ -43,7 +43,7 @@
 {#if transactions.length === 0}
 	{@const Clock = LucideIcons.Clock}
 	<!-- Empty State -->
-	<DashboardWidget size="large" variant="placeholder">
+	<DashboardWidget size="small" variant="placeholder">
 		<div class="flex h-full flex-col items-center justify-center text-center opacity-50">
 			<Clock size={48} class="mb-4" />
 			<h3 class="text-lg font-semibold">Recent transactions</h3>

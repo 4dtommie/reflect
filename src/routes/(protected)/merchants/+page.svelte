@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { Edit2, X, Plus, Trash2 } from 'lucide-svelte';
+	import { Edit2, X, Plus, Trash2, Link, ChevronDown, ChevronUp } from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import * as Icons from 'lucide-svelte';
 
 	type Merchant = {
@@ -35,7 +36,18 @@
 	let saving = $state(false);
 	let selectedCategoryId = $state<number | null>(null);
 
-	// Update when data changes
+	// Merge suggestions
+	type MergeSuggestion = {
+		merchant1: { id: number; name: string; transactionCount: number };
+		merchant2: { id: number; name: string; transactionCount: number };
+		similarity: number;
+		similarityPercent: number;
+	};
+	let mergeSuggestions = $state<MergeSuggestion[]>([]);
+	let loadingSuggestions = $state(false);
+	let showSuggestions = $state(false);
+	let merging = $state(false);
+
 	$effect(() => {
 		if (data?.merchants) {
 			merchants = data.merchants;
@@ -44,6 +56,64 @@
 			categories = data.categories;
 		}
 	});
+
+	onMount(() => {
+		fetchMergeSuggestions();
+	});
+
+	async function fetchMergeSuggestions() {
+		loadingSuggestions = true;
+		try {
+			const res = await fetch('/api/merchants/merge?threshold=0.6');
+			if (res.ok) {
+				const data = await res.json();
+				mergeSuggestions = data.suggestions || [];
+			}
+		} catch (err) {
+			console.error('Failed to fetch merge suggestions:', err);
+		} finally {
+			loadingSuggestions = false;
+		}
+	}
+
+	async function executeMerge(suggestion: MergeSuggestion) {
+		merging = true;
+		error = null;
+		try {
+			// Keep the one with more transactions as target
+			const target =
+				suggestion.merchant1.transactionCount >= suggestion.merchant2.transactionCount
+					? suggestion.merchant1
+					: suggestion.merchant2;
+			const source = target === suggestion.merchant1 ? suggestion.merchant2 : suggestion.merchant1;
+
+			const res = await fetch('/api/merchants/merge', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ targetId: target.id, sourceId: source.id })
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.message || 'Merge failed');
+			}
+
+			// Refresh data
+			await invalidateAll();
+			await fetchMergeSuggestions();
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to merge';
+		} finally {
+			merging = false;
+		}
+	}
+
+	function dismissSuggestion(suggestion: MergeSuggestion) {
+		mergeSuggestions = mergeSuggestions.filter(
+			(s) =>
+				!(s.merchant1.id === suggestion.merchant1.id && s.merchant2.id === suggestion.merchant2.id)
+		);
+	}
 
 	function getCategoryIcon(iconName: string | null | undefined) {
 		if (!iconName) return null;
@@ -77,7 +147,7 @@
 	}
 
 	function removeIban(iban: string) {
-		editingIbans = editingIbans.filter(i => i !== iban);
+		editingIbans = editingIbans.filter((i) => i !== iban);
 	}
 
 	async function saveMerchant() {
@@ -118,11 +188,56 @@
 	}
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Merchant management</h1>
+<h1 class="mb-6 text-4xl font-bold">Merchant management</h1>
 
 {#if error}
-	<div class="alert alert-error mb-4">
+	<div class="mb-4 alert alert-error">
 		<span>{error}</span>
+	</div>
+{/if}
+
+<!-- Merge Suggestions Widget -->
+{#if mergeSuggestions.length > 0 || loadingSuggestions}
+	<div class="collapse-arrow collapse mb-6 bg-base-200">
+		<input type="checkbox" bind:checked={showSuggestions} />
+		<div class="collapse-title flex items-center gap-2 text-lg font-medium">
+			<Link size={20} />
+			{mergeSuggestions.length} possible duplicate merchants, do you want to merge them?
+		</div>
+		<div class="collapse-content">
+			{#if loadingSuggestions}
+				<p class="text-base-content/70">Scanning for duplicates...</p>
+			{:else}
+				<ul class="space-y-2">
+					{#each mergeSuggestions as suggestion}
+						<li class="flex items-center justify-between gap-4 rounded-lg bg-base-100 p-3">
+							<div class="flex-1">
+								<span class="font-medium">"{suggestion.merchant1.name}"</span>
+								<span class="text-base-content/50"> ↔ </span>
+								<span class="font-medium">"{suggestion.merchant2.name}"</span>
+								<span class="ml-2 badge badge-sm">{suggestion.similarityPercent}% similar</span>
+							</div>
+							<div class="flex gap-2">
+								<button
+									class="btn btn-sm btn-primary"
+									onclick={() => executeMerge(suggestion)}
+									disabled={merging}
+								>
+									{#if merging}
+										<span class="loading loading-xs loading-spinner"></span>
+									{:else}
+										Merge
+									{/if}
+								</button>
+								<button class="btn btn-ghost btn-sm" onclick={() => dismissSuggestion(suggestion)}>
+									<X size={16} />
+								</button>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
 	</div>
 {/if}
 
@@ -146,9 +261,9 @@
 							{@const CategoryIcon = getCategoryIcon(merchant.default_category.icon)}
 							<div class="flex items-center gap-2">
 								{#if CategoryIcon}
-									<CategoryIcon 
-										size={16} 
-										style="color: {merchant.default_category.color || '#94a3b8'};" 
+									<CategoryIcon
+										size={16}
+										style="color: {merchant.default_category.color || '#94a3b8'};"
 									/>
 								{/if}
 								<span>{merchant.default_category.name}</span>
@@ -172,10 +287,7 @@
 					</td>
 					<td>{merchant.transaction_count}</td>
 					<td>
-						<button
-							class="btn btn-sm btn-ghost"
-							onclick={() => startEdit(merchant)}
-						>
+						<button class="btn btn-ghost btn-sm" onclick={() => startEdit(merchant)}>
 							<Edit2 size={16} />
 						</button>
 					</td>
@@ -186,23 +298,20 @@
 </div>
 
 {#if merchants.length === 0}
-	<p class="text-base-content/70 mt-4">No merchants found.</p>
+	<p class="mt-4 text-base-content/70">No merchants found.</p>
 {/if}
 
 <!-- Edit Modal -->
 {#if editingMerchant}
-	<div class="modal modal-open">
+	<div class="modal-open modal">
 		<div class="modal-box">
-			<h3 class="text-2xl font-bold mb-4">Edit merchant: {editingMerchant.name}</h3>
+			<h3 class="mb-4 text-2xl font-bold">Edit merchant: {editingMerchant.name}</h3>
 
 			<div class="form-control mb-4">
 				<label class="label">
 					<span class="label-text">Default category</span>
 				</label>
-				<select
-					class="select select-bordered w-full"
-					bind:value={selectedCategoryId}
-				>
+				<select class="select-bordered select w-full" bind:value={selectedCategoryId}>
 					<option value={null}>None</option>
 					{#each categories as category}
 						<option value={category.id}>{category.name}</option>
@@ -214,10 +323,10 @@
 				<label class="label">
 					<span class="label-text">IBANs</span>
 				</label>
-				<div class="flex gap-2 mb-2">
+				<div class="mb-2 flex gap-2">
 					<input
 						type="text"
-						class="input input-bordered flex-1"
+						class="input-bordered input flex-1"
 						placeholder="NL91ABNA0417164300"
 						bind:value={newIban}
 						onkeydown={(e) => {
@@ -227,20 +336,17 @@
 							}
 						}}
 					/>
-					<button
-						class="btn btn-primary"
-						onclick={addIban}
-					>
+					<button class="btn btn-primary" onclick={addIban}>
 						<Plus size={16} />
 					</button>
 				</div>
 				{#if editingIbans.length > 0}
 					<div class="flex flex-wrap gap-2">
 						{#each editingIbans as iban}
-							<div class="badge badge-outline gap-2">
+							<div class="badge gap-2 badge-outline">
 								{formatIban(iban)}
 								<button
-									class="btn btn-ghost btn-xs p-0 h-auto min-h-0"
+									class="btn h-auto min-h-0 p-0 btn-ghost btn-xs"
 									onclick={() => removeIban(iban)}
 								>
 									<X size={12} />
@@ -254,20 +360,10 @@
 			</div>
 
 			<div class="modal-action">
-				<button
-					class="btn btn-ghost"
-					onclick={cancelEdit}
-					disabled={saving}
-				>
-					Cancel
-				</button>
-				<button
-					class="btn btn-primary"
-					onclick={saveMerchant}
-					disabled={saving}
-				>
+				<button class="btn btn-ghost" onclick={cancelEdit} disabled={saving}> Cancel </button>
+				<button class="btn btn-primary" onclick={saveMerchant} disabled={saving}>
 					{#if saving}
-						<span class="loading loading-spinner loading-sm"></span>
+						<span class="loading loading-sm loading-spinner"></span>
 						Saving...
 					{:else}
 						Save
@@ -275,8 +371,8 @@
 				</button>
 			</div>
 		</div>
-		<div 
-			class="modal-backdrop" 
+		<div
+			class="modal-backdrop"
 			role="button"
 			tabindex="0"
 			onclick={() => {
@@ -292,4 +388,3 @@
 		></div>
 	</div>
 {/if}
-

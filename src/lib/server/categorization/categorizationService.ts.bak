@@ -5,7 +5,7 @@
  */
 
 import { db } from '$lib/server/db';
-import { matchTransactionToCategory, prepareKeywords, type Keyword, type CompiledKeyword } from './keywordMatcher';
+import { matchTransactionToCategory, type Keyword } from './keywordMatcher';
 import { matchTransactionByIBAN, type MerchantWithIBANs, normalizeIBAN } from './ibanMatcher';
 import { cleanMerchantName, findOrCreateMerchant, ensureIBANInMerchant } from './merchantNameCleaner';
 import { matchTransactionsBatchWithVector, isVectorMatchingAvailable, type TransactionForEmbedding } from './vectorMatcher';
@@ -69,7 +69,7 @@ export interface CategorizationBatchResult {
  * Efficient for batch processing - load once, use many times
  */
 export async function loadAllKeywords(): Promise<Keyword[]> {
-	// console.log('📚 Loading all keywords from database...');
+	console.log('📚 Loading all keywords from database...');
 
 	const keywords = await (db as any).category_keywords.findMany({
 		select: {
@@ -78,7 +78,7 @@ export async function loadAllKeywords(): Promise<Keyword[]> {
 		}
 	});
 
-	// console.log(`✅ Loaded ${keywords.length} keywords from ${new Set(keywords.map((k: Keyword) => k.category_id)).size} categories`);
+	console.log(`✅ Loaded ${keywords.length} keywords from ${new Set(keywords.map((k: Keyword) => k.category_id)).size} categories`);
 
 	return keywords;
 }
@@ -88,7 +88,7 @@ export async function loadAllKeywords(): Promise<Keyword[]> {
  * Efficient for batch processing - load once, use many times
  */
 export async function loadAllMerchantsWithIBANs(): Promise<MerchantWithIBANs[]> {
-	// console.log('📚 Loading all merchants with IBANs from database...');
+	console.log('📚 Loading all merchants with IBANs from database...');
 
 	const merchants = await (db as any).merchants.findMany({
 		where: {
@@ -107,7 +107,7 @@ export async function loadAllMerchantsWithIBANs(): Promise<MerchantWithIBANs[]> 
 		m.ibans && Array.isArray(m.ibans) && m.ibans.length > 0
 	);
 
-	// console.log(`✅ Loaded ${merchantsWithIBANs.length} merchants with IBANs (out of ${merchants.length} total)`);
+	console.log(`✅ Loaded ${merchantsWithIBANs.length} merchants with IBANs (out of ${merchants.length} total)`);
 
 	return merchantsWithIBANs;
 }
@@ -130,7 +130,7 @@ export async function loadAllMerchants(): Promise<{
 	byId: Map<number, MerchantData>;
 	byName: Map<string, MerchantData>;
 }> {
-	// console.log('📚 Loading all merchants for in-memory lookups...');
+	console.log('📚 Loading all merchants for in-memory lookups...');
 
 	const merchants = await (db as any).merchants.findMany({
 		where: { is_active: true },
@@ -156,7 +156,7 @@ export async function loadAllMerchants(): Promise<{
 		byName.set(m.name.toLowerCase(), merchantData);
 	}
 
-	// console.log(`✅ Loaded ${merchants.length} merchants into memory`);
+	console.log(`✅ Loaded ${merchants.length} merchants into memory`);
 
 	return { byId, byName };
 }
@@ -173,7 +173,7 @@ function categorizeTransaction(
 		category_id: number | null;
 		is_category_manual: boolean;
 	},
-	compiledKeywords: CompiledKeyword[],
+	keywords: Keyword[],
 	merchantsWithIBANs: MerchantWithIBANs[],
 	options: CategorizationOptions
 ): CategorizationResult {
@@ -205,7 +205,7 @@ function categorizeTransaction(
 	const match = matchTransactionToCategory(
 		transaction.description,
 		transaction.merchantName,
-		compiledKeywords
+		keywords
 	);
 
 	if (match) {
@@ -253,21 +253,26 @@ export async function categorizeTransactionsBatch(
 	options: CategorizationOptions = {}
 ): Promise<CategorizationBatchResult> {
 	const startTime = Date.now();
+	console.log('🚀 Starting transaction categorization batch...');
+	console.log(`   User ID: ${userId}`);
+	console.log(`   Options:`, {
+		skipManual: options.skipManual !== false,
+		skipCategorized: options.skipCategorized !== false,
+		limit: options.limit || 'unlimited',
+		transactionIds: options.transactionIds?.length || 'all'
+	});
 
-	// ===== TIMING INSTRUMENTATION =====
-	const timing = { preload: 0, fetchTransactions: 0, patternMatching: 0, vectorSearch: 0, dbWrites: 0 };
-	let phaseStart: number;
-
-	// ===== PHASE: PRELOAD =====
-	phaseStart = Date.now();
+	// Load all keywords once (efficient)
 	const keywords = await loadAllKeywords();
-	const compiledKeywords = prepareKeywords(keywords); // Pre-compile regexes once
-	const merchantsWithIBANs = await loadAllMerchantsWithIBANs();
-	const allMerchants = await loadAllMerchants();
-	timing.preload = Date.now() - phaseStart;
 
-	if (compiledKeywords.length === 0 && merchantsWithIBANs.length === 0) {
-		// console.warn('⚠️  No keywords or merchants with IBANs found in database. Cannot categorize transactions.');
+	// Load all merchants with IBANs once (efficient)
+	const merchantsWithIBANs = await loadAllMerchantsWithIBANs();
+
+	// Load all merchants for in-memory lookups (avoids N+1 queries in the loop)
+	const allMerchants = await loadAllMerchants();
+
+	if (keywords.length === 0 && merchantsWithIBANs.length === 0) {
+		console.warn('⚠️  No keywords or merchants with IBANs found in database. Cannot categorize transactions.');
 		return {
 			total: 0,
 			processed: 0,
@@ -289,7 +294,7 @@ export async function categorizeTransactionsBatch(
 	// Filter by transaction IDs if provided
 	if (options.transactionIds && options.transactionIds.length > 0) {
 		whereClause.id = { in: options.transactionIds };
-
+		console.log(`   Filtering to ${options.transactionIds.length} specific transactions`);
 	}
 
 	// Filter by manual assignment
@@ -307,7 +312,7 @@ export async function categorizeTransactionsBatch(
 		where: whereClause
 	});
 
-
+	console.log(`📊 Found ${totalCount} transactions to process`);
 
 	if (totalCount === 0) {
 		return {
@@ -346,13 +351,12 @@ export async function categorizeTransactionsBatch(
 
 	if (options.limit) {
 		queryOptions.take = options.limit;
-
+		console.log(`   Limiting to ${options.limit} transactions`);
 	}
 
-	// ===== PHASE: FETCH TRANSACTIONS =====
-	phaseStart = Date.now();
 	const transactions = await (db as any).transactions.findMany(queryOptions);
-	timing.fetchTransactions = Date.now() - phaseStart;
+
+	console.log(`📥 Loaded ${transactions.length} transactions`);
 
 	// Get user's own IBANs for transfer detection (from transactions)
 	const ownIbans = new Set<string>();
@@ -402,9 +406,6 @@ export async function categorizeTransactionsBatch(
 		});
 	}
 
-	// ===== PHASE: PATTERN MATCHING =====
-	phaseStart = Date.now();
-
 	for (const transaction of transactions) {
 		// Check if transaction already has a merchant_id - if so, try to use default category
 		let result: CategorizationResult;
@@ -424,11 +425,11 @@ export async function categorizeTransactionsBatch(
 				};
 			} else {
 				// No default category, try normal categorization
-				result = categorizeTransaction(transaction, compiledKeywords, merchantsWithIBANs, options);
+				result = categorizeTransaction(transaction, keywords, merchantsWithIBANs, options);
 			}
 		} else {
 			// Normal categorization flow
-			result = categorizeTransaction(transaction, compiledKeywords, merchantsWithIBANs, options);
+			result = categorizeTransaction(transaction, keywords, merchantsWithIBANs, options);
 		}
 
 		results.push(result);
@@ -442,9 +443,9 @@ export async function categorizeTransactionsBatch(
 		if (result.skipped) {
 			skipped++;
 			if (result.skipReason === 'manual_assignment') {
-
+				console.log(`   ⏭️  Transaction ${transaction.id}: Skipped (manual assignment)`);
 			} else if (result.skipReason === 'already_categorized') {
-
+				console.log(`   ⏭️  Transaction ${transaction.id}: Skipped (already categorized)`);
 			}
 		} else if (result.categoryId !== null) {
 			categorized++;
@@ -476,7 +477,9 @@ export async function categorizeTransactionsBatch(
 					// Use in-memory lookup for merchant name (for logging only)
 					const merchant = allMerchants.byId.get(result.matchedMerchantId);
 
-
+					console.log(
+						`   ✅ Transaction ${transaction.id}: Matched to category ${result.categoryId} via IBAN "${result.matchedKeyword}" (merchant: "${merchant?.name || result.matchedMerchantId}")`
+					);
 				} else {
 					// Keyword match - clean merchant name and link to merchant
 					// Check if this is a transfer between persons first
@@ -528,17 +531,26 @@ export async function categorizeTransactionsBatch(
 								}
 							}
 
-
+							console.log(
+								`   ✅ Transaction ${transaction.id}: Matched to category ${result.categoryId} via "${result.matchedKeyword}" in ${result.matchType}, merchant: "${cleanedName}"`
+							);
 						} else {
-
+							console.log(
+								`   ✅ Transaction ${transaction.id}: Matched to category ${result.categoryId} via "${result.matchedKeyword}" in ${result.matchType}`
+							);
 						}
 					} else {
 						// Transfer between persons - skip merchant creation
-
+						console.log(
+							`   ✅ Transaction ${transaction.id}: Matched to category ${result.categoryId} via "${result.matchedKeyword}" in ${result.matchType} (transfer, skipping merchant)`
+						);
 					}
 				}
 			} catch (err) {
-
+				console.warn(`   ⚠️  Transaction ${transaction.id}: Failed to process merchant:`, err);
+				console.log(
+					`   ✅ Transaction ${transaction.id}: Matched to category ${result.categoryId} via "${result.matchedKeyword}" in ${result.matchType}`
+				);
 			}
 		} else {
 			// Even for unmatched transactions, try to clean merchant name (without category)
@@ -588,15 +600,16 @@ export async function categorizeTransactionsBatch(
 							}
 						}
 
-
+						console.log(`   ❌ Transaction ${transaction.id}: No match found, but cleaned merchant: "${cleanedName}"`);
 					} else {
-
+						console.log(`   ❌ Transaction ${transaction.id}: No match found`);
 					}
 				} catch (err) {
-
+					console.warn(`   ⚠️  Transaction ${transaction.id}: Failed to clean merchant name:`, err);
+					console.log(`   ❌ Transaction ${transaction.id}: No match found`);
 				}
 			} else {
-
+				console.log(`   ❌ Transaction ${transaction.id}: No match found (transfer, skipping merchant)`);
 			}
 		}
 
@@ -616,11 +629,6 @@ export async function categorizeTransactionsBatch(
 		}
 	}
 
-	timing.patternMatching = Date.now() - phaseStart;
-
-	// ===== PHASE: VECTOR SEARCH =====
-	phaseStart = Date.now();
-
 	// Priority 3: Vector Similarity Search for unmatched transactions
 	const unmatchedTransactions = transactions.filter((t: any, index: number) => {
 		const result = results[index];
@@ -631,7 +639,7 @@ export async function categorizeTransactionsBatch(
 		const vectorAvailable = await isVectorMatchingAvailable();
 
 		if (vectorAvailable) {
-			// console.log(`\n🔍 Running vector similarity search on ${unmatchedTransactions.length} unmatched transactions...`);
+			console.log(`\n🔍 Running vector similarity search on ${unmatchedTransactions.length} unmatched transactions...`);
 
 			if (options.onProgress) {
 				options.onProgress({
@@ -731,7 +739,7 @@ export async function categorizeTransactionsBatch(
 					}
 				}
 
-				// console.log(`   ✅ Vector search matched ${vectorMatches} transactions`);
+				console.log(`   ✅ Vector search matched ${vectorMatches} transactions`);
 
 				if (options.onProgress) {
 					options.onProgress({
@@ -750,7 +758,7 @@ export async function categorizeTransactionsBatch(
 				}
 			} catch (err) {
 				const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-				// console.error('   ❌ Error in vector search:', err);
+				console.error('   ❌ Error in vector search:', err);
 
 				if (options.onProgress) {
 					options.onProgress({
@@ -765,7 +773,7 @@ export async function categorizeTransactionsBatch(
 				}
 			}
 		} else {
-			// console.log(`   ⏭️  Vector search skipped (not available - no category embeddings found)`);
+			console.log(`   ⏭️  Vector search skipped (not available - no category embeddings found)`);
 		}
 	}
 
@@ -782,14 +790,12 @@ export async function categorizeTransactionsBatch(
 		});
 	}
 
-	timing.vectorSearch = Date.now() - phaseStart;
-
-	// ===== PHASE: DATABASE WRITES =====
-	phaseStart = Date.now();
+	// Batch update database
+	console.log(`\n💾 Updating database...`);
 
 	// Step 1: Create pending merchants in batch
 	if (pendingMerchantsByName.size > 0) {
-		// console.log(`   Creating ${pendingMerchantsByName.size} new merchants...`);
+		console.log(`   Creating ${pendingMerchantsByName.size} new merchants...`);
 		for (const [nameLower, pending] of pendingMerchantsByName.entries()) {
 			try {
 				// Create the merchant
@@ -812,16 +818,16 @@ export async function categorizeTransactionsBatch(
 				}
 				merchantUpdates.get(newMerchant.id)!.push(...pending.transactionIds);
 
-				// console.log(`   ✓ Created merchant "${pending.cleanedName}" (ID: ${newMerchant.id}) with ${pending.transactionIds.length} transactions`);
+				console.log(`   ✓ Created merchant "${pending.cleanedName}" (ID: ${newMerchant.id}) with ${pending.transactionIds.length} transactions`);
 			} catch (err) {
-				// console.warn(`   ⚠️  Failed to create merchant "${pending.cleanedName}":`, err);
+				console.warn(`   ⚠️  Failed to create merchant "${pending.cleanedName}":`, err);
 			}
 		}
 	}
 
 	// Step 2: Batch update IBANs for existing merchants
 	if (pendingIbanUpdates.size > 0) {
-		// console.log(`   Updating IBANs for ${pendingIbanUpdates.size} merchants...`);
+		console.log(`   Updating IBANs for ${pendingIbanUpdates.size} merchants...`);
 		for (const [merchantId, newIbans] of pendingIbanUpdates.entries()) {
 			try {
 				// Get current IBANs
@@ -842,11 +848,11 @@ export async function categorizeTransactionsBatch(
 								updated_at: new Date()
 							}
 						});
-						// console.log(`   ✓ Added ${ibansToAdd.length} IBANs to merchant ${merchantId}`);
+						console.log(`   ✓ Added ${ibansToAdd.length} IBANs to merchant ${merchantId}`);
 					}
 				}
 			} catch (err) {
-				// console.warn(`   ⚠️  Failed to update IBANs for merchant ${merchantId}:`, err);
+				console.warn(`   ⚠️  Failed to update IBANs for merchant ${merchantId}:`, err);
 			}
 		}
 	}
@@ -854,7 +860,7 @@ export async function categorizeTransactionsBatch(
 	// Step 3: Update categories
 	let categoryUpdateCount = 0;
 	if (categoryUpdates.size > 0) {
-		// console.log(`   Updating ${categoryUpdates.size} category assignments...`);
+		console.log(`   Updating ${categoryUpdates.size} category assignments...`);
 		for (const [categoryId, transactionIds] of categoryUpdates.entries()) {
 			const count = await (db as any).transactions.updateMany({
 				where: {
@@ -867,14 +873,14 @@ export async function categorizeTransactionsBatch(
 				}
 			});
 			categoryUpdateCount += count.count;
-			// console.log(`   ✓ Updated ${count.count} transactions to category ${categoryId}`);
+			console.log(`   ✓ Updated ${count.count} transactions to category ${categoryId}`);
 		}
 	}
 
 	// Update merchants and apply default categories
 	let merchantUpdateCount = 0;
 	if (merchantUpdates.size > 0) {
-		// console.log(`   Linking ${merchantUpdates.size} merchants to transactions...`);
+		console.log(`   Linking ${merchantUpdates.size} merchants to transactions...`);
 		for (const [merchantId, transactionIds] of merchantUpdates.entries()) {
 			// Try in-memory lookup first, fall back to DB for newly created merchants
 			let merchant = allMerchants.byId.get(merchantId);
@@ -924,7 +930,7 @@ export async function categorizeTransactionsBatch(
 				});
 
 				if (categoryCount.count > 0) {
-					// console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant.name || merchantId}" and applied default category to ${categoryCount.count} transactions`);
+					console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant.name || merchantId}" and applied default category to ${categoryCount.count} transactions`);
 
 					// Update result counters
 					categorized += categoryCount.count;
@@ -934,28 +940,29 @@ export async function categorizeTransactionsBatch(
 					}
 					categoryUpdates.get(merchant.default_category_id)!.push(...transactionIds);
 				} else {
-					// console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant.name || merchantId}"`);
+					console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant.name || merchantId}"`);
 				}
 			} else {
-				// console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant?.name || merchantId}"`);
+				console.log(`   ✓ Linked ${count.count} transactions to merchant "${merchant?.name || merchantId}"`);
 			}
 		}
 	}
 
-	timing.dbWrites = Date.now() - phaseStart;
 	const duration = Date.now() - startTime;
 	const notCategorized = processed - categorized - skipped;
 
-	// ===== TIMING SUMMARY =====
-	console.log(`\n⏱️  CATEGORIZATION TIMING (${transactions.length} transactions):`);
-	console.log(`   Preload (keywords/merchants): ${timing.preload}ms`);
-	console.log(`   Fetch transactions:           ${timing.fetchTransactions}ms`);
-	console.log(`   Pattern matching:             ${timing.patternMatching}ms`);
-	console.log(`   Vector search:                ${timing.vectorSearch}ms`);
-	console.log(`   Database writes:              ${timing.dbWrites}ms`);
-	console.log(`   ──────────────────────────────`);
-	console.log(`   TOTAL:                        ${duration}ms`);
-	console.log(`   Results: ${categorized} categorized, ${skipped} skipped, ${notCategorized} unmatched`);
+	console.log(`\n✨ Categorization complete!`);
+	console.log(`   Total: ${totalCount}`);
+	console.log(`   Processed: ${processed}`);
+	console.log(`   Categorized: ${categorized}`);
+	console.log(`     - Keyword matches: ${keywordCategorized}`);
+	console.log(`     - IBAN matches: ${ibanCategorized}`);
+	console.log(`     - Vector matches: ${vectorCategorized}`);
+	console.log(`   Skipped: ${skipped}`);
+	console.log(`   No match: ${notCategorized}`);
+	console.log(`   Merchants linked: ${merchantUpdateCount}`);
+	console.log(`   Persons detected (transfers): ${personsDetected}`);
+	console.log(`   Duration: ${duration}ms`);
 
 	// Send final progress update
 	if (options.onProgress) {
@@ -989,7 +996,7 @@ export async function categorizeSingleTransactionWithAI(
 	userId: number,
 	transactionId: number
 ): Promise<AICategorizationResult> {
-	// console.log(`[Deep AI] Starting categorization for transaction ${transactionId}`);
+	console.log(`[Deep AI] Starting categorization for transaction ${transactionId}`);
 
 	// 1. Fetch transaction details
 	const transaction = await (db as any).transactions.findUnique({
@@ -1028,7 +1035,7 @@ export async function categorizeSingleTransactionWithAI(
 	// 3. Call OpenAI with Deep AI settings
 	// Model: gpt-5-mini
 	// Features: Search Grounding, Reasoning, Cleaned Merchant Name
-	// console.log(`[Deep AI] Calling OpenAI for transaction ${transactionId}...`);
+	console.log(`[Deep AI] Calling OpenAI for transaction ${transactionId}...`);
 	try {
 		const batchResult = await categorizeBatchWithOpenAI(
 			userId,
@@ -1045,7 +1052,7 @@ export async function categorizeSingleTransactionWithAI(
 			}
 		);
 
-		// console.log(`[Deep AI] Gemini response received. Results: ${batchResult.results.length}`);
+		console.log(`[Deep AI] Gemini response received. Results: ${batchResult.results.length}`);
 
 		if (batchResult.results.length === 0) {
 			throw new Error('AI returned no results');
@@ -1053,7 +1060,7 @@ export async function categorizeSingleTransactionWithAI(
 
 		return batchResult.results[0];
 	} catch (error) {
-		// console.error(`[Deep AI] Error calling OpenAI:`, error);
+		console.error(`[Deep AI] Error calling OpenAI:`, error);
 		throw error;
 	}
 }

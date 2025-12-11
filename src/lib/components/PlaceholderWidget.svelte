@@ -17,7 +17,7 @@
 </script>
 
 <DashboardWidget {size} variant="placeholder">
-	<div class="flex w-full flex-col items-center justify-center text-center opacity-50">
+	<div class="flex h-full w-full flex-col items-center justify-center text-center opacity-50">
 		<Icon size={48} class="mb-4" />
 		<h3 class="text-lg font-semibold">{title}</h3>
 		<p class="text-sm">{description}</p>

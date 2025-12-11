@@ -42,7 +42,7 @@ async function retryWithBackoff<T>(
 
             // Calculate wait time with exponential backoff
             const waitTime = delay * Math.pow(2, attempt);
-            console.log(`   ⏳ Rate limit/server error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})...`);
+            // console.log(`   ⏳ Rate limit/server error, retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
     }
@@ -74,12 +74,12 @@ export async function categorizeBatchWithOpenAI(
         return { results: [], errors: [] };
     }
 
-    console.log(`🤖 Categorizing ${transactions.length} transactions with OpenAI...`);
+    // console.log(`🤖 Categorizing ${transactions.length} transactions with OpenAI...`);
 
     try {
         // Load categories
         const categories = await loadCategoriesForAI(userId);
-        console.log(`   📚 Loaded ${categories.length} categories`);
+        // console.log(`   📚 Loaded ${categories.length} categories`);
 
         // Create prompt
         const includeReasoning = options?.includeReasoning ?? false;
@@ -137,7 +137,7 @@ export async function categorizeBatchWithOpenAI(
 
         // Call OpenAI API with retry logic
         const timerLabel = `OpenAI API Call ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        console.time(timerLabel);
+        // console.time(timerLabel);
 
         let content: string | null = null;
 
@@ -145,7 +145,7 @@ export async function categorizeBatchWithOpenAI(
             async () => {
                 // If search grounding is enabled, use the new responses API
                 if (enableSearchGrounding && 'responses' in (openai as any)) {
-                    console.log('   🌍 Using OpenAI Responses API for Search Grounding...');
+                    // console.log('   🌍 Using OpenAI Responses API for Search Grounding...');
                     const response = await (openai as any).responses.create({
                         model: modelToUse,
                         tools: [{ type: "web_search" }],
@@ -178,7 +178,7 @@ export async function categorizeBatchWithOpenAI(
                         }
                     }
 
-                    console.error('❌ Unexpected OpenAI Responses API format:', JSON.stringify(response, null, 2));
+                    // console.error('❌ Unexpected OpenAI Responses API format:', JSON.stringify(response, null, 2));
                     throw new Error('Unexpected response format from OpenAI Responses API');
                 } else {
                     // Standard Chat Completions API
@@ -208,14 +208,14 @@ export async function categorizeBatchWithOpenAI(
             aiConfig.retryDelay
         );
 
-        console.timeEnd(timerLabel);
+        // console.timeEnd(timerLabel);
 
         content = response;
         if (!content) {
             throw new Error('OpenAI returned no content');
         }
 
-        console.log('📝 Raw OpenAI Response:', content.substring(0, 500) + '...'); // Log first 500 chars
+        // console.log('📝 Raw OpenAI Response:', content.substring(0, 500) + '...'); // Log first 500 chars
 
         let parsedResponse: { results?: any[] };
         try {
@@ -226,9 +226,9 @@ export async function categorizeBatchWithOpenAI(
             const jsonString = jsonMatch ? jsonMatch[1] : content;
 
             parsedResponse = JSON.parse(jsonString);
-            console.log('✅ Parsed JSON Results:', JSON.stringify(parsedResponse.results, null, 2));
+            // console.log('✅ Parsed JSON Results:', JSON.stringify(parsedResponse.results, null, 2));
         } catch (e) {
-            console.error('Failed to parse OpenAI JSON:', content);
+            // console.error('Failed to parse OpenAI JSON:', content);
             throw new Error('Invalid JSON response from OpenAI');
         }
 
@@ -264,7 +264,7 @@ export async function categorizeBatchWithOpenAI(
                     categoryId = matchedCategory.id;
                 } else {
                     // Log warning but don't fail - user can manually categorize
-                    console.warn(`⚠️ Category name "${result.categoryName}" not found in available categories`);
+                    // console.warn(`⚠️ Category name "${result.categoryName}" not found in available categories`);
                 }
             }
 
@@ -303,9 +303,9 @@ export async function categorizeBatchWithOpenAI(
             total: response.usage?.total_tokens || 0
         };
 
-        console.log(`   ✅ OpenAI categorization complete:`);
-        console.log(`      - Results: ${results.length}/${transactions.length}`);
-        console.log(`      - Tokens: ${tokensUsed.total}`);
+        // console.log(`   ✅ OpenAI categorization complete:`);
+        // console.log(`      - Results: ${results.length}/${transactions.length}`);
+        // console.log(`      - Tokens: ${tokensUsed.total}`);
 
         return {
             results,

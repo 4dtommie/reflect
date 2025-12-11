@@ -361,21 +361,20 @@
 				categorizedTransactions = [...newTransactions, ...categorizedTransactions];
 			}
 
-			// Update categorized count from actual categorized transactions list
-			// Don't fetch from API as it might not be accurate during processing
-			categorizedCount = categorizedTransactions.length;
+			// Note: categorizedCount is set from result.totalCategorized, don't override here
+			// The polled transactions list may not include all categorized transactions
 
-			// Update progress - get current uncategorized count
+			// Update progress - get current uncategorized count and calculate categorized
 			try {
 				const uncatResponse = await fetch('/api/transactions?pageSize=1&uncategorized=true');
 				if (uncatResponse.ok) {
 					const uncatData = await uncatResponse.json();
 					const remainingUncategorized = uncatData.total || 0;
-					// Use the initial totalTransactions if available, otherwise calculate from current state
-					const currentTotal =
-						totalTransactions > 0 ? totalTransactions : categorizedCount + remainingUncategorized;
-					if (currentTotal > 0) {
-						progress = Math.min(100, (categorizedCount / currentTotal) * 100);
+					// Use the initial totalTransactions if available
+					if (totalTransactions > 0) {
+						// Calculate categorized as total - remaining uncategorized
+						categorizedCount = totalTransactions - remainingUncategorized;
+						progress = Math.min(100, (categorizedCount / totalTransactions) * 100);
 					}
 				}
 			} catch (err) {

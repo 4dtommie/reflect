@@ -203,7 +203,7 @@ export async function calculateFullBalanceData(
 	// Group expenses by month and type
 	const monthMap = new Map<
 		string,
-		{ recurring: number; variable: number; remaining: number; savings: number; income: number }
+		{ recurring: number; variable: number; remaining: number; savings: number; income: number; recurringIncome: number }
 	>();
 
 	// Process expense transactions
@@ -215,7 +215,8 @@ export async function calculateFullBalanceData(
 			variable: 0,
 			remaining: 0,
 			savings: 0,
-			income: 0
+			income: 0,
+			recurringIncome: 0
 		};
 		const amount = Math.abs(Number(tx.amount));
 
@@ -248,9 +249,14 @@ export async function calculateFullBalanceData(
 			variable: 0,
 			remaining: 0,
 			savings: 0,
-			income: 0
+			income: 0,
+			recurringIncome: 0
 		};
 		const amount = Math.abs(Number(tx.amount));
+
+		if (tx.recurring_transaction_id || (tx as any).recurring_transaction) {
+			current.recurringIncome += amount;
+		}
 
 		current.income += amount;
 		monthMap.set(monthKey, current);
@@ -264,7 +270,8 @@ export async function calculateFullBalanceData(
 			variable: data.variable,
 			remaining: data.remaining,
 			savings: data.savings,
-			income: data.income
+			income: data.income,
+			recurringIncome: data.recurringIncome
 		}))
 		.sort((a, b) => a.month.localeCompare(b.month));
 

@@ -18,7 +18,7 @@ export function cleanMerchantName(rawName: string, description?: string): string
 	if (trimmedName === 'NOTPROVIDED') {
 		return 'ING Spaarrekening';
 	}
-	
+
 	// Check for other "not provided" variations - leave for AI to handle
 	const notProvidedPattern = /^(notprovided|not\s+provided|niet\s+opgegeven|onbekend|unknown|n\/a|na|geen|none|leeg|empty)\s*$/i;
 	if (notProvidedPattern.test(trimmedName) || trimmedName.length === 0) {
@@ -89,9 +89,13 @@ export function cleanMerchantName(rawName: string, description?: string): string
 	cleaned = cleaned.replace(/\s+0\s*$/, '');
 	cleaned = cleaned.replace(/\s+\d\s*$/, ''); // Remove single trailing digit
 
-	// Remove common business suffixes (but keep if it's part of the name)
-	// Only remove if at the end: BV, NV, B.V., N.V., LTD, LLC, etc.
-	cleaned = cleaned.replace(/\s+(BV|NV|B\.V\.|N\.V\.|LTD|LLC|INC|CORP|GMBH|AG)\s*$/i, '');
+	// Remove common business suffixes from anywhere in the string
+	// BV, NV, B.V., N.V., LTD, LLC, INC, CORP, GMBH, AG, SARL, SAS, SPA, SRL
+	cleaned = cleaned.replace(/\b(BV|NV|B\.V\.|N\.V\.|LTD|LLC|INC|CORP|GMBH|AG|SARL|SAS|SPA|SRL)\b/gi, '');
+
+	// Remove Payment Service Providers (PSPs) and intermediaries
+	const pspPattern = /\b(via\s+)?(Stichting\s+(Derdengelden\s+)?)?(Mollie|Multisafepay|Worldline|Cm\.com|Stripe|EMS|Globalcollect|Buckaroo|Takeaway\.com|Adyen|CCV|Pay\.nl|Sisow|PPRO|SumUp|Izettle|Online\s+Payments|ST\.\s+Derdengelden)(\s+(Technology(\s+Europe)?|Payments|Services|B\.V\.|(?:\/)?SA|Bank|N\.V\.))?\b/gi;
+	cleaned = cleaned.replace(pspPattern, '');
 
 	// Remove extra whitespace and normalize
 	cleaned = cleaned.replace(/\s+/g, ' '); // Multiple spaces to single space
@@ -142,9 +146,9 @@ function toTitleCaseWithNames(str: string): string {
 			}
 
 			// Check if it's an abbreviation (all caps, 2-4 letters, or contains dots like T.M.C.)
-			if (abbreviations.includes(upperWord) || 
-			    (word.includes('.') && word.split('.').filter(p => p).every(part => part.length <= 2 && part.length > 0)) ||
-			    (word.length <= 4 && word === upperWord && word.length >= 2 && !word.includes('.'))) {
+			if (abbreviations.includes(upperWord) ||
+				(word.includes('.') && word.split('.').filter(p => p).every(part => part.length <= 2 && part.length > 0)) ||
+				(word.length <= 4 && word === upperWord && word.length >= 2 && !word.includes('.'))) {
 				return upperWord;
 			}
 
@@ -226,7 +230,7 @@ export async function findOrCreateMerchant(
 		if (categoryId && existing.default_category_id !== categoryId) {
 			updates.default_category_id = categoryId;
 		}
-		
+
 		// Add IBAN if provided and not already present
 		const normalizedIban = normalizeIBANForStorage(counterpartyIban);
 		if (normalizedIban) {
@@ -235,7 +239,7 @@ export async function findOrCreateMerchant(
 				updates.ibans = [...currentIbans, normalizedIban];
 			}
 		}
-		
+
 		if (Object.keys(updates).length > 0) {
 			updates.updated_at = new Date();
 			await db.merchants.update({

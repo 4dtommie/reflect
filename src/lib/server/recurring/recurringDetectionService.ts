@@ -47,6 +47,7 @@ export interface RecurringCandidate {
     interval: 'monthly' | 'weekly' | 'quarterly' | 'yearly' | '4-weekly' | 'irregular';
     confidence: number; // 0-1
     type: 'subscription' | 'salary' | 'bill' | 'tax' | 'transfer' | 'other';
+    isDebit: boolean; // true = expense, false = income
     source: 'known_list' | 'salary_rule' | 'interval_rule' | 'ai';
     transactions: transactions[];
     nextPaymentDate?: Date;
@@ -336,6 +337,7 @@ export class RecurringDetectionService {
                         interval,
                         confidence,
                         type: 'subscription',
+                        isDebit: true,
                         source: 'interval_rule',
                         transactions: sorted,
                         merchantId,
@@ -551,6 +553,7 @@ export class RecurringDetectionService {
                         interval,
                         confidence,
                         type: 'subscription',
+                        isDebit: true,
                         source: 'known_list',
                         transactions: cluster,
                         merchantId,
@@ -648,6 +651,7 @@ export class RecurringDetectionService {
                     interval,
                     confidence,
                     type,
+                    isDebit: false, // Income transactions
                     source,
                     transactions: sorted,
                     merchantId,
@@ -940,6 +944,7 @@ export class RecurringDetectionService {
                         amount: candidate.amount,
                         interval: candidate.interval,
                         type: candidate.type,
+                        is_debit: candidate.isDebit,
                         next_expected_date: candidate.nextPaymentDate,
                         // Only set category if not already set (preserve manual categorizations)
                         ...(categoryId && !match.category_id ? { category_id: categoryId } : {}),
@@ -966,6 +971,7 @@ export class RecurringDetectionService {
                         amount: candidate.amount,
                         interval: candidate.interval,
                         type: candidate.type,
+                        is_debit: candidate.isDebit,
                         merchant_id: merchantId,
                         category_id: categoryId, // Inherit category from transactions
                         next_expected_date: candidate.nextPaymentDate,

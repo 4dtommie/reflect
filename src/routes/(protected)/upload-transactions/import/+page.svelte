@@ -7,6 +7,14 @@
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import StatItem from '$lib/components/StatItem.svelte';
 
+	interface MergeResult {
+		targetId: number;
+		targetName: string;
+		sourceIds: number[];
+		sourceNames: string[];
+		transactionsReassigned: number;
+	}
+
 	interface ImportResult {
 		success: boolean;
 		imported: number;
@@ -17,6 +25,8 @@
 			message: string;
 		}>;
 		duplicates: number;
+		merchantsMerged?: number;
+		mergeResults?: MergeResult[];
 	}
 
 	let parseResult: ParseResult | null = $state(null);
@@ -157,9 +167,13 @@
 			<div class="flex h-full flex-col items-center justify-center px-6 pt-3 pb-6">
 				<LoaderCircle class="mb-4 h-12 w-12 animate-spin text-primary" />
 				<p class="mb-2 text-lg font-medium">Importing transactions...</p>
-				<p class="text-sm text-base-content/70">
+				<p class="mb-4 text-sm text-base-content/70">
 					{parseResult?.rows.length || 0} transactions being processed
 				</p>
+				<ul class="steps steps-vertical text-sm">
+					<li class="step step-primary">Storing transactions</li>
+					<li class="step">Deduplicating merchants</li>
+				</ul>
 			</div>
 		</DashboardWidget>
 	{:else if importResult}
@@ -193,7 +207,7 @@
 
 		<!-- Success Message -->
 		{#if importResult.success && importResult.imported > 0}
-			<DashboardWidget size="fullB" title="Success">
+			<DashboardWidget size="full" title="Success">
 				<div class="flex h-full flex-col justify-center">
 					<div class="alert alert-success">
 						<CheckCircle class="h-6 w-6" />
@@ -206,11 +220,31 @@
 									{importResult.duplicates} duplicate transaction(s) were skipped.
 								</p>
 							{/if}
+							{#if importResult.merchantsMerged && importResult.merchantsMerged > 0}
+								<p class="mt-1 text-sm">
+									🔗 {importResult.merchantsMerged} duplicate merchant(s) merged.
+								</p>
+							{/if}
 						</div>
 					</div>
+					{#if importResult.mergeResults && importResult.mergeResults.length > 0}
+						<div class="mt-4 text-sm">
+							<p class="mb-2 font-medium">Merged merchants:</p>
+							<ul class="list-inside list-disc text-base-content/70">
+								{#each importResult.mergeResults.slice(0, 5) as merge}
+									<li>
+										"{merge.targetName}" ← {merge.sourceNames.map((n) => `"${n}"`).join(', ')}
+									</li>
+								{/each}
+								{#if importResult.mergeResults.length > 5}
+									<li>...and {importResult.mergeResults.length - 5} more</li>
+								{/if}
+							</ul>
+						</div>
+					{/if}
 					<button class="btn mt-4 btn-ghost" onclick={startOver}>
 						<RefreshCw class="h-4 w-4" />
-						Upload Another File
+						Upload another file
 					</button>
 				</div>
 			</DashboardWidget>

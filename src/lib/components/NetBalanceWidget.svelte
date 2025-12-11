@@ -22,15 +22,13 @@
 		actionHref?: string;
 	} = $props();
 
-	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses - monthlySavings));
-	const totalObligations = $derived(monthlyExpenses + monthlySavings);
+	const freeToSpend = $derived(Math.max(0, monthlyIncome - monthlyExpenses));
+	const totalObligations = $derived(monthlyExpenses);
 	const isPositive = $derived(monthlyIncome >= totalObligations);
-	const savingsRate = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
 
 	// For the visual bars - all relative to income
 	const incomeBarWidth = $derived(100); // Income is always full width as reference
 	const expenseBarWidth = $derived(monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 0);
-	const savingsBarWidth = $derived(monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0);
 	const freeBarWidth = $derived(monthlyIncome > 0 ? (freeToSpend / monthlyIncome) * 100 : 0);
 
 	// Calculate recurring and variable bar widths
@@ -46,7 +44,7 @@
 
 <DashboardWidget
 	size="small"
-	title="Avg free to spend"
+	title="Recurring income/expenses"
 	actionLabel={actionLabel || undefined}
 	actionHref={actionHref || undefined}
 >
@@ -60,7 +58,7 @@
 			</div>
 			<span class="text-sm opacity-50">
 				{#if isPositive}
-					{savingsRate.toFixed(0)}% of income available
+					{Math.round((freeToSpend / monthlyIncome) * 100)}% of income available
 				{:else}
 					Spending exceeds income
 				{/if}
@@ -133,45 +131,15 @@
 				</div>
 			</div>
 
-			<!-- Savings bar - shows position starting where expenses end -->
-			{#if savingsBarWidth > 0}
-				<div class="flex items-center gap-2">
-					<span class="w-16 text-right text-xs opacity-50">Savings</span>
-					<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
-						<div
-							class="absolute inset-y-0 flex items-center justify-end rounded px-2 transition-all duration-500"
-							style="left: {Math.min(expenseBarWidth, 100)}%; width: {Math.min(
-								savingsBarWidth,
-								100 - Math.min(expenseBarWidth, 100)
-							)}%; background-color: {chartColors.bg.savings};"
-						>
-							{#if savingsBarWidth > 20}
-								<span class="text-xs font-medium text-yellow-900">
-									€ {formatNumber(Math.round(monthlySavings))}
-								</span>
-							{/if}
-						</div>
-						{#if savingsBarWidth <= 20 && monthlySavings > 0}
-							<span
-								class="absolute top-1/2 left-2 -translate-y-1/2 text-xs font-medium"
-								style="left: {Math.min(expenseBarWidth + 2, 98)}%;"
-							>
-								€ {formatNumber(Math.round(monthlySavings))}
-							</span>
-						{/if}
-					</div>
-				</div>
-			{/if}
-
-			<!-- Free to spend bar - shows position starting where expenses + savings end -->
+			<!-- Free to spend bar - shows position starting where expenses end (NO SAVINGS IN BETWEEN) -->
 			<div class="flex items-center gap-2">
 				<span class="w-16 text-right text-xs opacity-50">Free</span>
 				<div class="relative h-5 flex-1 overflow-hidden rounded bg-base-300">
 					<div
 						class="absolute inset-y-0 flex items-center justify-end rounded-r px-2 transition-all duration-500"
-						style="left: {Math.min(expenseBarWidth + savingsBarWidth, 100)}%; width: {Math.min(
+						style="left: {Math.min(expenseBarWidth, 100)}%; width: {Math.min(
 							freeBarWidth,
-							100 - Math.min(expenseBarWidth + savingsBarWidth, 100)
+							100 - Math.min(expenseBarWidth, 100)
 						)}%; background-color: {chartColors.bg.remaining};"
 					>
 						{#if freeBarWidth > 20}
@@ -187,6 +155,14 @@
 					{/if}
 				</div>
 			</div>
+		</div>
+
+		<!-- Yearly savings potential -->
+		<div class="mt-2 flex items-center justify-between border-t border-base-200 pt-3">
+			<span class="text-sm font-medium opacity-70">Yearly savings potential</span>
+			<span class="font-bold text-success">
+				€ {formatNumber(Math.round(freeToSpend * 12))}
+			</span>
 		</div>
 	</div>
 </DashboardWidget>

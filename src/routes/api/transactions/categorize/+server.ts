@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			skipManual: true, // Always skip manually assigned categories
 			skipCategorized: true // Always skip already categorized transactions
 		};
-		
+
 		try {
 			const body = await request.json();
 			const validated = CategorizeRequestSchema.parse(body);
@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		} catch (err) {
 			// If body is empty or invalid, use defaults
 			if (err instanceof z.ZodError) {
-				console.warn('Invalid request body, using defaults:', err.errors);
+				console.warn('Invalid request body, using defaults:', err.issues);
 			}
 			// Continue with default options (skipManual and skipCategorized already set to true)
 		}
@@ -123,7 +123,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		});
 	} catch (err) {
 		console.error('❌ Error in categorization API:', err);
-		
+
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
 		}

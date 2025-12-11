@@ -49,14 +49,13 @@
 	};
 </script>
 
-<DashboardWidget size="auto" title="Actions" actionLabel="View all" actionHref="/actions">
-	{#if !hasTransactions || !hasCategorizedTransactions}
-		<!-- Empty state: need transactions + categories -->
-		<div class="flex flex-col items-center gap-2 py-4 text-center">
-			<div class="rounded-full bg-base-200 p-3 opacity-40">
-				<Sparkles size={20} />
-			</div>
-			<p class="text-xs opacity-50">
+{#if !hasTransactions || !hasCategorizedTransactions}
+	<!-- Empty state: need transactions + categories -->
+	<DashboardWidget size="small" variant="placeholder">
+		<div class="flex h-full flex-col items-center justify-center text-center opacity-50">
+			<Sparkles size={48} class="mb-4" />
+			<h3 class="text-lg font-semibold">Actions</h3>
+			<p class="text-sm">
 				{#if !hasTransactions}
 					Import transactions to unlock actions
 				{:else}
@@ -64,7 +63,9 @@
 				{/if}
 			</p>
 		</div>
-	{:else}
+	</DashboardWidget>
+{:else}
+	<DashboardWidget size="auto" title="Actions" actionLabel="View all" actionHref="/actions">
 		<!-- In progress actions -->
 		{#if inProgressActions.length > 0}
 			<div class="space-y-2">
@@ -117,5 +118,5 @@
 				class="opacity-30 transition-transform group-hover:translate-x-0.5 group-hover:opacity-60"
 			/>
 		</a>
-	{/if}
-</DashboardWidget>
+	</DashboardWidget>
+{/if}

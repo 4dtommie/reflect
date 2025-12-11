@@ -3,6 +3,9 @@
  * 
  * Matches transactions to categories using keyword-based word boundary matching.
  * Case-insensitive matching against merchant name only (not description).
+ * 
+ * OPTIMIZATION: Pre-compile regexes once via prepareKeywords() instead of
+ * creating new RegExp objects for every keyword for every transaction.
  */
 
 export interface KeywordMatch {
@@ -14,6 +17,18 @@ export interface KeywordMatch {
 export interface Keyword {
 	category_id: number;
 	keyword: string;
+}
+
+/**
+ * Pre-compiled keyword for efficient matching
+ * Contains the original keyword data plus pre-compiled regex and normalized text
+ */
+export interface CompiledKeyword {
+	category_id: number;
+	keyword: string;           // Original keyword
+	normalized: string;        // Normalized (lowercase, trimmed)
+	regex: RegExp;            // Pre-compiled word boundary regex
+	isLongEnough: boolean;    // For substring matching (>= 5 chars)
 }
 
 /**
@@ -43,19 +58,43 @@ export function createWordBoundaryRegex(keyword: string): RegExp {
 }
 
 /**
- * Match a transaction to a category using keywords
+ * Pre-compile keywords for efficient matching
+ * Call this once after loading keywords, then reuse for all transactions
+ * 
+ * @param keywords - Raw keywords from database
+ * @returns Array of compiled keywords with pre-built regexes
+ */
+export function prepareKeywords(keywords: Keyword[]): CompiledKeyword[] {
+	return keywords
+		.map(k => {
+			const normalized = normalizeText(k.keyword);
+			if (!normalized) return null;
+
+			return {
+				category_id: k.category_id,
+				keyword: k.keyword,
+				normalized,
+				regex: createWordBoundaryRegex(normalized),
+				isLongEnough: normalized.length >= 5
+			};
+		})
+		.filter((k): k is CompiledKeyword => k !== null);
+}
+
+/**
+ * Match a transaction to a category using pre-compiled keywords
  * 
  * Only matches against merchant name (not description).
  * 
  * @param description - Transaction description (unused, kept for API compatibility)
  * @param merchantName - Merchant name (only field used for matching)
- * @param keywords - Array of keywords with category_id
+ * @param compiledKeywords - Array of pre-compiled keywords from prepareKeywords()
  * @returns Match result or null if no match
  */
 export function matchTransactionToCategory(
 	description: string,
 	merchantName: string,
-	keywords: Keyword[]
+	compiledKeywords: CompiledKeyword[]
 ): KeywordMatch | null {
 	// Normalize merchant name
 	const normalizedMerchant = normalizeText(merchantName);
@@ -66,22 +105,12 @@ export function matchTransactionToCategory(
 	}
 
 	// Pass 1: Try exact word boundary matching (highest confidence)
-	for (const keywordData of keywords) {
-		const keyword = normalizeText(keywordData.keyword);
-
-		// Skip empty keywords
-		if (!keyword) {
-			continue;
-		}
-
-		// Create regex for word boundary matching
-		const regex = createWordBoundaryRegex(keyword);
-
-		// Check merchant name only
-		if (regex.test(normalizedMerchant)) {
+	// Uses pre-compiled regex - no regex compilation overhead
+	for (const kw of compiledKeywords) {
+		if (kw.regex.test(normalizedMerchant)) {
 			return {
-				categoryId: keywordData.category_id,
-				matchedKeyword: keywordData.keyword, // Return original keyword (not normalized)
+				categoryId: kw.category_id,
+				matchedKeyword: kw.keyword, // Return original keyword (not normalized)
 				matchType: 'merchant'
 			};
 		}
@@ -90,19 +119,11 @@ export function matchTransactionToCategory(
 	// Pass 2: Try substring matching for Dutch compound words
 	// Only for keywords with 5+ characters to avoid false positives
 	// Example: "salaris" matches "salarisadministratie"
-	for (const keywordData of keywords) {
-		const keyword = normalizeText(keywordData.keyword);
-
-		// Skip short keywords (too likely to cause false positives)
-		if (!keyword || keyword.length < 5) {
-			continue;
-		}
-
-		// Check if keyword is contained within the merchant name
-		if (normalizedMerchant.includes(keyword)) {
+	for (const kw of compiledKeywords) {
+		if (kw.isLongEnough && normalizedMerchant.includes(kw.normalized)) {
 			return {
-				categoryId: keywordData.category_id,
-				matchedKeyword: keywordData.keyword,
+				categoryId: kw.category_id,
+				matchedKeyword: kw.keyword,
 				matchType: 'merchant'
 			};
 		}
@@ -110,5 +131,20 @@ export function matchTransactionToCategory(
 
 	// No match found
 	return null;
+}
+
+/**
+ * Legacy function for backward compatibility
+ * Accepts raw Keyword[] and compiles on the fly (less efficient)
+ * 
+ * @deprecated Use prepareKeywords() + matchTransactionToCategory() with CompiledKeyword[]
+ */
+export function matchTransactionToCategoryLegacy(
+	description: string,
+	merchantName: string,
+	keywords: Keyword[]
+): KeywordMatch | null {
+	const compiled = prepareKeywords(keywords);
+	return matchTransactionToCategory(description, merchantName, compiled);
 }
 
