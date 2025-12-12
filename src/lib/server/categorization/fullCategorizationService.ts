@@ -42,9 +42,17 @@ import { autoMergeDuplicates } from './merchantMerger';
 import {
 	categorizeBatchWithAI,
 	batchTransactions,
+	deduplicateByMerchant,
+	expandResultsToAllMerchants,
 	type TransactionForAI
 } from './aiCategorizer';
 import { categorizeBatchWithGemini } from './geminiCategorizer';
+import {
+	generateRuleBasedInsights,
+	generateAIInsights,
+	type FunInsight,
+	type InsightContext
+} from './funInsightGenerator';
 import { isAIAvailable, isGeminiAvailable, aiConfig, geminiConfig } from './config';
 import { isCancelled } from './progressStore';
 import {
@@ -52,12 +60,16 @@ import {
 	type MerchantNameMatch
 } from './merchantNameMatcher';
 import { normalizeDescription } from './descriptionCleaner';
+import { refineAllTransactions, type RefinementResult } from './contextRefinementService';
+import { recategorizeLowConfidence, type RecategorizationResult } from './lowConfidenceRecategorizationService';
 
 export interface FullCategorizationOptions {
 	maxIterations?: number; // Default: 10
 	batchSize?: number; // Default: from config
 	skipManual?: boolean; // Default: true
 	minConfidence?: number; // Default: 0.5 (50%)
+	enableContextRefinement?: boolean; // Default: true - post-process with time/amount rules
+	enableLowConfidenceRecategorization?: boolean; // Default: false - re-run low confidence through AI
 	onProgress?: (progress: {
 		iteration: number;
 		uncategorizedCount: number;
@@ -69,6 +81,7 @@ export interface FullCategorizationOptions {
 		keywordsAdded: number; // Number of keywords added by AI
 		message: string;
 		matchReasons?: Record<number, string>;
+		funInsights?: FunInsight[];
 		vectorSearchProgress?: {
 			processed: number;
 			total: number;
@@ -82,6 +95,11 @@ export interface FullCategorizationOptions {
 			transactionsProcessed: number;
 			resultsReceived: number;
 			resultsAboveThreshold: number;
+		};
+		refinementProgress?: {
+			processed: number;
+			total: number;
+			refined: number;
 		};
 	}) => void;
 }
@@ -101,6 +119,8 @@ export interface FullCategorizationResult {
 	keywordsAdded: number;
 	errors: string[];
 	matchReasons?: Record<number, string>; // transactionId -> reason string
+	contextRefinement?: RefinementResult; // Post-processing results
+	lowConfidenceRecategorization?: RecategorizationResult; // AI re-review results
 	aiDebug?: {
 		batchesProcessed: number;
 		totalTransactionsProcessed: number;
@@ -519,6 +539,15 @@ export async function categorizeAllTransactions(
 		lastBatchDetails: undefined
 	};
 
+	// Fun insights state
+	const funInsights: FunInsight[] = [];
+	const insightContext: InsightContext = {
+		merchantCounts: new Map(),
+		categoryCounts: new Map(),
+		totalProcessed: 0
+	};
+	let aiInsightsGenerated = false;
+
 	// Load keywords and merchants once at start
 	const startTime = Date.now();
 	const timing = { preload: 0, loadTransactions: 0, merchantCategory: 0, keywordIban: 0, merchantName: 0, ai: 0, finalMatching: 0, dbWrites: 0 };
@@ -540,7 +569,8 @@ export async function categorizeAllTransactions(
 				aiMatched: 0,
 				keywordsAdded: 0,
 				message: 'Categorization cancelled',
-				matchReasons
+				matchReasons,
+				funInsights
 			});
 			break;
 		}
@@ -555,8 +585,9 @@ export async function categorizeAllTransactions(
 			merchantNameMatched: 0,
 			aiMatched: 0,
 			keywordsAdded: 0,
-			message: `Iteration ${iteration}`,
-			matchReasons
+			message: `Starting iteration ${iteration}...`,
+			matchReasons,
+			funInsights
 		});
 
 		// Step 1: Load uncategorized transactions
@@ -565,9 +596,42 @@ export async function categorizeAllTransactions(
 		const uncategorizedCount = transactions.length;
 		timing.loadTransactions += Date.now() - phaseStart;
 
-		// Store initial uncategorized count for totalCategorized calculation
 		if (initialUncategorizedCount === null) {
 			initialUncategorizedCount = uncategorizedCount;
+		}
+
+		// Update fun insights context
+		for (const t of transactions) {
+			insightContext.totalProcessed++;
+			const name = t.merchantName || '';
+			if (name) {
+				insightContext.merchantCounts.set(name, (insightContext.merchantCounts.get(name) || 0) + 1);
+			}
+			const amount = Math.abs(Number(t.amount));
+			if (!insightContext.largestTransaction || amount > insightContext.largestTransaction.amount) {
+				insightContext.largestTransaction = { merchant: name, amount };
+			}
+			if (amount > 0 && (!insightContext.smallestTransaction || amount < insightContext.smallestTransaction.amount)) {
+				insightContext.smallestTransaction = { merchant: name, amount };
+			}
+		}
+
+		// Generate rule-based insights
+		const newInsights = generateRuleBasedInsights(insightContext);
+		for (const insight of newInsights) {
+			if (!funInsights.some(existing => existing.message === insight.message)) {
+				funInsights.push(insight);
+			}
+		}
+
+		// Trigger AI insights if we have enough data (threshold: 25 transactions)
+		if (!aiInsightsGenerated && insightContext.totalProcessed > 25) {
+			aiInsightsGenerated = true; // Mark as started
+			generateAIInsights(insightContext).then(aiInsights => {
+				for (const insight of aiInsights) {
+					funInsights.push(insight);
+				}
+			}).catch(err => console.error('Background AI insight generation failed:', err));
 		}
 
 		if (uncategorizedCount === 0) {
@@ -580,7 +644,8 @@ export async function categorizeAllTransactions(
 				aiMatched: 0,
 				keywordsAdded: 0,
 				message: 'All transactions categorized!',
-				matchReasons
+				matchReasons,
+				funInsights
 			});
 			break;
 		}
@@ -665,8 +730,9 @@ export async function categorizeAllTransactions(
 				merchantNameMatched: 0,
 				aiMatched: 0,
 				keywordsAdded: 0,
-				message: `🔍 Merchant name matching: processing ${remainingForMerchantName.length} transactions...`,
-				matchReasons
+				message: `Step 1: Merchant name matching (${remainingForMerchantName.length} transactions)...`,
+				matchReasons,
+				funInsights
 			});
 
 			try {
@@ -734,7 +800,8 @@ export async function categorizeAllTransactions(
 					aiMatched: 0,
 					keywordsAdded: 0,
 					message: `✅ Merchant name matching complete: ${merchantNameMatched} transactions matched`,
-					matchReasons
+					matchReasons,
+					funInsights
 				});
 			} catch (error) {
 				console.error('   ❌ Merchant name matching error:', error);
@@ -747,7 +814,8 @@ export async function categorizeAllTransactions(
 					aiMatched: 0,
 					keywordsAdded: 0,
 					message: `❌ Merchant name matching error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					matchReasons
+					matchReasons,
+					funInsights
 				});
 			}
 		}
@@ -796,8 +864,12 @@ export async function categorizeAllTransactions(
 						date: t.date instanceof Date ? t.date.toISOString() : t.date
 					}));
 
-					// Create batch from remaining uncategorized transactions
-					const batches = batchTransactions(transactionsForAI, effectiveBatchSize);
+					// Deduplicate by merchant to reduce API calls
+					// Same merchant = same category, so we only need to categorize one representative
+					const deduped = deduplicateByMerchant(transactionsForAI);
+
+					// Create batch from deduplicated transactions (unique merchants only)
+					const batches = batchTransactions(deduped.representatives, effectiveBatchSize);
 
 					if (batches.length === 0) {
 						break;
@@ -807,7 +879,7 @@ export async function categorizeAllTransactions(
 					const batch = batches[0];
 					batchIndex++;
 					const batchNumber = batchIndex;
-					const totalBatchesEstimate = Math.ceil(uncategorizedForBatch.length / effectiveBatchSize);
+					const totalBatchesEstimate = Math.ceil(deduped.representatives.length / effectiveBatchSize);
 
 					aiDebug.batchesProcessed++;
 					aiDebug.totalTransactionsProcessed += batch.length;
@@ -820,7 +892,7 @@ export async function categorizeAllTransactions(
 						ibanMatched: 0,
 						aiMatched: 0,
 						keywordsAdded: 0,
-						message: `Processing AI batch ${batchNumber} (${uncategorizedForBatch.length} remaining)`,
+						message: `Step 2: AI categorization (batch ${batchNumber}, ${deduped.stats.uniqueMerchants} unique merchants)`,
 						matchReasons,
 						merchantNameMatched: merchantNameMatched,
 						aiProgress: {
@@ -830,7 +902,8 @@ export async function categorizeAllTransactions(
 							transactionsProcessed: aiDebug.totalTransactionsProcessed,
 							resultsReceived: aiDebug.totalResultsReceived,
 							resultsAboveThreshold: aiDebug.resultsAboveThreshold
-						}
+						},
+						funInsights
 					});
 
 					try {
@@ -856,14 +929,24 @@ export async function categorizeAllTransactions(
 							tokensUsed: batchResult.tokensUsed
 						};
 
-						// Mark batch transactions as processed
-						batch.forEach(t => aiProcessedIds.add(t.id));
+						// Expand results to all transactions in each merchant group
+						const expandedValidResults = expandResultsToAllMerchants(batchResult.validResults, deduped.merchantGroups);
+						const expandedInvalidResults = expandResultsToAllMerchants(batchResult.invalidResults, deduped.merchantGroups);
 
-						// Apply valid AI results
-						if (batchResult.validResults.length > 0) {
+						// Mark all grouped transaction IDs as processed (not just the batch)
+						for (const [_repId, allIds] of deduped.merchantGroups) {
+							// Only mark as processed if the representative was in this batch
+							const repWasInBatch = batch.some(t => t.id === _repId);
+							if (repWasInBatch) {
+								allIds.forEach(id => aiProcessedIds.add(id));
+							}
+						}
+
+						// Apply valid AI results (now expanded to include all transactions per merchant)
+						if (expandedValidResults.length > 0) {
 							// For AI results, create/link merchants and update transactions directly
 							// We do this directly instead of using applyMatches to avoid overwriting merchant_id
-							for (const result of batchResult.validResults) {
+							for (const result of expandedValidResults) {
 								const transaction = transactionMap.get(result.transactionId);
 								if (transaction && result.categoryId) {
 									try {
@@ -1176,6 +1259,115 @@ export async function categorizeAllTransactions(
 	console.log(`   TOTAL:                        ${duration}ms`);
 	console.log(`   Results: ${totalCategorized} categorized (${totalMerchantCategoryMatches} merchant cat, ${totalKeywordMatches} keyword, ${totalIBANMatches} IBAN, ${totalMerchantNameMatches} merchant name, ${totalAIMatches} AI)`);
 
+	// ===== POST-PROCESSING REFINEMENT =====
+	let contextRefinementResult: RefinementResult | undefined;
+	let lowConfidenceResult: RecategorizationResult | undefined;
+
+	// Step 1: Context Refinement (time/amount-based rules)
+	if (options?.enableContextRefinement !== false) {
+		try {
+			options?.onProgress?.({
+				iteration,
+				uncategorizedCount: finalUncategorizedCount,
+				keywordMatched: totalKeywordMatches,
+				ibanMatched: totalIBANMatches,
+				merchantNameMatched: totalMerchantNameMatches,
+				aiMatched: totalAIMatches,
+				keywordsAdded: 0,
+				message: 'Step 3: Context refinement (time/amount rules)...',
+				matchReasons,
+				refinementProgress: { processed: 0, total: 0, refined: 0 }
+			});
+
+			contextRefinementResult = await refineAllTransactions(userId, {
+				dryRun: false,
+				verbose: true,
+				onProgress: (refinementProgress) => {
+					options?.onProgress?.({
+						iteration,
+						uncategorizedCount: finalUncategorizedCount,
+						keywordMatched: totalKeywordMatches,
+						ibanMatched: totalIBANMatches,
+						merchantNameMatched: totalMerchantNameMatches,
+						aiMatched: totalAIMatches,
+						keywordsAdded: 0,
+						message: refinementProgress.message,
+						matchReasons,
+						funInsights,
+						refinementProgress: {
+							processed: refinementProgress.processed,
+							total: refinementProgress.total,
+							refined: refinementProgress.refined
+						}
+					});
+				}
+			});
+
+			if (contextRefinementResult.refined > 0) {
+				console.log(`🔧 Context refinement: ${contextRefinementResult.refined} transactions refined`);
+				// Add refinement changes to matchReasons
+				for (const change of contextRefinementResult.changes) {
+					matchReasons[change.transactionId] = `Refined: ${change.fromCategory} → ${change.toCategory} (${change.rule})`;
+				}
+			}
+		} catch (err) {
+			console.error('⚠️  Context refinement failed:', err);
+		}
+	}
+
+	// Step 2: Low-Confidence Recategorization (AI re-review) - runs in BACKGROUND
+	// This is a "fire and forget" async task - user can navigate away
+	if (options?.enableLowConfidenceRecategorization === true) {
+		// Send progress update to indicate background job is starting
+		options?.onProgress?.({
+			iteration,
+			uncategorizedCount: finalUncategorizedCount,
+			keywordMatched: totalKeywordMatches,
+			ibanMatched: totalIBANMatches,
+			merchantNameMatched: totalMerchantNameMatches,
+			aiMatched: totalAIMatches,
+			keywordsAdded: 0,
+			message: 'Step 4: Starting low-confidence recategorization in background...',
+			matchReasons
+		});
+
+		// Fire and forget - don't await, let it run in background
+		console.log('\n🔄 ═══════════════════════════════════════════════════════════');
+		console.log('🔄 BACKGROUND JOB STARTED: Low-Confidence Recategorization');
+		console.log('🔄 User can navigate away - this will continue in background');
+		console.log('🔄 ═══════════════════════════════════════════════════════════\n');
+
+		// Run in background without awaiting
+		(async () => {
+			try {
+				const startTime = Date.now();
+				const result = await recategorizeLowConfidence(userId);
+				const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+				console.log('\n🔄 ═══════════════════════════════════════════════════════════');
+				console.log('🔄 BACKGROUND JOB COMPLETED: Low-Confidence Recategorization');
+				console.log(`🔄 Duration: ${duration}s`);
+				console.log(`🔄 Candidates: ${result.totalCandidates}`);
+				console.log(`🔄 Processed: ${result.processed}`);
+				console.log(`🔄 Improved: ${result.improved}`);
+				console.log(`🔄 Unchanged: ${result.unchanged}`);
+				console.log(`🔄 Errors: ${result.errors}`);
+				if (result.changes.length > 0) {
+					console.log('🔄 Changes:');
+					for (const change of result.changes) {
+						console.log(`🔄   • ${change.merchantName}: ${change.fromCategory} → ${change.toCategory}`);
+					}
+				}
+				console.log('🔄 ═══════════════════════════════════════════════════════════\n');
+			} catch (err) {
+				console.error('\n🔄 ═══════════════════════════════════════════════════════════');
+				console.error('🔄 BACKGROUND JOB FAILED: Low-Confidence Recategorization');
+				console.error('🔄 Error:', err);
+				console.error('🔄 ═══════════════════════════════════════════════════════════\n');
+			}
+		})();
+	}
+
 	// Run merchant deduplication to clean up any duplicates created during categorization
 	try {
 		const mergeResult = await autoMergeDuplicates();
@@ -1202,6 +1394,8 @@ export async function categorizeAllTransactions(
 		keywordsAdded: totalKeywordsAdded,
 		errors,
 		matchReasons,
+		contextRefinement: contextRefinementResult,
+		lowConfidenceRecategorization: lowConfidenceResult,
 		aiDebug
 	};
 }

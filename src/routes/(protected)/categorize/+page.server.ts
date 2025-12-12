@@ -77,6 +77,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 						icon: true,
 						color: true
 					}
+				},
+				merchants: {
+					select: {
+						id: true,
+						name: true
+					}
 				}
 			}
 		})
@@ -152,7 +158,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		manualReviewTransactions: manualReviewTransactions.map((t: any) => ({
 			id: t.id,
 			date: t.date,
-			merchantName: t.merchantName,
+			merchantName: t.merchantName, // Raw name from bank
+			merchant: t.merchants ? {
+				id: t.merchants.id,
+				name: t.merchants.name
+			} : null,
 			amount: t.amount.toString(),
 			description: t.description,
 			category_confidence: t.category_confidence,
@@ -165,4 +175,3 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}))
 	};
 };
-

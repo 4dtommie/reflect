@@ -89,6 +89,118 @@ export function batchTransactions(
 }
 
 /**
+ * Merchant deduplication result
+ */
+export interface DeduplicationResult {
+	/** Representative transactions (one per unique merchant) */
+	representatives: TransactionForAI[];
+	/** Map from representative transaction ID to all transaction IDs with same merchant */
+	merchantGroups: Map<number, number[]>;
+	/** Stats for logging */
+	stats: {
+		originalCount: number;
+		uniqueMerchants: number;
+		duplicatesRemoved: number;
+	};
+}
+
+/**
+ * Deduplicate transactions by merchant name for more efficient AI processing.
+ * 
+ * Instead of sending 10 "Albert Heijn" transactions, we send 1 representative
+ * and apply the result to all 10.
+ * 
+ * @param transactions - Transactions to deduplicate
+ * @returns Deduplicated transactions with mapping to propagate results
+ */
+export function deduplicateByMerchant(transactions: TransactionForAI[]): DeduplicationResult {
+	// Group by cleaned merchant name (normalized lowercase)
+	const merchantGroups = new Map<string, TransactionForAI[]>();
+
+	for (const tx of transactions) {
+		// Use cleaned merchant name for grouping
+		const cleanedName = cleanMerchantName(tx.merchantName, tx.description);
+		const normalizedKey = cleanedName.toLowerCase().trim();
+
+		// Skip empty merchant names - these should be processed individually
+		if (!normalizedKey || normalizedKey.length === 0) {
+			// Use transaction ID as unique key for ungroupable transactions
+			merchantGroups.set(`__ungrouped_${tx.id}`, [tx]);
+			continue;
+		}
+
+		if (!merchantGroups.has(normalizedKey)) {
+			merchantGroups.set(normalizedKey, []);
+		}
+		merchantGroups.get(normalizedKey)!.push(tx);
+	}
+
+	// Pick one representative per merchant and create mapping
+	const representatives: TransactionForAI[] = [];
+	const idMapping = new Map<number, number[]>();
+
+	for (const [_merchantKey, txs] of merchantGroups) {
+		// Pick the first transaction as representative (could also pick by highest amount, etc.)
+		const representative = txs[0];
+		representatives.push(representative);
+
+		// Map representative ID to all transaction IDs in this group
+		idMapping.set(representative.id, txs.map(t => t.id));
+	}
+
+	const stats = {
+		originalCount: transactions.length,
+		uniqueMerchants: representatives.length,
+		duplicatesRemoved: transactions.length - representatives.length
+	};
+
+	if (stats.duplicatesRemoved > 0) {
+		console.log(`   🔄 Merchant deduplication: ${stats.originalCount} → ${stats.uniqueMerchants} unique (saved ${stats.duplicatesRemoved} API calls)`);
+	}
+
+	return {
+		representatives,
+		merchantGroups: idMapping,
+		stats
+	};
+}
+
+/**
+ * Expand AI results to all transactions with the same merchant
+ * 
+ * @param results - AI results for representative transactions
+ * @param merchantGroups - Mapping from representative ID to all transaction IDs
+ * @returns Expanded results for all original transactions
+ */
+export function expandResultsToAllMerchants(
+	results: AICategorizationResult[],
+	merchantGroups: Map<number, number[]>
+): AICategorizationResult[] {
+	const expandedResults: AICategorizationResult[] = [];
+
+	for (const result of results) {
+		// Get all transaction IDs that should receive this result
+		const allIds = merchantGroups.get(result.transactionId);
+
+		if (!allIds || allIds.length === 0) {
+			// No mapping found, just include the original result
+			expandedResults.push(result);
+			continue;
+		}
+
+		// Create a result for each transaction in the group
+		for (const txId of allIds) {
+			expandedResults.push({
+				...result,
+				transactionId: txId
+			});
+		}
+	}
+
+	return expandedResults;
+}
+
+/**
  * Load all categories formatted for AI prompt
  * Excludes categories that AI shouldn't categorize (e.g., "Transfers Between Own Accounts")
  */

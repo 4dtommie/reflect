@@ -1,3 +1,5 @@
+import type { FunInsight } from './funInsightGenerator';
+
 /**
  * In-memory progress storage for categorization
  * Keyed by userId
@@ -21,6 +23,7 @@ export interface CategorizationProgress {
 		resultsReceived: number;
 		resultsAboveThreshold: number;
 	};
+	funInsights?: FunInsight[];
 }
 
 const progressStore = new Map<number, CategorizationProgress>();

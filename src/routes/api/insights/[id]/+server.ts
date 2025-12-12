@@ -19,11 +19,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
         }
 
         const body = await request.json();
-        const { category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
+        const { name, description, category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
 
         const insight = await db.insightDefinition.update({
             where: { id },
             data: {
+                ...(name !== undefined && { name }),
+                ...(description !== undefined && { description }),
                 ...(category !== undefined && { category }),
                 ...(priority !== undefined && { priority }),
                 ...(trigger !== undefined && { trigger }),

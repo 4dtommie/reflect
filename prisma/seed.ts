@@ -309,6 +309,21 @@ export async function seedDatabase() {
 			[] // Empty - parent category only
 		);
 
+		// Housing (parent)
+		const wonen = await createCategoryWithKeywords(
+			{
+				name: 'Wonen',
+				description: 'Hoofdcategorie voor woonkosten (gebruik subcategorieën voor categorisering)',
+				color: '#ef4444',
+				icon: 'Home',
+				is_default: true,
+				created_by: null,
+				group: 'essential',
+				updated_at: new Date()
+			},
+			[] // Empty - parent category only
+		);
+
 		// ============================================
 		// FOOD & GROCERIES SUBCATEGORIES
 		// ============================================
@@ -479,7 +494,7 @@ export async function seedDatabase() {
 		await createCategoryWithKeywords(
 			{
 				name: 'Koffie',
-				description: 'Koffiezaken en cafés, gebruik hiervoor ook de tijd als die beschikbaar is (vaak tussen 8:00 en 11:00)',
+				description: 'Koffiezaken en cafés, gebruik hiervoor ook de tijd als die beschikbaar is (vaak tussen 8:00 en 11:00), bedragen vaak tussen 3 en 6 euro',
 				color: '#ea580c',
 				icon: 'Coffee',
 				is_default: true,
@@ -506,6 +521,38 @@ export async function seedDatabase() {
 				'doppio',
 				'illy',
 				'nespresso'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Snacks',
+				description: 'Automaten, kleine aankopen, snoep, snacks - vaak bedragen rond 1 tot 2 euro, vergelijkbaar met koffie maar goedkoper',
+				color: '#f59e0b',
+				icon: 'Cookie',
+				is_default: true,
+				created_by: null,
+				parent_id: restaurantsDining.id,
+				group: 'lifestyle',
+				tier: 'less',
+				is_variable_spending: true,
+				updated_at: new Date()
+			},
+			[
+				'vending',
+				'automaat',
+				'snack',
+				'snoep',
+				'candy',
+				'selecta',
+				'vendingmachine',
+				'vending machine',
+				'snackautomaat',
+				'snack automaat',
+				'snoepautomaat',
+				'drankautomaat',
+				'koekje',
+				'chips'
 			]
 		);
 
@@ -680,8 +727,8 @@ export async function seedDatabase() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Autobetaling',
-				description: 'Lening of lease bedrag voor een auto, bedrag is vaak hoger dan 300 euro',
+				name: 'Auto en fiets betalingen',
+				description: 'Lening of lease bedrag voor een auto of fiets (swapbike, fietsenwinkels), bedrag is vaak hoger dan 300 euro voor auto, rond 30-50 euro per maand voor fiets',
 				color: '#6366f1',
 				icon: 'Car',
 				is_default: true,
@@ -702,7 +749,16 @@ export async function seedDatabase() {
 				'leasebetaling',
 				'auto financiering',
 				'terberg',
-				'justlease'
+				'justlease',
+				'swapfiets',
+				'swap fiets',
+				'swapbike',
+				'swap bike',
+				'fietslease',
+				'fiets lease',
+				'bike lease',
+				'fietsabonnement',
+				'fiets abonnement'
 			]
 		);
 
@@ -974,58 +1030,7 @@ export async function seedDatabase() {
 				'tablet',
 				'expert',
 				'bcc'
-			]
-		);
-
-		await createCategoryWithKeywords(
-			{
-				name: 'Woninginrichting',
-				description: 'Meubels, woningdecoratie, apparaten, huishoudelijke artikelen',
-				color: '#9333ea',
-				icon: 'Home',
-				is_default: true,
-				created_by: null,
-				parent_id: shopping.id,
-				group: 'lifestyle',
-				tier: 'less',
-				updated_at: new Date()
-			},
-			[
-				'furniture',
-				'home decor',
-				'appliances',
-				'household',
-				'meubels',
-				'woninginrichting',
-				'huishoudelijk',
-				'apparaten',
-				'ikea',
-				'leen bakker',
-				'loods 5',
-				'kwantum',
-				'karwei',
-				'praxis',
-				'gamma',
-				'formido',
-				'blokker',
-				'xenos',
-				'action',
-				'wibra',
-				'zeeman',
-				'hema',
-				'woonwinkel',
-				'meubelwinkel',
-				'meubelzaak',
-				'woningdecoratie',
-				'decoratie',
-				'home & garden',
-				'woonaccessoires',
-				'woonwinkels',
-				'woonketen',
-				'woonboulevard',
-				'woonmall'
-			]
-		);
+			]);
 
 		await createCategoryWithKeywords(
 			{
@@ -1160,32 +1165,31 @@ export async function seedDatabase() {
 			]
 		);
 
+		// ============================================
+		// WONEN SUBCATEGORIES
+		// ============================================
+
 		await createCategoryWithKeywords(
 			{
-				name: 'Woning',
-				description: 'Huur, hypotheek, onderhoud (NIET energie en water, die vallen onder de Energie/water categorie)',
+				name: 'Huur/hypotheek',
+				description: 'Maandelijkse huur of hypotheekbetalingen',
 				color: '#ef4444',
 				icon: 'Home',
 				is_default: true,
 				created_by: null,
+				parent_id: wonen.id,
 				group: 'essential',
-				tier: 'medium',
+				tier: 'most',
 				updated_at: new Date()
 			},
 			[
 				'rent',
 				'mortgage',
-				'housing',
-				'maintenance',
 				'huur',
 				'hypotheek',
-				'woning',
-				'onderhoud',
-				'nationale nederlanden',
-				'nn',
-				'achmea',
-				'vereniging eigen huis',
-				'veh',
+				'hypotheken',
+				'aflossing',
+				'lening',
 				'wooncorporatie',
 				'woningcorporatie',
 				'woningstichting',
@@ -1196,15 +1200,133 @@ export async function seedDatabase() {
 				'hypotheekrente',
 				'hypotheekbetaling',
 				'hypotheeklasten',
-				'woningonderhoud',
-				'huisonderhoud',
-				'woningbelasting',
+				'nationale nederlanden',
+				'nn',
+				'achmea',
+				'vereniging eigen huis',
+				'veh',
 				'ozb',
 				'ozb belasting',
 				'woonlasten',
 				'woonkosten'
 			]
 		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Klussen',
+				description: 'Bouwmarkten, gereedschap, klus- en verbouwmaterialen',
+				color: '#dc2626',
+				icon: 'Wrench',
+				is_default: true,
+				created_by: null,
+				parent_id: wonen.id,
+				group: 'essential',
+				tier: 'less',
+				updated_at: new Date()
+			},
+			[
+				'karwei',
+				'praxis',
+				'gamma',
+				'formido',
+				'hornbach',
+				'bouwmarkt',
+				'bouwmaat',
+				'gereedschap',
+				'doe het zelf',
+				'diy',
+				'klussen',
+				'verbouwen',
+				'verf',
+				'verfwinkel',
+				'hout',
+				'bouwmaterialen',
+				'ijzerwaren',
+				'toolstation',
+				'hubo'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Tuin',
+				description: 'Tuincentra, planten, tuinmeubels, tuingereedschap',
+				color: '#22c55e',
+				icon: 'Flower2',
+				is_default: true,
+				created_by: null,
+				parent_id: wonen.id,
+				group: 'lifestyle',
+				tier: 'less',
+				updated_at: new Date()
+			},
+			[
+				'intratuin',
+				'tuincentrum',
+				'garden center',
+				'gardencenter',
+				'tuin',
+				'planten',
+				'bloemen',
+				'tuinmeubels',
+				'tuingereedschap',
+				'groenrijk',
+				'ranzijn',
+				'oosterik',
+				'hamiplant',
+				'de boet',
+				'tuinland',
+				'fonteyn',
+				'outdoor',
+				'terras'
+			]
+		);
+
+		await createCategoryWithKeywords(
+			{
+				name: 'Woninginrichting',
+				description: 'Meubels, woningdecoratie, huishoudelijke apparaten',
+				color: '#9333ea',
+				icon: 'Sofa',
+				is_default: true,
+				created_by: null,
+				parent_id: wonen.id,
+				group: 'lifestyle',
+				tier: 'less',
+				updated_at: new Date()
+			},
+			[
+				'ikea',
+				'leen bakker',
+				'loods 5',
+				'kwantum',
+				'blokker',
+				'xenos',
+				'hema',
+				'meubels',
+				'furniture',
+				'meubelwinkel',
+				'meubelzaak',
+				'woningdecoratie',
+				'decoratie',
+				'woonaccessoires',
+				'woonwinkel',
+				'woonwinkels',
+				'woonketen',
+				'woonboulevard',
+				'woonmall',
+				'bank',
+				'bed',
+				'matras',
+				'gordijnen',
+				'vloerkleed',
+				'lamp',
+				'lampen'
+			]
+		);
+
+		log('✅ Created Wonen with 4 subcategories');
 
 		await createCategoryWithKeywords(
 			{

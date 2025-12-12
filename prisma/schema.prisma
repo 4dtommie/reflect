@@ -192,6 +192,8 @@ model category_keywords {
 
 model InsightDefinition {
   id               String   @id
+  name             String?  // Human-readable title (e.g., "Late Payment Alert")
+  description      String?  // Short description for the list view
   category         String   // urgent, action, insight, celebration, tip
   priority         Int      @default(50)
   trigger          String   // trigger type ID

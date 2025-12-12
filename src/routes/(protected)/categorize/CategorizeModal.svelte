@@ -17,6 +17,10 @@
 		id: number;
 		date: string;
 		merchantName: string;
+		merchant?: {
+			id: number;
+			name: string;
+		} | null;
 		amount: string;
 		description: string;
 		category_confidence: number | null;
@@ -183,7 +187,9 @@
 										year: 'numeric'
 									})}
 								</div>
-								<div class="mt-1 text-xl font-bold">{transaction.merchantName}</div>
+								<div class="mt-1 text-xl font-bold" title={transaction.merchantName}>
+									{transaction.merchant?.name ?? transaction.merchantName}
+								</div>
 								<div class="mt-2 text-sm opacity-70">{transaction.description}</div>
 							</div>
 							<div class="pl-4 text-right whitespace-nowrap">

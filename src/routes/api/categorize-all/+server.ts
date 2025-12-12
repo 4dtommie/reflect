@@ -31,6 +31,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			batchSize: batchSize,
 			skipManual: skipManual !== false,
 			minConfidence: minConfidence || 0.5,
+			enableContextRefinement: true, // Step 3: Time/amount rules for food categories
+			enableLowConfidenceRecategorization: true, // Step 4: OpenAI re-check for low-confidence
 			onProgress: (progress) => {
 				// Store progress for client polling
 				setProgress(userId, progress);

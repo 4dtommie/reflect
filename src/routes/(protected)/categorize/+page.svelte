@@ -310,8 +310,11 @@
 								>
 									<!-- Top row: Merchant name with chevron -->
 									<div class="flex items-center gap-2">
-										<div class="min-w-0 flex-1 truncate font-medium">
-											{transaction.merchantName}
+										<div
+											class="min-w-0 flex-1 truncate font-medium"
+											title={transaction.merchantName}
+										>
+											{transaction.merchant?.name ?? transaction.merchantName}
 											{#if similarCount > 1}
 												<span class="ml-2 text-xs font-normal opacity-60"
 													>({similarCount} similar)</span

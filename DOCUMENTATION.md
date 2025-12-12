@@ -124,6 +124,7 @@ The full categorization runs in **iterative rounds** until all transactions are 
 ### 4. AI Batch Categorization
 - Uses Gemini 2.5 Flash for inference
 - Processes transactions in batches (default: 10 per batch)
+- **Merchant deduplication**: Groups transactions by cleaned merchant name, sends 1 representative per merchant to AI, then applies result to all (saves API costs)
 - For each transaction, AI receives: merchant name, description, amount, date
 - Returns: suggested category ID + confidence score (0.0-1.0)
 
@@ -170,8 +171,62 @@ To provide instant AI suggestions on the manual page:
 - `src/lib/server/categorization/merchantNameMatcher.ts` - Merchant name matching
 - `src/lib/server/categorization/merchantNameCleaner.ts` - Merchant name cleaning
 - `src/lib/server/categorization/geminiCategorizer.ts` - Gemini AI integration
+- `src/lib/server/categorization/contextRefinementService.ts` - Time/amount-based refinement
+- `src/lib/server/categorization/lowConfidenceRecategorizationService.ts` - AI re-review for low confidence
 - `src/routes/(protected)/categorize/+page.svelte` - Manual categorization UI
 - `src/routes/api/transactions/categorize-batch/+server.ts` - Batch categorization API
+
+## Post-Processing Refinement
+
+After the main categorization pipeline, two optional post-processing steps can further refine categories:
+
+### Context Refinement (Enabled by Default)
+
+Uses **time** and **amount** to refine categories without AI. Useful for:
+- **Food categories** - Same café can be Coffee or Lunch depending on time
+- **Multi-category merchants** - Banks with insurance/mortgage/fees, gas stations with fuel/snacks
+
+#### Time-Based Rules
+| Rule | Target Category | Time | Amount |
+|------|---------------|------|--------|
+| Morning coffee | Koffie | 6-11 | €2-8 |
+| Midday lunch | Lunch | 11-15 | €5-20 |
+| Evening dinner | Uit eten | 17-22 | €15-150 |
+| Nightlife | Uitgaan/bars | 21-04 | €5-100 |
+
+#### Amount-Based Rules
+| Rule | Target Category | Amount |
+|------|---------------|--------|
+| Gas station fuel | Brandstof | €25-200 |
+| Gas station snack | Snacks | €0.50-5 |
+| Bank mortgage | Wonen | €500-3000 |
+| Bank insurance | Verzekering | €30-300 |
+| Bank fees | Bankkosten | €1-30 |
+
+**Time extraction**: Parses HH:MM patterns from transaction descriptions (e.g., "15:47" from "Pasvolgnr: 904 03-12-2025 15:47 Transactie: C00362").
+
+### Low-Confidence Recategorization (Disabled by Default)
+
+Transactions with **50-65% confidence** are sent to OpenAI for a second opinion:
+- **Model**: `gpt-5-mini` (same as manual categorization modal)
+- **Features**: Search grounding, reasoning, cleaned merchant name
+- Batches of 10 transactions
+- Only applies changes if new confidence > 75%
+- Enable with: `enableLowConfidenceRecategorization: true`
+
+### Options
+```typescript
+await categorizeAllTransactions(userId, {
+  enableContextRefinement: true,      // Default: true
+  enableLowConfidenceRecategorization: false // Default: false
+});
+```
+
+### Logging
+Both refinement steps log every category change:
+```
+✓ [lunch_midday] Starbucks                €  12.50 12:30 : Uit eten → Lunch
+```
 
 ---
 
@@ -314,8 +369,13 @@ InsightDefinition (DB) → TriggerEvaluator → EvaluatedInsight → UI
                        InsightData (user financial state)
 ```
 
+## Schema Updates
+The `InsightDefinition` model now includes:
+- `name` (String): Human-readable title for the rule
+- `description` (String): Short summary for list views
+
 ## Key Files
-- `prisma/seedInsights.ts` - Insight definitions seeded to DB
+- `prisma/seedInsights.ts` - Insight definitions seeded to DB (now includes `name` and `description`)
 - `src/lib/server/insights/insightDataCollector.ts` - Fetches user financial data
 - `src/lib/server/insights/triggerEvaluators.ts` - Trigger condition logic
 - `src/lib/server/insights/insightEngine.ts` - Orchestrates evaluation
@@ -364,6 +424,19 @@ Tracked in `hooks.server.ts` on each authenticated request:
 Celebration insights can link to action insights via `related_insight_id`, creating chains like:
 - `no_transactions` → `first_upload_success`
 - `fresh_import` → `categorization_good_progress` → `categorization_complete`
+
+## Configuration Page
+The insight rules are managed at `/insights` via a master-detail interface:
+
+### Layout
+- **List View (1/3 left)**: Scrollable list of rules sorted by priority, with quick status toggles.
+- **Detail Panel (2/3 right)**: Editor for the selected rule.
+
+### Editor Features
+- **Message Template**: Full-width editor at the top with live variable preview.
+- **Quick Settings**: Priority slider, category dropdown, and action buttons.
+- **Advanced Settings**: Collapsible section for technical configuration (Rule ID, trigger params, cooldown, contexts).
+- **Safe Deletion**: Delete button requires modal confirmation.
 
 ---
 

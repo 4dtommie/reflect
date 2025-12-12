@@ -9,6 +9,7 @@
 		title,
 		subtitle,
 		monthlySpending = [],
+		predictionData,
 		class: className = '',
 		compact = false
 	}: {
@@ -23,14 +24,69 @@
 			income: number;
 			recurringIncome?: number;
 		}[];
+		predictionData?: {
+			income: number;
+			recurring: number;
+			variable: number;
+		};
 		class?: string;
 		compact?: boolean;
 	} = $props();
 
 	let chartCanvas: HTMLCanvasElement;
 	let chartInstance: Chart | null = null;
-	let dataRef: { chartData: typeof chartData; monthlySpending: typeof monthlySpending } | null =
-		null;
+	let dataRef: {
+		chartData: typeof chartData;
+		monthlySpending: typeof monthlySpending;
+		currentMonthIndex: number;
+	} | null = null;
+
+	// Get current month key (YYYY-MM format)
+	const currentMonthKey = $derived.by(() => {
+		const now = new Date();
+		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	});
+
+	// Find if current month exists in the data
+	const currentMonthIndex = $derived.by(() => {
+		if (!monthlySpending || monthlySpending.length === 0) return -1;
+		return monthlySpending.findIndex(({ month }) => month === currentMonthKey);
+	});
+
+	// Create diagonal stripe pattern for prediction areas
+	const createStripePattern = (
+		ctx: CanvasRenderingContext2D,
+		baseColor: string
+	): CanvasPattern | string => {
+		const patternCanvas = document.createElement('canvas');
+		patternCanvas.width = 10;
+		patternCanvas.height = 10;
+		const pctx = patternCanvas.getContext('2d');
+		if (!pctx) return baseColor;
+
+		// Fill with base color
+		pctx.fillStyle = baseColor;
+		pctx.fillRect(0, 0, 10, 10);
+
+		// Add diagonal stripes
+		pctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+		pctx.lineWidth = 2;
+		pctx.beginPath();
+		pctx.moveTo(0, 10);
+		pctx.lineTo(10, 0);
+		pctx.stroke();
+		pctx.beginPath();
+		pctx.moveTo(-5, 5);
+		pctx.lineTo(5, -5);
+		pctx.stroke();
+		pctx.beginPath();
+		pctx.moveTo(5, 15);
+		pctx.lineTo(15, 5);
+		pctx.stroke();
+
+		const pattern = ctx.createPattern(patternCanvas, 'repeat');
+		return pattern || baseColor;
+	};
 
 	// Process monthly spending data for chart
 	const chartData = $derived.by(() => {
@@ -44,8 +100,19 @@
 		});
 
 		// Extract recurring, variable, savings, and remaining values
-		const recurringValues = monthlySpending.map(({ recurring }) => recurring || 0);
-		const variableValues = monthlySpending.map(({ variable }) => variable || 0);
+		// Replace current month with prediction data if available
+		const recurringValues = monthlySpending.map(({ recurring }, i) => {
+			if (i === currentMonthIndex && predictionData) {
+				return predictionData.recurring;
+			}
+			return recurring || 0;
+		});
+		const variableValues = monthlySpending.map(({ variable }, i) => {
+			if (i === currentMonthIndex && predictionData) {
+				return predictionData.variable;
+			}
+			return variable || 0;
+		});
 		const savingsValues = monthlySpending.map(({ savings }) => savings || 0);
 		const remainingValues = monthlySpending.map(({ remaining }) => remaining || 0);
 
@@ -57,8 +124,13 @@
 
 		const stackedVariable = recurringValues.map((recurring, i) => recurring + variableValues[i]);
 
-		// Income line - real monthly income values
-		const incomeLineValues = monthlySpending.map(({ recurringIncome }) => recurringIncome || 0);
+		// Income line - use prediction data for current month
+		const incomeLineValues = monthlySpending.map(({ recurringIncome }, i) => {
+			if (i === currentMonthIndex && predictionData) {
+				return predictionData.income;
+			}
+			return recurringIncome || 0;
+		});
 
 		// Remaining is effectively the income line (since it fills up to income)
 		// We use income values as the top of the "remaining" stack
@@ -88,10 +160,58 @@
 		if (!chartCanvas || !chartData) return;
 
 		// Store reference to data for tooltip callbacks
-		dataRef = { chartData, monthlySpending };
+		dataRef = { chartData, monthlySpending, currentMonthIndex };
+
+		// Custom plugin to draw diagonal stripes over prediction area
+		const predictionStripePlugin = {
+			id: 'predictionStripes',
+			afterDatasetsDraw(chart: Chart) {
+				if (currentMonthIndex < 0 || !chart.data.labels) return;
+
+				const ctx = chart.ctx;
+				const xAxis = chart.scales.x;
+				const yAxis = chart.scales.y;
+
+				// Get x positions for current month and previous month
+				const currentX = xAxis.getPixelForValue(currentMonthIndex);
+				const prevX =
+					currentMonthIndex > 0 ? xAxis.getPixelForValue(currentMonthIndex - 1) : currentX - 50;
+
+				// Draw diagonal stripes from prevX to right edge
+				const stripeWidth = chart.width - prevX;
+				const stripeHeight = yAxis.bottom - yAxis.top;
+
+				if (stripeWidth <= 0) return;
+
+				ctx.save();
+
+				// Clip to the chart area from previous data point to edge
+				ctx.beginPath();
+				ctx.rect(prevX, yAxis.top, stripeWidth, stripeHeight);
+				ctx.clip();
+
+				// Draw diagonal white stripes
+				ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+				ctx.lineWidth = 2;
+
+				const spacing = 8;
+				const totalDiagonals = Math.ceil((stripeWidth + stripeHeight) / spacing) * 2;
+
+				for (let i = 0; i < totalDiagonals; i++) {
+					const offset = i * spacing;
+					ctx.beginPath();
+					ctx.moveTo(prevX + offset, yAxis.bottom);
+					ctx.lineTo(prevX + offset - stripeHeight, yAxis.top);
+					ctx.stroke();
+				}
+
+				ctx.restore();
+			}
+		};
 
 		chartInstance = new Chart(chartCanvas, {
 			type: 'line',
+			plugins: [predictionStripePlugin],
 			data: {
 				labels: chartData.labels,
 				datasets: [
@@ -104,7 +224,10 @@
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 0
+						order: 0,
+						segment: {
+							borderDash: (ctx: any) => (ctx.p1DataIndex === currentMonthIndex ? [5, 5] : undefined)
+						}
 					},
 					{
 						label: 'Variable expenses',
@@ -115,7 +238,10 @@
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 1
+						order: 1,
+						segment: {
+							borderDash: (ctx: any) => (ctx.p1DataIndex === currentMonthIndex ? [5, 5] : undefined)
+						}
 					},
 					{
 						label: 'Free to Spend',
@@ -130,7 +256,10 @@
 						tension: 0.4,
 						pointRadius: 0,
 						pointHoverRadius: 4,
-						order: 2
+						order: 2,
+						segment: {
+							borderDash: (ctx: any) => (ctx.p1DataIndex === currentMonthIndex ? [5, 5] : undefined)
+						}
 					},
 					{
 						label: 'Income',
@@ -143,7 +272,13 @@
 						pointRadius: 0,
 						pointHoverRadius: 4,
 						order: 3, // Topmost
-						hidden: false
+						hidden: false,
+						segment: {
+							borderDash: (ctx: any) =>
+								ctx.p1DataIndex === currentMonthIndex ? [6, 4] : undefined,
+							borderColor: (ctx: any) =>
+								ctx.p1DataIndex === currentMonthIndex ? 'rgba(34, 197, 94, 0.7)' : undefined
+						}
 					}
 				]
 			},
@@ -185,7 +320,12 @@
 								const index = tooltipItems[0].dataIndex;
 								const [year, monthNum] = dataRef.monthlySpending[index].month.split('-');
 								const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-								return date.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+								const monthName = date.toLocaleDateString('nl-NL', {
+									month: 'long',
+									year: 'numeric'
+								});
+								// Add "(projected)" suffix for current month
+								return index === dataRef.currentMonthIndex ? `${monthName} (projected)` : monthName;
 							},
 							label: (context) => {
 								if (!dataRef?.chartData) return '';

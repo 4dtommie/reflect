@@ -15,6 +15,8 @@ export async function seedInsights() {
         // ========== URGENT (80-100) ==========
         {
             id: 'payment_late',
+            name: 'Late payment alert',
+            description: 'Triggers when a recurring payment is overdue.',
             category: 'urgent',
             priority: 95,
             trigger: 'payment_late',
@@ -28,6 +30,8 @@ export async function seedInsights() {
         },
         {
             id: 'payment_due_today',
+            name: 'Payment due today',
+            description: 'Alerts you when a payment is due today.',
             category: 'urgent',
             priority: 90,
             trigger: 'payment_due_soon',
@@ -41,6 +45,8 @@ export async function seedInsights() {
         },
         {
             id: 'payment_due_soon',
+            name: 'Upcoming payment reminder',
+            description: 'Heads up when a payment is coming up soon.',
             category: 'urgent',
             priority: 85,
             trigger: 'payment_due_soon',
@@ -56,6 +62,8 @@ export async function seedInsights() {
         // ========== ACTION (60-79) ==========
         {
             id: 'no_transactions',
+            name: 'No transactions yet',
+            description: 'Prompts user to upload their first transactions.',
             category: 'action',
             priority: 75,
             trigger: 'no_transactions',
@@ -69,6 +77,8 @@ export async function seedInsights() {
         },
         {
             id: 'uncategorized_high',
+            name: 'Uncategorized transactions',
+            description: 'Prompts user when many transactions need categorizing.',
             category: 'action',
             priority: 70,
             trigger: 'uncategorized_high',
@@ -82,6 +92,8 @@ export async function seedInsights() {
         },
         {
             id: 'detect_subscriptions',
+            name: 'Subscription hunter',
+            description: 'Suggests finding recurring subscriptions.',
             category: 'action',
             priority: 65,
             trigger: 'review_recurring',
@@ -98,6 +110,8 @@ export async function seedInsights() {
         // Same period comparison (first X days of this month vs last month) - only extreme changes
         {
             id: 'same_period_spending_up',
+            name: 'Spending up this period',
+            description: 'Compares spending to same period last month.',
             category: 'insight',
             priority: 55,
             trigger: 'same_period_change',
@@ -111,6 +125,8 @@ export async function seedInsights() {
         },
         {
             id: 'same_period_spending_down',
+            name: 'Spending down this period',
+            description: 'Good news when spending is lower than last month.',
             category: 'insight',
             priority: 50,
             trigger: 'same_period_change',
@@ -123,6 +139,8 @@ export async function seedInsights() {
         // Complete month comparison (last month vs 2 months ago) - fair comparison
         {
             id: 'complete_month_spending_up',
+            name: 'Monthly spending increased',
+            description: 'Last month spending compared to previous.',
             category: 'insight',
             priority: 48,
             trigger: 'complete_month_change',
@@ -136,6 +154,8 @@ export async function seedInsights() {
         },
         {
             id: 'complete_month_spending_down',
+            name: 'Monthly spending decreased',
+            description: 'Good news on month-over-month spending.',
             category: 'insight',
             priority: 45,
             trigger: 'complete_month_change',
@@ -148,6 +168,8 @@ export async function seedInsights() {
         // Top spending category
         {
             id: 'top_category',
+            name: 'Top spending category',
+            description: 'Shows your biggest spending category.',
             category: 'insight',
             priority: 42,
             trigger: 'top_category',
@@ -163,6 +185,8 @@ export async function seedInsights() {
         // ========== CELEBRATION (20-39) ==========
         {
             id: 'fresh_import',
+            name: 'New transactions ready',
+            description: 'Prompts user after importing new transactions.',
             category: 'action',
             priority: 75,
             trigger: 'fresh_import',
@@ -176,6 +200,8 @@ export async function seedInsights() {
         },
         {
             id: 'first_upload_success',
+            name: 'First upload celebration',
+            description: 'Celebrates the first transaction import.',
             category: 'celebration',
             priority: 38,
             trigger: 'fresh_import', // Fires when transactions exist but are uncategorized
@@ -188,6 +214,8 @@ export async function seedInsights() {
         },
         {
             id: 'categorization_good_progress',
+            name: 'Categorization progress',
+            description: 'Encourages completion of uncategorized items.',
             category: 'celebration',
             priority: 36, // Higher than complete so it fires first when in range
             trigger: 'categorization_good_progress',
@@ -202,6 +230,8 @@ export async function seedInsights() {
         },
         {
             id: 'categorization_complete',
+            name: 'All categorized!',
+            description: 'Celebrates when all transactions are categorized.',
             category: 'celebration',
             priority: 35,
             trigger: 'categorization_complete',
@@ -214,6 +244,8 @@ export async function seedInsights() {
         },
         {
             id: 'batch_categorize_success',
+            name: 'Batch categorize complete',
+            description: 'Celebrates after categorizing many transactions.',
             category: 'celebration',
             priority: 33,
             trigger: 'categorization_complete',
@@ -226,6 +258,8 @@ export async function seedInsights() {
         },
         {
             id: 'savings_positive',
+            name: 'Savings achievement',
+            description: 'Celebrates positive savings this month.',
             category: 'celebration',
             priority: 30,
             trigger: 'savings_positive',
@@ -239,6 +273,8 @@ export async function seedInsights() {
         // ========== TIP (1-19) ==========
         {
             id: 'tip_batch_categorize',
+            name: 'Batch categorize tip',
+            description: 'Suggests using batch categorization.',
             category: 'tip',
             priority: 15,
             trigger: 'always',
@@ -253,6 +289,8 @@ export async function seedInsights() {
         },
         {
             id: 'tip_recurring',
+            name: 'Recurring check tip',
+            description: 'Suggests checking for hidden subscriptions.',
             category: 'tip',
             priority: 14,
             trigger: 'always',
@@ -267,6 +305,8 @@ export async function seedInsights() {
         },
         {
             id: 'tip_looking_good',
+            name: 'Encouragement tip',
+            description: 'General positive encouragement.',
             category: 'tip',
             priority: 13,
             trigger: 'always',
@@ -279,6 +319,8 @@ export async function seedInsights() {
         },
         {
             id: 'tip_daily',
+            name: 'Dedication tip',
+            description: 'Recognizes consistent usage.',
             category: 'tip',
             priority: 12,
             trigger: 'always',
@@ -293,6 +335,8 @@ export async function seedInsights() {
         // ========== STREAKS (non_exclusive) ==========
         {
             id: 'streak_5_days',
+            name: '5-day streak',
+            description: 'Celebrates a 5-day login streak.',
             category: 'celebration',
             priority: 25,
             trigger: 'user_streak',
@@ -305,6 +349,8 @@ export async function seedInsights() {
         },
         {
             id: 'streak_7_days',
+            name: '7-day streak',
+            description: 'Celebrates a full week of tracking.',
             category: 'celebration',
             priority: 26,
             trigger: 'user_streak',
@@ -317,6 +363,8 @@ export async function seedInsights() {
         },
         {
             id: 'streak_30_days',
+            name: '30-day streak',
+            description: 'Celebrates a month of consistent usage.',
             category: 'celebration',
             priority: 27,
             trigger: 'user_streak',
@@ -331,6 +379,8 @@ export async function seedInsights() {
         // ========== INACTIVITY ==========
         {
             id: 'nudge_inactive_7d',
+            name: 'Inactive user nudge',
+            description: 'Reminds user to come back after 7 days.',
             category: 'action',
             priority: 72,
             trigger: 'user_inactive',
@@ -346,6 +396,8 @@ export async function seedInsights() {
         // ========== COMPARATIVE ==========
         {
             id: 'spending_high_early',
+            name: 'High spending warning',
+            description: 'Warns when spending early in month is high.',
             category: 'insight',
             priority: 52,
             trigger: 'spending_high_early',
@@ -361,6 +413,8 @@ export async function seedInsights() {
         // ========== CHRISTMAS ==========
         {
             id: 'christmas_cheer',
+            name: 'Holiday cheer',
+            description: 'Seasonal holiday budget reminder.',
             category: 'tip',
             priority: 18,
             trigger: 'christmas_season',
@@ -375,6 +429,8 @@ export async function seedInsights() {
         },
         {
             id: 'christmas_gift_tip',
+            name: 'Gift tracking tip',
+            description: 'Suggests tracking gifts separately.',
             category: 'tip',
             priority: 17,
             trigger: 'christmas_season',
@@ -393,6 +449,8 @@ export async function seedInsights() {
             await prisma.insightDefinition.create({
                 data: {
                     id: insight.id,
+                    name: (insight as any).name ?? null,
+                    description: (insight as any).description ?? null,
                     category: insight.category,
                     priority: insight.priority,
                     trigger: insight.trigger,

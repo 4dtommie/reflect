@@ -167,6 +167,11 @@
 					title="Spending patterns"
 					subtitle={randomSubtitle}
 					monthlySpending={data.monthlySpending || []}
+					predictionData={{
+						income: incomeStats.monthlyTotal,
+						recurring: data.stats?.monthlyTotal || 0,
+						variable: variableStats?.totalMonthlyAverage || 0
+					}}
 					class="h-full"
 				/>
 			</div>

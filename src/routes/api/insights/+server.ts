@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { id, category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
+        const { id, name, description, category, priority, trigger, trigger_params, message_template, icon, action_label, action_href, contexts, cooldown_hours, is_active } = body;
 
         // Validate required fields
         if (!id || !category || !trigger || !message_template) {
@@ -47,6 +47,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const insight = await db.insightDefinition.create({
             data: {
                 id,
+                name: name ?? null,
+                description: description ?? null,
                 category,
                 priority: priority ?? 50,
                 trigger,

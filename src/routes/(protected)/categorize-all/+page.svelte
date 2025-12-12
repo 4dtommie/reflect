@@ -3,7 +3,8 @@
 	import { onMount } from 'svelte';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import StatItem from '$lib/components/StatItem.svelte';
-
+	import FunInsightsWidget from '$lib/components/FunInsightsWidget.svelte';
+	import type { FunInsight } from '$lib/server/categorization/funInsightGenerator';
 	const categorizationMessages = [
 		'Time to organize your financial chaos! 🎯',
 		'Let AI do the heavy lifting while you relax.',
@@ -91,6 +92,9 @@
 		resultsReceived: number;
 		resultsAboveThreshold: number;
 	} | null>(null);
+
+	// Fun insights state
+	let funInsights = $state<FunInsight[]>([]);
 
 	// Merchant name matching is instant, no progress tracking needed
 
@@ -266,6 +270,48 @@
 						matchReason: matchReasons[t.id] || t.matchReason
 					}));
 				}
+
+				// Update fun insights
+				if (data.progress.funInsights) {
+					funInsights = data.progress.funInsights;
+				}
+
+				// Phase-weighted progress calculation
+				// Step 1 (Merchant matching): 0-10%
+				// Step 2 (AI categorization): 10-80% (70% of bar - the longest phase)
+				// Step 3 (Context refinement): 80-90%
+				// Step 4 (Low-confidence): 90-100%
+				const msg = data.progress.message || '';
+
+				if (msg.includes('Step 1:')) {
+					// Merchant matching phase: 0-10%
+					progress = 5;
+				} else if (msg.includes('Step 2:') && aiProgress) {
+					// AI phase: 10-80% based on batch progress
+					// Cap at 1.0 in case currentBatch exceeds totalBatches (estimate changes)
+					const aiPhaseProgress =
+						aiProgress.totalBatches > 0
+							? Math.min(1, aiProgress.currentBatch / aiProgress.totalBatches)
+							: 0;
+					progress = 10 + aiPhaseProgress * 70;
+				} else if (msg.includes('Step 3:') || data.progress.refinementProgress) {
+					// Context refinement: 80-90%
+					const refineProg = data.progress.refinementProgress;
+					if (refineProg && refineProg.total > 0) {
+						const refinePhaseProgress = Math.min(1, refineProg.processed / refineProg.total);
+						progress = 80 + refinePhaseProgress * 10;
+					} else {
+						progress = 85;
+					}
+				} else if (msg.includes('Step 4:')) {
+					// Low-confidence recategorization: 90-100%
+					progress = 95;
+				} else if (msg.includes('complete') || msg.includes('All transactions')) {
+					progress = 100;
+				}
+
+				// Always cap progress at 100
+				progress = Math.min(100, progress);
 			}
 		} catch (err) {
 			console.error('Failed to poll progress:', err);
@@ -317,7 +363,7 @@
 					const originalName = t.merchantName || '';
 
 					// Truncate merchant name if needed (more than 4 words OR more than 22 characters)
-					const wordCount = cleanedName.split(/\s+/).filter((w) => w.length > 0).length;
+					const wordCount = cleanedName.split(/\s+/).filter((w: string) => w.length > 0).length;
 					const shouldTruncate = wordCount > 4 || cleanedName.length > 22;
 					const displayMerchantName =
 						shouldTruncate && cleanedName.length > 22
@@ -364,7 +410,7 @@
 			// Note: categorizedCount is set from result.totalCategorized, don't override here
 			// The polled transactions list may not include all categorized transactions
 
-			// Update progress - get current uncategorized count and calculate categorized
+			// Update categorizedCount from uncategorized count
 			try {
 				const uncatResponse = await fetch('/api/transactions?pageSize=1&uncategorized=true');
 				if (uncatResponse.ok) {
@@ -374,11 +420,11 @@
 					if (totalTransactions > 0) {
 						// Calculate categorized as total - remaining uncategorized
 						categorizedCount = totalTransactions - remainingUncategorized;
-						progress = Math.min(100, (categorizedCount / totalTransactions) * 100);
+						// Note: progress is now calculated in pollProgress() based on phase
 					}
 				}
 			} catch (err) {
-				console.error('Failed to update progress:', err);
+				console.error('Failed to update categorized count:', err);
 			}
 		} catch (err) {
 			console.error('Failed to poll categorized transactions:', err);
@@ -395,39 +441,154 @@
 	});
 </script>
 
-<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
-	<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
-		<!-- Title Widget (Large) -->
-		<div class="lg:col-span-2">
-			<DashboardWidget size="wide">
-				<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
-					<h1 class="mb-4 text-7xl font-bold">Categorize all transactions</h1>
-					<p class="text-2xl opacity-70">
-						{randomMessage}
-					</p>
+<div class="grid grid-cols-1 gap-8 p-4 lg:grid-cols-3">
+	<!-- Left Column (2/3) -->
+	<div class="flex flex-col gap-8 lg:col-span-2">
+		<!-- Title Widget -->
+		<DashboardWidget size="small">
+			<div class="flex h-full flex-col justify-center px-6 pt-3 pb-6">
+				<h1 class="mb-4 text-7xl font-bold">Categorize all transactions</h1>
+				<p class="text-2xl opacity-70">
+					{randomMessage}
+				</p>
+			</div>
+		</DashboardWidget>
+
+		<!-- Error Widget -->
+		{#if error}
+			<DashboardWidget size="auto">
+				<div class="alert alert-error">
+					<AlertCircle class="h-6 w-6" />
+					<span>{error}</span>
 				</div>
 			</DashboardWidget>
-		</div>
+		{/if}
 
-		<!-- Status Widget (Small) -->
+		<!-- Categorized Transactions Widget -->
+		{#if categorizedTransactions.length > 0}
+			<DashboardWidget size="large" title="Categorized transactions">
+				<div class="relative max-h-[600px] overflow-x-auto overflow-y-auto">
+					<table class="table table-zebra">
+						<thead class="sticky top-0 bg-base-200">
+							<tr>
+								<th>Date</th>
+								<th>Merchant</th>
+								<th>Amount</th>
+								<th>Category</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each categorizedTransactions as transaction, index}
+								<tr
+									class="group relative"
+									onmouseenter={(e) => {
+										if (transaction.matchReason) {
+											const tooltip = document.getElementById(`tooltip-${index}`);
+											if (tooltip) {
+												const rect = e.currentTarget.getBoundingClientRect();
+												const tableRect = e.currentTarget.closest('table')?.getBoundingClientRect();
+												if (tableRect) {
+													tooltip.style.display = 'block';
+													tooltip.style.top = `${rect.top - tableRect.top - 120}px`;
+													tooltip.style.left = `${rect.left - tableRect.left + rect.width / 2}px`;
+												}
+											}
+										}
+									}}
+									onmouseleave={() => {
+										const tooltip = document.getElementById(`tooltip-${index}`);
+										if (tooltip) {
+											tooltip.style.display = 'none';
+										}
+									}}
+								>
+									<td>
+										{new Date(transaction.date).toLocaleDateString('en-US', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric'
+										})}
+									</td>
+									<td class="font-medium">
+										<span
+											title={transaction.fullMerchantName !== transaction.merchantName
+												? transaction.fullMerchantName
+												: transaction.originalMerchantName
+													? transaction.originalMerchantName !== transaction.fullMerchantName
+														? `Original: ${transaction.originalMerchantName}`
+														: transaction.originalMerchantName
+													: ''}
+										>
+											{transaction.merchantName ||
+												transaction.fullMerchantName ||
+												transaction.originalMerchantName ||
+												'-'}
+										</span>
+									</td>
+									<td>€{transaction.amount.toFixed(2)}</td>
+									<td>
+										<span class="badge badge-primary">{transaction.categoryName}</span>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+					{#each categorizedTransactions as transaction, index}
+						{#if transaction.matchReason}
+							<div
+								id="tooltip-{index}"
+								class="pointer-events-none absolute z-50 hidden -translate-x-1/2"
+								style="display: none;"
+							>
+								<div
+									class="rounded-lg border border-base-300 bg-base-200 p-3 text-sm whitespace-nowrap shadow-lg"
+									style="min-width: 200px;"
+								>
+									<div class="mb-1 font-semibold">Match reason:</div>
+									<div class="text-base-content/80">{transaction.matchReason}</div>
+									<div
+										class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 border-t-4 border-r-4 border-l-4 border-transparent border-t-base-300"
+									></div>
+								</div>
+							</div>
+						{/if}
+					{/each}
+				</div>
+			</DashboardWidget>
+		{/if}
+	</div>
+
+	<!-- Right Column (1/3) -->
+	<div class="flex flex-col gap-8 lg:col-span-1">
+		<!-- Status Widget -->
 		<DashboardWidget size="small">
 			<div class="flex h-full flex-col justify-between">
 				<div>
 					{#if categorizing || result}
 						<div class="mb-4 grid grid-cols-2 gap-4">
 							<StatItem
-								label="Total transactions"
+								label="Total"
 								value={totalTransactions > 0 ? totalTransactions : processedCount}
 								color="text-primary"
+								size="sm"
 							/>
-							<StatItem label="Categorized" value={categorizedCount} color="text-success" />
-							<StatItem label="Uncategorized" value={uncategorizedCount} color="text-warning" />
-							<StatItem label="Time" value={formatTime(elapsedTime)} color="text-info" />
+							<StatItem label="Done" value={categorizedCount} color="text-success" size="sm" />
+							<StatItem label="Pending" value={uncategorizedCount} color="text-warning" size="sm" />
+							<StatItem label="Time" value={formatTime(elapsedTime)} color="text-info" size="sm" />
 						</div>
 					{/if}
 
 					{#if categorizing && totalTransactions > 0}
 						<div class="mb-4">
+							<!-- Current Phase -->
+							{#if currentProgressMessage}
+								<div class="mb-2 flex items-center gap-2">
+									<Loader2 class="h-4 w-4 animate-spin text-primary" />
+									<span class="truncate text-xs font-medium" title={currentProgressMessage}
+										>{currentProgressMessage}</span
+									>
+								</div>
+							{/if}
 							<div class="mb-2 flex justify-between">
 								<span class="text-xs text-base-content/70">Progress</span>
 								<span class="text-xs text-base-content/70">{Math.round(progress)}%</span>
@@ -438,7 +599,7 @@
 					{/if}
 				</div>
 
-				<div class="flex gap-2">
+				<div class="mt-auto flex gap-2">
 					{#if categorizing}
 						<button class="btn w-full btn-error" onclick={stopCategorization}>
 							<SquareStop class="mr-2 h-4 w-4" />
@@ -447,122 +608,16 @@
 					{:else}
 						<button class="btn w-full btn-primary" onclick={startCategorization}>
 							<Play class="mr-2 h-4 w-4" />
-							Start categorization
+							Start
 						</button>
 					{/if}
 				</div>
 			</div>
 		</DashboardWidget>
-	</div>
 
-	<!-- Content Section -->
-	<div class="col-span-full">
-		{#if error}
-			<DashboardWidget size="full">
-				<div class="alert alert-error">
-					<AlertCircle class="h-6 w-6" />
-					<span>{error}</span>
-				</div>
-			</DashboardWidget>
-		{/if}
-
-		<!-- Categorized Transactions Table -->
-		{#if categorizedTransactions.length > 0}
-			<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
-				<div class="lg:col-span-2">
-					<DashboardWidget size="large" title="Categorized transactions">
-						<div class="relative max-h-96 overflow-x-auto overflow-y-auto">
-							<table class="table table-zebra">
-								<thead class="sticky top-0 bg-base-200">
-									<tr>
-										<th>Date</th>
-										<th>Merchant</th>
-										<th>Amount</th>
-										<th>Category</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each categorizedTransactions as transaction, index}
-										<tr
-											class="group relative"
-											onmouseenter={(e) => {
-												if (transaction.matchReason) {
-													const tooltip = document.getElementById(`tooltip-${index}`);
-													if (tooltip) {
-														const rect = e.currentTarget.getBoundingClientRect();
-														const tableRect = e.currentTarget
-															.closest('table')
-															?.getBoundingClientRect();
-														if (tableRect) {
-															tooltip.style.display = 'block';
-															tooltip.style.top = `${rect.top - tableRect.top - 120}px`;
-															tooltip.style.left = `${rect.left - tableRect.left + rect.width / 2}px`;
-														}
-													}
-												}
-											}}
-											onmouseleave={() => {
-												const tooltip = document.getElementById(`tooltip-${index}`);
-												if (tooltip) {
-													tooltip.style.display = 'none';
-												}
-											}}
-										>
-											<td>
-												{new Date(transaction.date).toLocaleDateString('en-US', {
-													day: '2-digit',
-													month: '2-digit',
-													year: 'numeric'
-												})}
-											</td>
-											<td class="font-medium">
-												<span
-													title={transaction.fullMerchantName !== transaction.merchantName
-														? transaction.fullMerchantName
-														: transaction.originalMerchantName
-															? transaction.originalMerchantName !== transaction.fullMerchantName
-																? `Original: ${transaction.originalMerchantName}`
-																: transaction.originalMerchantName
-															: ''}
-												>
-													{transaction.merchantName ||
-														transaction.fullMerchantName ||
-														transaction.originalMerchantName ||
-														'-'}
-												</span>
-											</td>
-											<td>€{transaction.amount.toFixed(2)}</td>
-											<td>
-												<span class="badge badge-primary">{transaction.categoryName}</span>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-							{#each categorizedTransactions as transaction, index}
-								{#if transaction.matchReason}
-									<div
-										id="tooltip-{index}"
-										class="pointer-events-none absolute z-50 hidden -translate-x-1/2"
-										style="display: none;"
-									>
-										<div
-											class="rounded-lg border border-base-300 bg-base-200 p-3 text-sm whitespace-nowrap shadow-lg"
-											style="min-width: 200px;"
-										>
-											<div class="mb-1 font-semibold">Match reason:</div>
-											<div class="text-base-content/80">{transaction.matchReason}</div>
-											<div
-												class="absolute top-full left-1/2 h-0 w-0 -translate-x-1/2 border-t-4 border-r-4 border-l-4 border-transparent border-t-base-300"
-											></div>
-										</div>
-									</div>
-								{/if}
-							{/each}
-						</div>
-					</DashboardWidget>
-				</div>
-			</div>
+		<!-- Fun Insights Widget -->
+		{#if categorizing && funInsights.length > 0}
+			<FunInsightsWidget insights={funInsights} />
 		{/if}
 	</div>
 </div>

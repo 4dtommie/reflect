@@ -6385,3 +6385,26 @@
 [2025-12-11T06:35:42.152Z] lastInsightMsg: payment_due_today
 [2025-12-11T06:35:42.155Z] 🔍 DEBUG: lastInsightMsg ID: payment_due_today
 [2025-12-11T06:35:42.158Z] 🔍 DEBUG: currentInsight ID: payment_due_soon
+[2025-12-12T11:33:51.789Z] Load function started
+[2025-12-12T11:33:51.888Z] Load function started
+[2025-12-12T11:33:52.052Z] Load function started
+[2025-12-12T11:33:52.113Z] Load function started
+[2025-12-12T11:33:52.115Z] Load function started
+[2025-12-12T11:33:52.250Z] Load function started
+[2025-12-12T11:35:25.709Z] Load function started
+[2025-12-12T11:35:25.907Z] Promise.all completed - chatInsight: no_transactions
+[2025-12-12T11:35:26.005Z] Entering transition logic - currentInsight: no_transactions
+[2025-12-12T11:35:26.082Z] Created new conversation with greeting: 56
+[2025-12-12T11:35:26.082Z] Conversation found: true, messages: 1
+[2025-12-12T11:35:26.088Z] lastInsightMsg: undefined
+[2025-12-12T11:35:26.095Z] 🔍 DEBUG: lastInsightMsg ID: undefined
+[2025-12-12T11:35:26.098Z] 🔍 DEBUG: currentInsight ID: no_transactions
+[2025-12-12T11:35:37.617Z] Load function started
+[2025-12-12T11:35:37.705Z] Promise.all completed - chatInsight: fresh_import
+[2025-12-12T11:35:37.797Z] Entering transition logic - currentInsight: fresh_import
+[2025-12-12T11:35:37.861Z] Conversation found: true, messages: 2
+[2025-12-12T11:35:37.861Z] lastInsightMsg: no_transactions
+[2025-12-12T11:35:37.867Z] 🔍 DEBUG: lastInsightMsg ID: no_transactions
+[2025-12-12T11:35:37.873Z] 🔍 DEBUG: currentInsight ID: fresh_import
+[2025-12-12T11:35:37.880Z] 🔍 DEBUG: Attempting transition to: fresh_import
+[2025-12-12T11:35:37.912Z] 🔍 DEBUG: getSpecificInsight result: fresh_import
