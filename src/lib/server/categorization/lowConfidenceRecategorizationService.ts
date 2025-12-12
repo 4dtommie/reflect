@@ -126,8 +126,8 @@ export async function recategorizeLowConfidence(
 ): Promise<RecategorizationResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
-    console.log(`\n🔄 Low-Confidence Recategorization for user ${userId}`);
-    console.log(`   Confidence range: ${opts.minConfidence * 100}% - ${opts.maxConfidence * 100}%`);
+    // console.log(`\n🔄 Low-Confidence Recategorization for user ${userId}`);
+    // console.log(`   Confidence range: ${opts.minConfidence * 100}% - ${opts.maxConfidence * 100}%`);
 
     // Check if AI is available
     if (!isAIAvailable()) {
@@ -255,13 +255,13 @@ export async function recategorizeLowConfidence(
         }
     }
 
-    // Summary
-    console.log(`\n📊 Recategorization Summary:`);
-    console.log(`   Candidates: ${result.totalCandidates}`);
-    console.log(`   Processed: ${result.processed}`);
-    console.log(`   Improved: ${result.improved}`);
-    console.log(`   Unchanged: ${result.unchanged}`);
-    console.log(`   Errors: ${result.errors}`);
+    // Summary - handled by caller
+    // console.log(`\n📊 Recategorization Summary:`);
+    // console.log(`   Candidates: ${result.totalCandidates}`);
+    // console.log(`   Processed: ${result.processed}`);
+    // console.log(`   Improved: ${result.improved}`);
+    // console.log(`   Unchanged: ${result.unchanged}`);
+    // console.log(`   Errors: ${result.errors}`);
 
     return result;
 }

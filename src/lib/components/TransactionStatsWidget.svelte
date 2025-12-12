@@ -54,7 +54,7 @@
 
 <DashboardWidget
 	size={widgetSize}
-	title="Payments labeled"
+	title="Transactions categorized"
 	actionLabel="Improve"
 	actionHref="/categorize"
 >
@@ -129,13 +129,22 @@
 							{#each topUncategorizedMerchants as merchant (merchant.name)}
 								<div class="flex items-center justify-between text-sm">
 									<span class="truncate pr-2 opacity-80">{merchant.name || 'Unknown'}</span>
-									<span class="badge badge-sm font-mono badge-warning">{merchant.count}</span>
+									<span class="badge font-mono badge-sm badge-warning">{merchant.count}</span>
 								</div>
 							{/each}
 						</div>
 					</div>
 				{/if}
 			</div>
+
+			{#if uncategorizedCount > 0}
+				<div class="mt-4">
+					<a href="/categorize-all" class="btn w-full gap-2 border-dashed btn-outline btn-sm">
+						<Sparkles size={16} />
+						Categorize {uncategorizedCount} transactions
+					</a>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </DashboardWidget>

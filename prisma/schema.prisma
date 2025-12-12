@@ -26,7 +26,26 @@ model User {
   login_streak      Int        @default(0)   // Consecutive days logged in
   streak_updated_at DateTime?                // Date streak was last updated
 
+  bank_accounts     BankAccount[]
+
   @@map("users")
+}
+
+model BankAccount {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  iban           String
+  name           String   // Human readable name e.g. "Joint Account"
+  type           String?  // "checking", "savings", "credit_card"
+  is_own_account Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, iban]) // User can only have one entry per IBAN
+  @@map("bank_accounts")
+  @@index([user_id])
 }
 
 model categories {
@@ -91,6 +110,7 @@ model transactions {
   // Data cleaning fields
   cleaned_merchant_name    String?
   normalized_description   String?
+  last_categorization_attempt_at DateTime?
   categories         categories?     @relation(fields: [category_id], references: [id])
   merchants          merchants?      @relation(fields: [merchant_id], references: [id])
   users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)

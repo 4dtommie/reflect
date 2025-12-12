@@ -44,7 +44,7 @@
 
 <DashboardWidget
 	size="small"
-	title="Recurring income/expenses"
+	title="Spending patterns"
 	actionLabel={actionLabel || undefined}
 	actionHref={actionHref || undefined}
 >
@@ -160,7 +160,7 @@
 		<!-- Yearly savings potential -->
 		<div class="mt-2 flex items-center justify-between border-t border-base-200 pt-3">
 			<span class="text-sm font-medium opacity-70">Yearly savings potential</span>
-			<span class="font-bold text-success">
+			<span class="font-bold text-yellow-600">
 				€ {formatNumber(Math.round(freeToSpend * 12))}
 			</span>
 		</div>

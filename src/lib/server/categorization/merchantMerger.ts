@@ -372,8 +372,8 @@ export async function autoMergeDuplicates(
 
     onProgress?.(progress);
 
-    // Find high-confidence duplicates (>= 0.75 similarity)
-    const candidates = await findMergeCandidates(0.75);
+    // Find high-confidence duplicates (>= 0.70 similarity)
+    const candidates = await findMergeCandidates(0.70);
     progress.candidatesFound = candidates.length;
 
     if (candidates.length === 0) {

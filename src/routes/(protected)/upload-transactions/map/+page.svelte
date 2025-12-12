@@ -39,6 +39,18 @@
 	} | null> = $state([]);
 	let loadingPreview = $state(false);
 
+	// Account naming
+	let uniqueIbans: string[] = $derived.by(() => {
+		const ibans = new Set<string>();
+		for (const t of mappedTransactions) {
+			if (t && t.iban) {
+				ibans.add(t.iban);
+			}
+		}
+		return Array.from(ibans);
+	});
+	let accountNames = $state<Record<string, string>>({});
+
 	onMount(() => {
 		// Retrieve parsed CSV data from sessionStorage
 		const storedData = sessionStorage.getItem('csv_parse_result');
@@ -207,6 +219,7 @@
 		// Store the raw CSV data and mapping for server-side processing
 		// Don't send all mapped transactions - let server do the mapping for all rows
 		sessionStorage.setItem('csv_column_mapping', JSON.stringify(mapping));
+		sessionStorage.setItem('csv_account_mapping', JSON.stringify(accountNames));
 
 		// The parseResult is already in sessionStorage with all rows
 		// Server will use the mapping to process all rows
@@ -250,6 +263,38 @@
 						</p>
 					</div>
 				</DashboardWidget>
+
+				<!-- Account Identification Widget -->
+				{#if uniqueIbans.length > 0}
+					<DashboardWidget size="wide" title="Account identification">
+						<div class="p-4">
+							<p class="mb-4 text-base-content/70">
+								We found the following accounts in your file. Give them a name (e.g., "Personal",
+								"Joint") to easily identify them later.
+							</p>
+							<div class="space-y-4">
+								{#each uniqueIbans as iban}
+									<div class="flex items-center gap-4 rounded-lg bg-base-200/50 p-4">
+										<div class="flex-1">
+											<p class="font-mono text-sm">{iban}</p>
+											<p class="text-xs text-base-content/60">
+												{mappedTransactions.filter((t) => t?.iban === iban).length} transactions
+											</p>
+										</div>
+										<div class="w-1/2">
+											<input
+												type="text"
+												placeholder="Account Name (e.g. Joint)"
+												class="input-bordered input w-full"
+												bind:value={accountNames[iban]}
+											/>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					</DashboardWidget>
+				{/if}
 
 				<!-- Column Mapping Widget -->
 				<DashboardWidget size="wide" title="Column mapping">

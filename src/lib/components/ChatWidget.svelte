@@ -90,6 +90,24 @@
 
 	const timeGreeting = getTimeGreeting();
 
+	// Get badge class for insight category
+	function getCategoryBadgeClass(category: string): string {
+		switch (category) {
+			case 'urgent':
+				return 'bg-error/20 text-error';
+			case 'action':
+				return 'bg-warning/20 text-warning';
+			case 'insight':
+				return 'bg-info/20 text-info';
+			case 'celebration':
+				return 'bg-success/20 text-success';
+			case 'tip':
+				return 'bg-base-content/10 text-base-content/60';
+			default:
+				return 'bg-neutral/20 text-neutral';
+		}
+	}
+
 	// Load conversation on mount
 	onMount(() => {
 		loadConversation();
@@ -334,19 +352,28 @@
 						<!-- Assistant message -->
 						<div class="flex flex-col items-start gap-1">
 							{#if msg.showLabel}
-								<p class="mt-2 ml-2 text-xs font-bold text-primary">Penny</p>
+								<p class="mt-2 ml-2 text-xs font-bold text-gray-600">Penny</p>
 							{/if}
-							<div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-base-200/70 px-3 py-2">
+							<div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-white px-3 py-2 shadow-sm">
+								{#if msg.insightCategory}
+									<span
+										class="mb-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase {getCategoryBadgeClass(
+											msg.insightCategory
+										)}"
+									>
+										{msg.insightCategory}
+									</span>
+								{/if}
 								<p class="pb-1 text-sm">
 									{getDisplayContent(msg)}{#if isTyping(msg)}<span class="animate-pulse">▊</span
 										>{/if}
 								</p>
 
 								{#if msg.data?.transactions && msg.data.transactions.length > 0 && !isTyping(msg)}
-									<div class="mt-2 flex flex-col gap-1 overflow-hidden rounded-lg bg-base-100/50">
+									<div class="mt-2 flex flex-col gap-1 overflow-hidden rounded-lg bg-white">
 										{#each msg.data.transactions as t}
 											<button
-												class="flex w-full items-center justify-between gap-3 p-2 text-left text-xs transition-colors hover:bg-base-100"
+												class="flex w-full cursor-pointer items-center justify-between gap-3 p-2 text-left text-xs transition-colors hover:bg-base-100"
 												onclick={() =>
 													transactionModalStore.open({
 														id: t.id,
@@ -373,12 +400,12 @@
 									</div>
 								{/if}
 
-								{#if msg.actionButtons && msg.actionButtons.length > 0 && !isTyping(msg)}
+								{#if msg.actionButtons && msg.actionButtons.length > 0 && !isTyping(msg) && !(msg.data?.transactions && msg.data.transactions.length > 0)}
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#each msg.actionButtons as button}
 											<a
 												href={button.href}
-												class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+												class="btn border-0 bg-gray-100 text-gray-600 btn-xs hover:bg-gray-200"
 											>
 												{button.label}
 												<ArrowRight class="h-3 w-3" />

@@ -25,6 +25,7 @@
 	import Amount from '$lib/components/Amount.svelte';
 	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 	import chartColors from '$lib/config/chartColors';
+	import { identifyInternalTransfers } from '$lib/utils/transactionAnalysis';
 
 	// Register Chart.js components
 	Chart.register(
@@ -57,6 +58,7 @@
 			stats: any | null;
 			categories: any[];
 			categoryParam: string | null;
+			bankAccounts?: any[];
 		};
 	} = $props();
 	let chartCanvas: HTMLCanvasElement | null = $state(null);
@@ -70,7 +72,11 @@
 
 	// Filters - initialize from URL param if provided
 	let selectedCategory = $state<string>(data.categoryParam ?? 'all');
+	let selectedAccount = $state<string>('all');
 	let showUncategorizedOnly = $state(false);
+
+	// Identify internal transfers (connected payments)
+	const internalTransferIds = $derived(identifyInternalTransfers(data.transactions));
 
 	// Calculate active categories with counts
 	const activeCategories = $derived(() => {
@@ -170,6 +176,9 @@
 			if (selectedCategory !== 'all') {
 				return String(t.category?.id) === selectedCategory;
 			}
+			if (selectedAccount !== 'all') {
+				return t.iban === selectedAccount;
+			}
 			return true;
 		});
 
@@ -193,102 +202,69 @@
 		return sortedDays;
 	});
 
-	// Get monthly stats - compute from filtered transactions when category is selected
+	// Get monthly stats - compute from filtered transactions
 	const monthlyStats = $derived(() => {
-		// When filtering by category, compute from transactions client-side
-		if (selectedCategory !== 'all' && !showUncategorizedOnly) {
-			const filtered = data.transactions.filter((t) => String(t.category?.id) === selectedCategory);
+		// Filter transactions based on UI filters AND exclude internal transfers
+		const filtered = data.transactions.filter((t) => {
+			// Exclude internal transfers from stats
+			if (internalTransferIds.has(t.id)) return false;
 
-			// Group by month
-			const monthMap = new Map<
-				string,
-				{ spending: number; income: number; date: Date; year: number; month: number }
-			>();
-
-			for (const t of filtered) {
-				const d = typeof t.date === 'string' ? new Date(t.date) : t.date;
-				const year = d.getFullYear();
-				const month = d.getMonth();
-				const monthKey = `${year}-${month}`;
-
-				if (!monthMap.has(monthKey)) {
-					monthMap.set(monthKey, {
-						spending: 0,
-						income: 0,
-						date: new Date(year, month, 1),
-						year,
-						month
-					});
-				}
-
-				const entry = monthMap.get(monthKey)!;
-				if (t.is_debit) {
-					entry.spending += Math.abs(t.amount);
-				} else {
-					entry.income += Math.abs(t.amount);
-				}
+			if (showUncategorizedOnly) {
+				return !t.category || t.category.name === 'Niet gecategoriseerd';
 			}
 
-			const monthlyData = Array.from(monthMap.values())
-				.map((m) => ({
-					...m,
-					monthKey: `${m.year}-${m.month}`,
-					total: m.spending,
-					savings: 0
-				}))
-				.sort((a, b) => b.date.getTime() - a.date.getTime());
+			if (selectedCategory !== 'all' && String(t.category?.id) !== selectedCategory) return false;
+			if (selectedAccount !== 'all' && t.iban !== selectedAccount) return false;
+			return true;
+		});
 
-			const totalSpending = monthlyData.reduce((sum, m) => sum + m.spending, 0);
-			const avgSpending = monthlyData.length > 0 ? totalSpending / monthlyData.length : 0;
+		// Group by month
+		const monthMap = new Map<
+			string,
+			{ spending: number; income: number; date: Date; year: number; month: number }
+		>();
 
-			return {
-				monthlyData,
-				averageMonthlySpending: avgSpending,
-				averageMonthlyIncome: 0
-			};
-		}
+		for (const t of filtered) {
+			const d = typeof t.date === 'string' ? new Date(t.date) : t.date;
+			const year = d.getFullYear();
+			const month = d.getMonth();
+			const monthKey = `${year}-${month}`;
 
-		// Default: use server-side stats for all transactions
-		if (!data.stats) {
-			return { monthlyData: [], averageMonthlySpending: 0, averageMonthlyIncome: 0 };
-		}
-
-		// Parse month totals correctly - use year and month from API
-		const monthlyData = data.stats.monthlyTotals
-			.map((m: any) => {
-				// Use year and month directly from API response
-				const year = m.year;
-				const month = m.month;
-				const date = new Date(year, month, 1);
-
-				// Ensure spending and income are numbers
-				const spending =
-					typeof m.spending === 'number' ? m.spending : typeof m.total === 'number' ? m.total : 0;
-				const income = typeof m.income === 'number' ? m.income : 0;
-				const savings = typeof m.savings === 'number' ? m.savings : 0;
-
-				return {
-					monthKey: `${year}-${month}`,
-					total: spending, // For backward compatibility
-					spending: Number(spending),
-					income: Number(income),
-					savings: Number(savings),
-					date,
+			if (!monthMap.has(monthKey)) {
+				monthMap.set(monthKey, {
+					spending: 0,
+					income: 0,
+					date: new Date(year, month, 1),
 					year,
 					month
-				};
-			})
-			.sort((a: any, b: any) => b.date.getTime() - a.date.getTime());
+				});
+			}
 
-		// Calculate averages
-		const totalSpending = monthlyData.reduce((sum: number, m: any) => sum + (m.spending || 0), 0);
-		const totalIncome = monthlyData.reduce((sum: number, m: any) => sum + (m.income || 0), 0);
+			const entry = monthMap.get(monthKey)!;
+			if (t.is_debit) {
+				entry.spending += Math.abs(t.amount);
+			} else {
+				entry.income += Math.abs(t.amount);
+			}
+		}
+
+		const monthlyData = Array.from(monthMap.values())
+			.map((m) => ({
+				...m,
+				monthKey: `${m.year}-${m.month}`,
+				total: m.spending,
+				savings: 0 // Savings logic would need to be re-implemented if needed, or derived from categories
+			}))
+			.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+		const totalSpending = monthlyData.reduce((sum, m) => sum + m.spending, 0);
 		const avgSpending = monthlyData.length > 0 ? totalSpending / monthlyData.length : 0;
+		const totalIncome = monthlyData.reduce((sum, m) => sum + m.income, 0);
 		const avgIncome = monthlyData.length > 0 ? totalIncome / monthlyData.length : 0;
 
 		return {
 			monthlyData,
-			averageMonthlySpending: data.stats.averageMonthlySpending || avgSpending,
+			averageMonthlySpending: avgSpending,
 			averageMonthlyIncome: avgIncome
 		};
 	});
@@ -754,7 +730,6 @@
 		<div class="flex flex-col gap-8">
 			<!-- Title Widget -->
 			<PageTitleWidget title="Transactions" compact={true} />
-			<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
 			{#if data.stats}
 				<TransactionStatsWidget
 					totalTransactions={data.stats.totalTransactions}
@@ -763,6 +738,7 @@
 					topUncategorizedMerchants={data.stats.topUncategorizedMerchants}
 				/>
 			{/if}
+			<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
 		</div>
 
 		<!-- Right Column: Chart, and Transactions -->
@@ -831,8 +807,15 @@
 										? getCategoryIcon(transaction.category.icon)
 										: null}
 									<button
-										class="-mx-2 flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-100"
+										class="-mx-2 flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-100 {internalTransferIds.has(
+											transaction.id
+										)
+											? 'opacity-50'
+											: ''}"
 										onclick={() => handleTransactionClick(transaction)}
+										title={internalTransferIds.has(transaction.id)
+											? 'Internal transfer'
+											: undefined}
 									>
 										<div class="flex min-w-0 flex-1 items-center gap-3">
 											<div class="flex-shrink-0">
@@ -842,11 +825,20 @@
 													<HelpCircle size={18} class="text-base-content/30" />
 												{/if}
 											</div>
-											<span class="truncate text-sm font-normal" title={transaction.merchantName}>
+											<span
+												class="truncate text-sm font-normal {internalTransferIds.has(transaction.id)
+													? 'line-through'
+													: ''}"
+												title={transaction.merchantName}
+											>
 												{transaction.merchant?.name ?? transaction.merchantName}
 											</span>
 										</div>
-										<div class="flex-shrink-0">
+										<div
+											class="flex-shrink-0 {internalTransferIds.has(transaction.id)
+												? 'line-through'
+												: ''}"
+										>
 											<Amount
 												value={transaction.amount}
 												size="small"
@@ -881,6 +873,28 @@
 									<option value={String(category.id)}>{category.name} ({category.count})</option>
 								{/each}
 							</select>
+
+							{#if data.bankAccounts && data.bankAccounts.length > 0}
+								<div class="join">
+									<select
+										class="select-bordered select join-item w-48 select-sm"
+										bind:value={selectedAccount}
+										disabled={showUncategorizedOnly}
+									>
+										<option value="all">All Accounts</option>
+										{#each data.bankAccounts as account}
+											<option value={account.iban}>{account.name || account.iban}</option>
+										{/each}
+									</select>
+									<a
+										href="/accounts"
+										class="btn join-item btn-square border-base-300 bg-base-100 btn-sm"
+										title="Manage Accounts"
+									>
+										<Icons.Settings size={16} />
+									</a>
+								</div>
+							{/if}
 
 							<label
 								class="label cursor-pointer gap-2 rounded-lg border border-base-200 px-2 py-1 transition-colors hover:bg-base-200/50"

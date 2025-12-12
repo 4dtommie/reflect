@@ -312,7 +312,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const validatedRequest = TransactionImportSchema.parse(body);
 
-		const { rows, headers, mapping } = validatedRequest;
+		const { rows, headers, mapping, accountMapping } = validatedRequest;
+
+		// Handle account mapping (create/update bank accounts)
+		if (accountMapping && Object.keys(accountMapping).length > 0) {
+			console.log(`🏦  Processing ${Object.keys(accountMapping).length} account names...`);
+			for (const [iban, name] of Object.entries(accountMapping)) {
+				if (iban && name) {
+					// Upsert bank account
+					await (db as any).bankAccount.upsert({
+						where: {
+							user_id_iban: {
+								user_id: userId,
+								iban: iban
+							}
+						},
+						update: {
+							name: name
+						},
+						create: {
+							user_id: userId,
+							iban: iban,
+							name: name,
+							is_own_account: true, // Default to true for imported accounts
+							type: 'checking' // Default type
+						}
+					});
+				}
+			}
+		}
 
 		// Convert mapping keys to numbers
 		const columnMapping: ColumnMapping = {};

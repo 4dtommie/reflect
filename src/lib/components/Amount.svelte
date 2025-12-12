@@ -8,7 +8,7 @@
 		locale = 'NL' // Default to Dutch locale
 	}: {
 		value: number;
-		size?: 'small' | 'medium' | 'large';
+		size?: 'small' | 'medium' | 'large' | 'custom';
 		showDecimals?: boolean;
 		isDebit?: boolean;
 		hideEuro?: boolean;
@@ -22,7 +22,7 @@
 	const formatted = $derived.by(() => {
 		const isDutchLocale = localeCode === 'nl-NL';
 		const decimalSeparator = isDutchLocale ? ',' : '.';
-		
+
 		if (hideEuro) {
 			// Format without currency symbol
 			if (showDecimals) {
@@ -66,7 +66,7 @@
 					// English: add space after euro sign
 					withSpace = formatted.replace('€', '€ ');
 				}
-				
+
 				const parts = withSpace.split(decimalSeparator);
 				return {
 					main: parts[0],
@@ -110,6 +110,10 @@
 		large: {
 			main: 'text-2xl',
 			decimals: 'text-2xl'
+		},
+		custom: {
+			main: '',
+			decimals: ''
 		}
 	};
 </script>
@@ -126,4 +130,3 @@
 		{formatted.main}{formatted.decimals}
 	</span>
 {/if}
-

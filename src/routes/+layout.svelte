@@ -235,6 +235,7 @@
 					<li class="my-2">
 						<div class="border-t border-base-300"></div>
 					</li>
+					<!--
 					<li>
 						<a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}
 							>Test AI categorization</a
@@ -253,6 +254,7 @@
 					<li class="my-2">
 						<div class="border-t border-base-300"></div>
 					</li>
+					-->
 					<li>
 						<button
 							onclick={(e) => {

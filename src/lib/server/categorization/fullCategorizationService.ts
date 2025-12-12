@@ -152,6 +152,7 @@ interface TransactionForMatching {
 	date: Date;
 	is_category_manual: boolean;
 	merchant_id: number | null;
+	merchants?: { name: string } | null;
 }
 
 /**
@@ -178,6 +179,7 @@ async function loadUncategorizedTransactions(
 		where: {
 			user_id: userId,
 			category_id: null,
+			last_categorization_attempt_at: null, // Skip transactions that have already been attempted
 			...(options?.skipManual !== false ? { is_category_manual: false } : {})
 		},
 		orderBy: { date: 'desc' },
@@ -191,7 +193,13 @@ async function loadUncategorizedTransactions(
 			is_debit: true,
 			date: true,
 			is_category_manual: true,
-			merchant_id: true
+
+			merchant_id: true,
+			merchants: {
+				select: {
+					name: true
+				}
+			}
 		}
 	});
 
@@ -603,7 +611,8 @@ export async function categorizeAllTransactions(
 		// Update fun insights context
 		for (const t of transactions) {
 			insightContext.totalProcessed++;
-			const name = t.merchantName || '';
+			// Use linked merchant name if available, otherwise raw name
+			const name = t.merchants?.name || t.merchantName || '';
 			if (name) {
 				insightContext.merchantCounts.set(name, (insightContext.merchantCounts.get(name) || 0) + 1);
 			}
@@ -1239,6 +1248,17 @@ export async function categorizeAllTransactions(
 
 	const finalUncategorized = await loadUncategorizedTransactions(userId, { skipManual });
 	const finalUncategorizedCount = finalUncategorized.length;
+
+	// Mark remaining uncategorized transactions so they won't be processed again in subsequent runs
+	if (finalUncategorizedCount > 0) {
+		const uncategorizedIds = finalUncategorized.map(t => t.id);
+		await (db as any).transactions.updateMany({
+			where: { id: { in: uncategorizedIds } },
+			data: { last_categorization_attempt_at: new Date() }
+		});
+		console.log(`📌 Marked ${finalUncategorizedCount} transactions as attempted (will be skipped in future runs)`);
+	}
+
 	// Use initial count if available, otherwise fall back to previousUncategorizedCount
 	const startingCount = initialUncategorizedCount !== null ? initialUncategorizedCount : previousUncategorizedCount;
 	const totalCategorized = startingCount - finalUncategorizedCount;

@@ -24,6 +24,7 @@
 		transactions: Transaction[];
 		merchants?: { name: string } | null;
 		categories?: { id: number; name: string; icon: string | null; color: string | null } | null;
+		isExcluded?: boolean;
 	};
 
 	let {
@@ -59,7 +60,16 @@
 
 		const amounts = txs.map((t) => Math.abs(Number(t.amount)));
 		const totalPaid = amounts.reduce((sum, a) => sum + a, 0);
-		const averageAmount = totalPaid / amounts.length;
+		let averageAmount = totalPaid / amounts.length;
+
+		// For income, show monthly equivalent for yearly/quarterly
+		if (isIncome) {
+			if (subscription.interval === 'yearly') {
+				averageAmount = averageAmount / 12;
+			} else if (subscription.interval === 'quarterly') {
+				averageAmount = averageAmount / 3;
+			}
+		}
 
 		// Calculate trend (compare first half to second half)
 		let amountTrend: 'up' | 'down' | 'stable' = 'stable';
@@ -126,7 +136,9 @@
 
 <div class="border-b border-base-200 last:border-b-0">
 	<button
-		class="flex w-full cursor-pointer items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-base-200/30 focus:outline-none"
+		class="flex w-full cursor-pointer items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-base-200/30 focus:outline-none {subscription.isExcluded
+			? 'opacity-50'
+			: ''}"
 		onclick={() => (expanded = !expanded)}
 	>
 		<!-- Left: Chevron + Name + Tags -->
@@ -139,14 +151,16 @@
 				{/if}
 			</div>
 
-			<span class="truncate">{subscription.name}</span>
+			<span class="truncate {subscription.isExcluded ? 'line-through' : ''}"
+				>{subscription.name}</span
+			>
 		</div>
 
 		<!-- Right: Amount -->
 		<div class="flex-shrink-0">
-			<span class="font-semibold">
+			<span class="font-semibold {subscription.isExcluded ? 'line-through' : ''}">
 				<Amount
-					value={subscription.amount}
+					value={isIncome ? Math.round(stats.averageAmount) : subscription.amount}
 					size="small"
 					showDecimals={true}
 					isDebit={!isIncome}

@@ -660,7 +660,97 @@ export class RecurringDetectionService {
             }
         }
 
-        return candidates;
+        return this.splitIrregularIncome(candidates);
+    }
+
+    private splitIrregularIncome(candidates: RecurringCandidate[]): RecurringCandidate[] {
+        const result: RecurringCandidate[] = [];
+
+        for (const candidate of candidates) {
+            // Only process irregular salary candidates
+            if (candidate.type !== 'salary' || candidate.interval !== 'irregular') {
+                result.push(candidate);
+                continue;
+            }
+
+            console.log(`[RecurringDetection] checking irregular salary for split: ${candidate.name} with ${candidate.transactions.length} txs`);
+
+            // Group by Month (0-11)
+            const monthGroups = new Map<number, (transactions & { categories: categories | null })[]>();
+
+            for (const tx of candidate.transactions) {
+                const date = new Date(tx.date);
+                const month = date.getMonth(); // 0 = Jan, 11 = Dec
+
+                const group = monthGroups.get(month) || [];
+                group.push(tx);
+                monthGroups.set(month, group);
+            }
+
+            // CHECK: If we have transactions in >= 8 months, this is likely a Monthly salary with irregular dates
+            // preventing it from being caught by the strict interval check. Coalesce into one Monthly item.
+            if (monthGroups.size >= 8) {
+                console.log(`[RecurringDetection] Converting irregular salary to monthly: ${candidate.name} (${monthGroups.size} months found)`);
+                result.push({
+                    ...candidate,
+                    interval: 'monthly',
+                    confidence: 0.9,
+                    source: 'ai'
+                });
+                continue;
+            }
+
+            // If we only have 1 month involved, it's just irregular, don't split
+            if (monthGroups.size < 2) {
+                result.push(candidate);
+                continue;
+            }
+
+            console.log(`[RecurringDetection] Splitting salary into months: ${Array.from(monthGroups.keys()).join(', ')}`);
+
+            // Create new candidates for each month group
+            for (const [month, txs] of monthGroups) {
+                // Sort by date desc
+                txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                // Calculate new stats
+                const amounts = txs.map(t => Number(t.amount));
+                const avgAmount = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+
+                // Determine Name
+                let suffix = "";
+                const monthName = new Date(2024, month, 1).toLocaleString('default', { month: 'long' });
+
+                if (month === 4) { // May
+                    suffix = " (Holiday Pay)";
+                } else if (month === 11) { // December
+                    suffix = " (13th Month)";
+                } else {
+                    suffix = ` (${monthName})`;
+                }
+
+                const newName = `${candidate.name}${suffix}`;
+
+                // Calculate next payment date (Yearly)
+                const lastDate = new Date(txs[0].date);
+                const nextDate = new Date(lastDate);
+                nextDate.setFullYear(lastDate.getFullYear() + 1);
+
+                result.push({
+                    ...candidate,
+                    name: newName,
+                    transactions: txs,
+                    amount: Number(txs[0].amount), // Using the latest amount
+                    averageAmount: avgAmount,
+                    interval: 'yearly',
+                    confidence: 0.85, // High confidence since we identified specific months
+                    nextPaymentDate: nextDate,
+                    source: 'ai' // It's a smart refinement
+                });
+            }
+        }
+
+        return result;
     }
 
     private clusterByAmount(transactions: (transactions & { categories: categories | null })[]): (transactions & { categories: categories | null })[][] {

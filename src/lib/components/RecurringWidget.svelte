@@ -1,11 +1,11 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
 	import { RefreshCw, Calendar, ArrowRight } from 'lucide-svelte';
-	import type { RecurringTransaction } from '@prisma/client';
 	import { detectionStore } from '$lib/stores/detectionStore';
-	import { recurringModalStore } from '$lib/stores/recurringModalStore';
+	import { recurringModalStore, type RecurringData } from '$lib/stores/recurringModalStore';
 
-	let { recurringTransactions = [] }: { recurringTransactions: RecurringTransaction[] } = $props();
+	// Accept full subscription data including transactions
+	let { recurringTransactions = [] }: { recurringTransactions: RecurringData[] } = $props();
 
 	// Filter to transactions within -10 to +10 days, sort by next payment date, max 2
 	let sortedTransactions = $derived.by(() => {
@@ -27,11 +27,11 @@
 			.slice(0, 2);
 	});
 
-	function formatDate(date: Date | null) {
+	function formatDate(date: Date | string | null) {
 		if (!date) return 'Unknown';
 		return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
-	function getDaysUntil(date: Date | null) {
+	function getDaysUntil(date: Date | string | null) {
 		if (!date) return '';
 		const diff = new Date(date).getTime() - new Date().getTime();
 		const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -41,18 +41,9 @@
 		return `in ${days} days`;
 	}
 
-	function handleOpenModal(tx: RecurringTransaction) {
-		recurringModalStore.open({
-			id: tx.id,
-			name: tx.name,
-			amount: Number(tx.amount),
-			interval: tx.interval,
-			status: tx.status,
-			type: tx.type,
-			next_expected_date: tx.next_expected_date,
-			transactions: [],
-			isIncome: Number(tx.amount) > 0
-		});
+	function handleOpenModal(tx: RecurringData) {
+		// Pass the full data including transactions
+		recurringModalStore.open(tx);
 	}
 </script>
 
@@ -74,7 +65,7 @@
 	{:else}
 		<div class="flex flex-col gap-2">
 			{#each sortedTransactions as tx}
-				{@const isIncome = tx.is_debit === false}
+				{@const isIncome = tx.isIncome ?? false}
 				<button
 					class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
 					onclick={() => handleOpenModal(tx)}

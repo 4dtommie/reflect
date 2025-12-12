@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { calculateBalanceData } from '$lib/server/recurring/balanceCalculator';
 import { getTopInsight, getSpecificInsight } from '$lib/server/insights/insightEngine';
+import { recurringService } from '$lib/server/recurring/recurringService';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	try { fs.appendFileSync('debug_log.txt', `[${new Date().toISOString()}] Load function started\n`); } catch { }
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		recentTransactions,
 		totalCount,
 		categorizedCount,
-		recurringTransactions,
+		recurringData,
 		topUncategorizedMerchants,
 		balanceData,
 		chatInsight
@@ -39,13 +40,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				}
 			}
 		}),
-		db.recurringTransaction.findMany({
-			where: {
-				user_id: userId,
-				status: 'active'
-			},
-			orderBy: { next_expected_date: 'asc' }
-		}),
+		// Use the service for consistent data with transactions included
+		recurringService.getRecurringData(userId),
 		db.transactions.groupBy({
 			by: ['merchantName'],
 			where: {
@@ -281,18 +277,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	return {
-		recurringTransactions: recurringTransactions.map((t) => ({
-			id: t.id,
-			name: t.name,
-			amount: Number(t.amount),
-			interval: t.interval,
-			type: t.type,
-			is_debit: t.is_debit,
-			status: t.status,
-			next_expected_date: t.next_expected_date,
-			merchant_id: t.merchant_id,
-			category_id: t.category_id
-		})),
+		// Use subscriptions from the service - already serialized with transactions
+		recurringTransactions: recurringData.subscriptions,
 		recentTransactions: recentTransactions.map((t) => ({
 			id: t.id,
 			merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName || 'Unknown',
@@ -300,6 +286,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			isDebit: t.is_debit,
 			category: t.categories?.name || 'Uncategorized',
 			categoryIcon: t.categories?.icon || null,
+			categoryColor: t.categories?.color || null,
 			date: t.date
 		})),
 		stats: {

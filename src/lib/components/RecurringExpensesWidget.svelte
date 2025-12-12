@@ -26,6 +26,7 @@
 		merchants?: { name: string } | null;
 		categories?: { name: string; icon: string | null; color: string | null } | null;
 		transactions: Transaction[];
+		isExcluded?: boolean;
 	};
 
 	let {
@@ -48,11 +49,17 @@
 
 	// Filter to only expense subscriptions (not income)
 	const expenseSubscriptions = $derived.by(() => {
-		const filtered = subscriptions.filter((s) => !s.isIncome && s.status === 'active' && s.type === 'subscription');
+		const filtered = subscriptions.filter(
+			(s) => !s.isIncome && s.status === 'active' && s.type === 'subscription'
+		);
 		return maxItems > 0 ? filtered.slice(0, maxItems) : filtered;
 	});
 
-	const hasMore = $derived(maxItems > 0 && subscriptions.filter((s) => !s.isIncome && s.status === 'active' && s.type === 'subscription').length > maxItems);
+	const hasMore = $derived(
+		maxItems > 0 &&
+			subscriptions.filter((s) => !s.isIncome && s.status === 'active' && s.type === 'subscription')
+				.length > maxItems
+	);
 	const showAction = $derived(actionLabel && actionHref);
 </script>
 
@@ -64,7 +71,13 @@
 				<h2 class="font-semibold">{title}</h2>
 			</div>
 			<span class="text-lg font-bold text-error">
-				<Amount value={monthlyTotal} size="medium" showDecimals={false} isDebit={true} locale="NL" />
+				<Amount
+					value={monthlyTotal}
+					size="medium"
+					showDecimals={false}
+					isDebit={true}
+					locale="NL"
+				/>
 			</span>
 		</div>
 		<div class="h-0.5 w-full rounded-full" style="background-color: rgb(139, 92, 246);"></div>
@@ -78,7 +91,9 @@
 		</div>
 		{#if hasMore}
 			<p class="pt-2 text-center text-xs opacity-50">
-				+{subscriptions.filter((s) => !s.isIncome && s.status === 'active' && s.type === 'subscription').length - maxItems} more
+				+{subscriptions.filter(
+					(s) => !s.isIncome && s.status === 'active' && s.type === 'subscription'
+				).length - maxItems} more
 			</p>
 		{/if}
 	{:else}
@@ -87,11 +102,10 @@
 
 	{#if showAction}
 		<div class="mt-3 border-t border-base-200 pt-3">
-			<a href={actionHref} class="btn btn-sm btn-ghost w-full justify-between group">
+			<a href={actionHref} class="group btn w-full justify-between btn-ghost btn-sm">
 				<span>{actionLabel}</span>
 				<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
 			</a>
 		</div>
 	{/if}
 </DashboardWidget>
-

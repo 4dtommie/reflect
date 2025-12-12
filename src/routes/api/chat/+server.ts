@@ -132,10 +132,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 }
             }
 
+            // Perform system injection if transactions were fetched
+            let apiMessages = messages;
+            if (lastFunctionResult?.transactions) {
+                console.log('[Chat API] Injecting anti-duplication system message');
+
+                // Clone messages to avoid mutating the persistence array
+                apiMessages = [...messages];
+                apiMessages.push({
+                    role: 'system',
+                    content: "IMPORTANT: The UI is already showing the list of transactions found. Do NOT repeat them in your text response. Be concise."
+                });
+            }
+
             // Get next response
             completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
-                messages,
+                messages: apiMessages,
                 tools: CHAT_FUNCTIONS,
                 tool_choice: 'auto',
                 max_tokens: 500,

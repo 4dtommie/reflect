@@ -1,6 +1,6 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
-	import { FileUp } from 'lucide-svelte';
+	import { FileUp, FilePlus } from 'lucide-svelte';
 
 	let { hasTransactions }: { hasTransactions: boolean } = $props();
 </script>
@@ -16,6 +16,17 @@
 				Upload your bank transactions to get started with insights
 			</p>
 			<a href="/upload-transactions" class="btn w-full btn-primary">Upload transactions </a>
+		</div>
+	</DashboardWidget>
+{:else}
+	<DashboardWidget title="Add transactions" size="small">
+		{#snippet icon()}
+			<FilePlus size={24} />
+		{/snippet}
+
+		<div class="flex flex-col items-center justify-center gap-6">
+			<p class="text-center text-base-content/70">Import more data to improve your insights</p>
+			<a href="/upload-transactions" class="btn w-full btn-outline">Add more transactions</a>
 		</div>
 	</DashboardWidget>
 {/if}

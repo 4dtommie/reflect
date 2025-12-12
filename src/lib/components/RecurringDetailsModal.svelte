@@ -13,8 +13,13 @@
 		Play,
 		Trash2,
 		ArrowLeft,
-		Loader2
+		Loader2,
+		Store,
+		Ban,
+		History,
+		CalendarClock
 	} from 'lucide-svelte';
+	import * as Icons from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import CategorySelector from '$lib/components/CategorySelector.svelte';
 	import { recurringModalStore, type RecurringData } from '$lib/stores/recurringModalStore';
@@ -68,18 +73,32 @@
 		if (!recurring) return null;
 
 		const txs = recurring.transactions || [];
-		if (txs.length === 0) {
-			return {
-				occurrences: 0,
-				totalPaid: 0,
-				averageAmount: recurring.amount,
-				firstSeen: null
-			};
+
+		// 1. Calculate All-time stats (for average)
+		const allAmounts = txs.map((t) => Math.abs(Number(t.amount)));
+		// const totalPaidAllTime = allAmounts.reduce((sum, a) => sum + a, 0);
+
+		let averageAmount = recurring.amount;
+		if (allAmounts.length > 0) {
+			const totalPaidAllTime = allAmounts.reduce((sum, a) => sum + a, 0);
+			averageAmount = totalPaidAllTime / allAmounts.length;
 		}
 
-		const amounts = txs.map((t) => Math.abs(Number(t.amount)));
-		const totalPaid = amounts.reduce((sum, a) => sum + a, 0);
-		const averageAmount = totalPaid / amounts.length;
+		// For income, show monthly equivalent for yearly/quarterly
+		if (recurring.isIncome || Number(recurring.amount) > 0) {
+			if (recurring.interval === 'yearly') {
+				averageAmount = averageAmount / 12;
+			} else if (recurring.interval === 'quarterly') {
+				averageAmount = averageAmount / 3;
+			}
+		}
+
+		// 2. Calculate "This Year" stats
+		const currentYear = new Date().getFullYear();
+		const thisYearAmounts = txs
+			.filter((t) => new Date(t.date).getFullYear() === currentYear)
+			.map((t) => Math.abs(Number(t.amount)));
+		const totalPaidThisYear = thisYearAmounts.reduce((sum, a) => sum + a, 0);
 
 		const sortedByDate = [...txs].sort(
 			(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -88,7 +107,7 @@
 
 		return {
 			occurrences: txs.length,
-			totalPaid,
+			totalPaidThisYear,
 			averageAmount,
 			firstSeen
 		};
@@ -136,6 +155,13 @@
 		}
 	}
 
+	// Helper to get icon component from string name
+	function getCategoryIcon(iconName: string | null | undefined) {
+		if (!iconName) return null;
+		// @ts-ignore
+		return Icons[iconName] || null;
+	}
+
 	function handleClose() {
 		recurringModalStore.close();
 	}
@@ -180,87 +206,100 @@
 	function handleDelete() {
 		console.log('Delete: Coming soon');
 	}
+	function handleStop() {
+		console.log('Stop: Coming soon');
+	}
 </script>
 
 {#if state.isOpen && state.recurring}
 	{@const rec = state.recurring}
 	{@const isIncome = rec.isIncome ?? false}
+	{@const CategoryIcon = getCategoryIcon(rec.categories?.icon)}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
-			class="modal-box w-11/12 max-w-lg overflow-hidden p-0"
+			class="modal-box w-11/12 max-w-sm overflow-visible rounded-[2rem] p-0"
 			in:scale={{ duration: 200, start: 0.95 }}
 			out:scale={{ duration: 150, start: 0.95 }}
 		>
 			{#if viewMode === 'details'}
-				<!-- Details View -->
-				<div
-					class="flex items-center justify-between border-b border-base-300 bg-base-200/50 px-6 py-4"
+				<!-- Close button absolute top right -->
+				<button
+					class="btn absolute top-4 right-4 z-10 btn-circle btn-ghost btn-sm"
+					onclick={handleClose}
 				>
-					<h3 class="text-lg font-bold">{rec.name}</h3>
-					<button class="btn btn-circle btn-ghost btn-sm" onclick={handleClose} aria-label="Close">
-						<X size={20} />
-					</button>
-				</div>
+					<X size={20} />
+				</button>
 
-				<div class="flex flex-col space-y-6 p-6">
-					<!-- Amount + Status Row -->
-					<div class="flex items-start justify-between">
-						<div>
-							<div class="text-3xl font-bold">
-								<Amount
-									value={rec.amount}
-									size="large"
-									isDebit={!isIncome}
-									showDecimals={true}
-									locale="NL"
-								/>
-							</div>
-							<div class="mt-2 flex items-center gap-2">
-								<span class="badge {getStatusColor(rec.status)}">{rec.status}</span>
-								{#if daysUntil !== null}
-									<span class="text-sm opacity-70">{getDaysLabel(daysUntil)}</span>
-								{/if}
-							</div>
-						</div>
-						<!-- Icon placeholder -->
-						<div class="flex h-14 w-14 items-center justify-center rounded-xl bg-base-200 text-2xl">
-							{#if isIncome}
-								💰
+				<div class="flex flex-col items-center p-8 pt-10 pb-6 text-center">
+					<!-- 1. Header: Category Icon + Name -->
+					<div class="mb-4 flex flex-col items-center gap-3">
+						<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-base-200">
+							{#if CategoryIcon}
+								<svelte:component this={CategoryIcon} size={24} class="text-primary" />
 							{:else}
-								📅
+								<Store size={24} class="text-primary" />
+							{/if}
+						</div>
+						<div class="flex flex-col items-center gap-1">
+							<h3 class="text-lg font-bold">{rec.name}</h3>
+							{#if rec.categories?.name}
+								<span class="text-sm text-base-content/60">{rec.categories.name}</span>
 							{/if}
 						</div>
 					</div>
 
-					<!-- Stats Grid -->
+					<!-- 2. Centered Amount -->
+					<div class="mb-2 text-4xl font-extrabold tracking-tight">
+						<Amount
+							value={rec.amount}
+							size="custom"
+							isDebit={!isIncome}
+							showDecimals={true}
+							locale="NL"
+						/>
+					</div>
+
+					<!-- Status Badge -->
+					<div class="mb-6">
+						<div class="badge {getStatusColor(rec.status)} gap-2 px-4 py-3 font-medium">
+							{rec.status}
+							{#if daysUntil !== null}
+								<span class="border-l border-base-content/20 pl-2 opacity-70"
+									>{getDaysLabel(daysUntil)}</span
+								>
+							{/if}
+						</div>
+					</div>
+
+					<!-- 3. Stats Grid -->
 					{#if stats}
-						<div class="grid grid-cols-2 gap-4 rounded-lg bg-base-200/50 p-4 sm:grid-cols-4">
-							<div class="flex flex-col">
-								<span class="text-[10px] tracking-wide uppercase opacity-50">Frequency</span>
-								<span class="font-semibold">{getIntervalLabel(rec.interval)}</span>
+						<div class="mb-6 grid w-full grid-cols-4 gap-2 text-center">
+							<div class="flex flex-col items-center rounded-lg bg-base-200/50 p-2">
+								<span class="mb-1 text-[10px] uppercase opacity-50">Freq</span>
+								<span class="text-xs font-semibold">{getIntervalLabel(rec.interval)}</span>
 							</div>
-							<div class="flex flex-col">
-								<span class="text-[10px] tracking-wide uppercase opacity-50">Occurrences</span>
-								<span class="font-semibold">{stats.occurrences}</span>
+							<div class="flex flex-col items-center rounded-lg bg-base-200/50 p-2">
+								<span class="mb-1 text-[10px] uppercase opacity-50">Count</span>
+								<span class="text-xs font-semibold">{stats.occurrences}</span>
 							</div>
-							<div class="flex flex-col">
-								<span class="text-[10px] tracking-wide uppercase opacity-50">Total this year</span>
-								<span class="font-semibold">
+							<div class="flex flex-col items-center rounded-lg bg-base-200/50 p-2">
+								<span class="mb-1 text-[10px] uppercase opacity-50">Total '25</span>
+								<span class="text-xs font-semibold">
 									<Amount
-										value={stats.totalPaid}
-										size="small"
+										value={stats.totalPaidThisYear}
+										size="custom"
 										showDecimals={false}
 										isDebit={!isIncome}
 										locale="NL"
 									/>
 								</span>
 							</div>
-							<div class="flex flex-col">
-								<span class="text-[10px] tracking-wide uppercase opacity-50">Average</span>
-								<span class="font-semibold">
+							<div class="flex flex-col items-center rounded-lg bg-base-200/50 p-2">
+								<span class="mb-1 text-[10px] uppercase opacity-50">Avg</span>
+								<span class="text-xs font-semibold">
 									<Amount
 										value={Math.round(stats.averageAmount)}
-										size="small"
+										size="custom"
 										showDecimals={false}
 										isDebit={!isIncome}
 										locale="NL"
@@ -270,61 +309,52 @@
 						</div>
 					{/if}
 
-					<!-- Details Section -->
-					<div class="space-y-3">
-						<!-- Next payment -->
-						{#if rec.next_expected_date}
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Calendar size={16} />
-									<span>Next payment</span>
+					<!-- 4. Payment History -->
+					<div class="mb-6 w-full">
+						<h4 class="mb-3 text-left text-xs font-semibold tracking-wide uppercase opacity-50">
+							Payment history
+						</h4>
+						<div class="space-y-3">
+							<!-- Upcoming payment -->
+							{#if rec.next_expected_date}
+								<div class="flex items-center justify-between text-sm">
+									<div class="flex items-center gap-3">
+										<div
+											class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10"
+										>
+											<Calendar size={14} class="text-primary" />
+										</div>
+										<span class="font-medium text-primary"
+											>{formatDateShort(rec.next_expected_date)} (upcoming)</span
+										>
+									</div>
+									<span class="font-semibold text-primary">
+										<Amount
+											value={rec.amount}
+											size="small"
+											showDecimals={true}
+											isDebit={!isIncome}
+											locale="NL"
+										/>
+									</span>
 								</div>
-								<span class="font-medium">{formatDateShort(rec.next_expected_date)}</span>
-							</div>
-						{/if}
+							{/if}
 
-						<!-- Category -->
-						<div class="flex items-center justify-between text-sm">
-							<div class="flex items-center gap-3 opacity-70">
-								<Tag size={16} />
-								<span>Category</span>
-							</div>
-							<span class="font-medium">{rec.categories?.name ?? 'Uncategorized'}</span>
-						</div>
-
-						<!-- Type -->
-						{#if rec.type}
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Repeat size={16} />
-									<span>Type</span>
-								</div>
-								<span class="font-medium capitalize">{rec.type.replace('_', ' ')}</span>
-							</div>
-						{/if}
-
-						<!-- First seen -->
-						{#if stats?.firstSeen}
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Clock size={16} />
-									<span>First seen</span>
-								</div>
-								<span class="font-medium">{formatDateShort(stats.firstSeen)}</span>
-							</div>
-						{/if}
-					</div>
-
-					<!-- Recent Transactions -->
-					{#if rec.transactions && rec.transactions.length > 0}
-						<div>
-							<h4 class="mb-3 text-sm font-semibold opacity-70">Recent transactions</h4>
-							<div class="space-y-2">
-								{#each rec.transactions.slice(0, 5) as tx (tx.id)}
+							<!-- Past payments -->
+							{#if rec.transactions && rec.transactions.length > 0}
+								{#each rec.transactions.slice(0, 3) as tx (tx.id)}
 									<div class="flex items-center justify-between text-sm">
-										<span class="opacity-70">{formatDateShort(tx.date)}</span>
-										<div class="mx-3 flex-1 border-t border-dotted border-base-300"></div>
-										<span class="font-medium">
+										<div class="flex items-center gap-3">
+											<div
+												class="flex h-8 w-8 items-center justify-center rounded-full bg-base-200 text-base-content/50"
+											>
+												<CalendarClock size={14} />
+											</div>
+											<span class="font-medium text-base-content/70"
+												>{formatDateShort(tx.date)}</span
+											>
+										</div>
+										<span class="font-semibold">
 											<Amount
 												value={tx.amount}
 												size="small"
@@ -335,50 +365,60 @@
 										</span>
 									</div>
 								{/each}
-								{#if rec.transactions.length > 5}
-									<p class="text-xs opacity-40">+{rec.transactions.length - 5} more</p>
-								{/if}
-							</div>
-						</div>
-					{/if}
-
-					<!-- Actions -->
-					<div>
-						<h4 class="mb-3 text-base font-semibold">Actions</h4>
-						<div class="flex flex-wrap gap-2">
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleChangeCategory}>
-								<Pencil size={14} />
-								Change category
-							</button>
-							{#if rec.status === 'active'}
-								<button class="btn gap-2 btn-outline btn-sm" onclick={handlePause} disabled>
-									<Pause size={14} />
-									Pause
-								</button>
-							{:else}
-								<button class="btn gap-2 btn-outline btn-sm" onclick={handleResume} disabled>
-									<Play size={14} />
-									Resume
-								</button>
+							{:else if !rec.next_expected_date}
+								<p class="py-2 text-center text-sm text-base-content/50">
+									No linked payments found
+								</p>
 							{/if}
-							<button
-								class="btn gap-2 btn-outline btn-sm btn-error"
-								onclick={handleDelete}
-								disabled
-							>
-								<Trash2 size={14} />
-								Delete
-							</button>
 						</div>
 					</div>
 
-					<!-- Close button -->
-					<div class="flex justify-end border-t border-base-200 pt-4">
-						<button class="btn btn-ghost" onclick={handleClose}>Close</button>
+					<!-- 5. Actions Row -->
+					<div class="mt-2 flex w-full items-center justify-center gap-4">
+						<!-- Recategorize -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleChangeCategory}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<Tag size={20} />
+							</div>
+							<span class="text-xs font-medium">Recategorize</span>
+						</button>
+
+						<!-- Pause (if active) / Resume (if paused) -->
+						{#if rec.status === 'active'}
+							<button class="group flex flex-col items-center gap-2" onclick={handlePause}>
+								<div
+									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+								>
+									<Pause size={20} />
+								</div>
+								<span class="text-xs font-medium">Pause</span>
+							</button>
+						{:else}
+							<button class="group flex flex-col items-center gap-2" onclick={handleResume}>
+								<div
+									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 text-success shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+								>
+									<Play size={20} />
+								</div>
+								<span class="text-xs font-medium">Resume</span>
+							</button>
+						{/if}
+
+						<!-- Stop Subscription -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleStop}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 text-error shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<Ban size={20} />
+							</div>
+							<span class="text-xs font-medium">Stop</span>
+						</button>
 					</div>
 				</div>
 			{:else if viewMode === 'changeCategory'}
-				<!-- Change Category View -->
+				<!-- Change Category View (Identical wrapper structure) -->
 				<div
 					class="flex items-center justify-between border-b border-base-300 bg-base-200/50 px-6 py-4"
 				>

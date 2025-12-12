@@ -330,7 +330,7 @@ export async function seedDatabase() {
 
 		await createCategoryWithKeywords(
 			{
-				name: 'Supermarkt',
+				name: 'Boodschappen',
 				description: 'Grote supermarkten, buurtwinkels en online boodschappenbezorging',
 				color: '#f59e0b',
 				icon: 'ShoppingCart',

@@ -74,7 +74,8 @@ export const TransactionImportSchema = z.object({
 		.object({
 			skipDuplicates: z.boolean().default(true)
 		})
-		.optional()
+		.optional(),
+	accountMapping: z.record(z.string(), z.string()).optional()
 });
 
 export type TransactionInput = z.infer<typeof TransactionInputSchema>;

@@ -43,7 +43,7 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
         type: 'function',
         function: {
             name: 'get_transactions',
-            description: 'Get a list of transactions with optional filters. Returns up to 10 results.',
+            description: 'Get a list of transactions. THIS LIST IS TRUNCATED (default 3 items). For calculations, ALWAYS use the `total_amount` field in the response. DO NOT sum the items yourself.',
             parameters: {
                 type: 'object',
                 properties: {
@@ -52,7 +52,8 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
                     month: { type: 'string', description: 'Month as YYYY-MM or current/last' },
                     min_amount: { type: 'number', description: 'Minimum amount' },
                     max_amount: { type: 'number', description: 'Maximum amount' },
-                    limit: { type: 'integer', description: 'Max results (default 5, max 10)' }
+                    limit: { type: 'integer', description: 'Max results (default 3, max 50)' },
+                    year: { type: 'integer', description: 'Year for filter (e.g. 2024). Optional.' }
                 }
             }
         }
@@ -82,12 +83,13 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
         type: 'function',
         function: {
             name: 'search_transactions',
-            description: 'Search transactions by description or merchant name',
+            description: 'Search transactions. THIS LIST IS TRUNCATED. For calculations, ALWAYS use the `total_amount` field in the response. DO NOT sum the items yourself.',
             parameters: {
                 type: 'object',
                 properties: {
                     query: { type: 'string', description: 'Search term' },
-                    limit: { type: 'integer', description: 'Max results (default 5)' }
+                    limit: { type: 'integer', description: 'Max results (default 3, max 50)' },
+                    year: { type: 'integer', description: 'Year to filter by (e.g. 2025). Optional.' }
                 },
                 required: ['query']
             }
@@ -106,11 +108,13 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
 /**
  * Parse month string to date range
  * Supports: 'current', 'last', 'previous', '-2' (2 months ago), 'YYYY-MM'
+ * AND supports optional year parameter
  */
-function parseMonthRange(month?: string): { start: Date; end: Date } {
+function parseDateRange(month?: string, yearInput?: number): { start: Date; end: Date } {
     const now = new Date();
-    let year = now.getFullYear();
+    let year = yearInput || now.getFullYear();
     let monthNum = now.getMonth();
+    let isYearOnly = !!yearInput && !month; // If year is provided but no specific month string
 
     if (!month || month === 'current') {
         // Current month
@@ -132,6 +136,17 @@ function parseMonthRange(month?: string): { start: Date; end: Date } {
         const [y, m] = month.split('-').map(Number);
         year = y;
         monthNum = m - 1;
+        isYearOnly = false; // Explicit month given
+    }
+
+    // If we have a year input but NO specific month/relative month logic was triggered (other than default current)
+    // AND the user didn't ask for 'current' explicitly... 
+    // Actually simpler: if yearInput is present and month is undefined, return whole year.
+    if (yearInput && !month) {
+        return {
+            start: new Date(yearInput, 0, 1),
+            end: new Date(yearInput, 11, 31, 23, 59, 59)
+        };
     }
 
     const start = new Date(year, monthNum, 1);
@@ -165,6 +180,26 @@ export async function executeFunction(
     }
 }
 
+const CATEGORY_ALIASES: Record<string, string> = {
+    'groceries': 'Boodschappen',
+    'supermarket': 'Boodschappen',
+    'rent': 'Wonen',
+    'mortgage': 'Wonen',
+    'housing': 'Wonen',
+    'utilities': 'Energie/water',
+    'energy': 'Energie/water',
+    'water': 'Energie/water',
+    'insurance': 'Verzekering',
+    'health insurance': 'Gezondheidszorg',
+    'healthcare': 'Gezondheidszorg',
+    'eating out': 'Uit eten',
+    'dining': 'Uit eten',
+    'restaurants': 'Uit eten',
+    'salary': 'Salaris',
+    'income': 'Salaris',
+    'tax': 'Belastingteruggave & toeslagen'
+};
+
 /**
  * get_spending - Get spending totals with filters
  */
@@ -172,17 +207,27 @@ async function executeGetSpending(
     userId: number,
     args: Record<string, unknown>
 ): Promise<unknown> {
-    const { category, month, merchant, is_income } = args as {
+    const { category, month, merchant, is_income, year } = args as {
         category?: string;
         month?: string;
         merchant?: string;
         is_income?: boolean;
+        year?: number;
     };
 
-    const { start, end } = parseMonthRange(month);
+    let searchCategory = category;
+    if (searchCategory) {
+        const lowerCat = searchCategory.toLowerCase().trim();
+        if (CATEGORY_ALIASES[lowerCat]) {
+            searchCategory = CATEGORY_ALIASES[lowerCat];
+            console.log(`[Chat] Aliased category '${category}' to '${searchCategory}'`);
+        }
+    }
+
+    const { start, end } = parseDateRange(month, year);
     const isDebit = is_income === true ? false : true;
 
-    console.log(`[get_spending] category="${category}" month="${month}" range=${start.toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`);
+    console.log(`[get_spending] category="${category}" month="${month}" year=${args.year} range=${start.toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`);
 
     // Build where clause
     const where: any = {
@@ -191,14 +236,15 @@ async function executeGetSpending(
         date: { gte: start, lte: end }
     };
 
-    if (category) {
+    if (searchCategory) {
         // Use contains for flexible matching
-        where.categories = { name: { contains: category, mode: 'insensitive' } };
+        where.categories = { name: { contains: searchCategory, mode: 'insensitive' } };
     }
 
     if (merchant) {
         where.OR = [
             { merchantName: { contains: merchant, mode: 'insensitive' } },
+            { description: { contains: merchant, mode: 'insensitive' } },
             { merchants: { name: { contains: merchant, mode: 'insensitive' } } }
         ];
     }
@@ -245,30 +291,40 @@ async function executeGetTransactions(
     userId: number,
     args: Record<string, unknown>
 ): Promise<unknown> {
-    const { category, merchant, month, min_amount, max_amount, limit } = args as {
+    const { category, merchant, month, min_amount, max_amount, limit, year } = args as {
         category?: string;
         merchant?: string;
         month?: string;
         min_amount?: number;
         max_amount?: number;
         limit?: number;
+        year?: number;
     };
 
-    const take = Math.min(limit || 5, 10);
-    const { start, end } = parseMonthRange(month);
+    let searchCategory = category;
+    if (searchCategory) {
+        const lowerCat = searchCategory.toLowerCase().trim();
+        if (CATEGORY_ALIASES[lowerCat]) {
+            searchCategory = CATEGORY_ALIASES[lowerCat];
+        }
+    }
+
+    const take = Math.min(limit || 3, 50);
+    const { start, end } = parseDateRange(month, year);
 
     const where: any = {
         user_id: userId,
         date: { gte: start, lte: end }
     };
 
-    if (category) {
-        where.categories = { name: { equals: category, mode: 'insensitive' } };
+    if (searchCategory) {
+        where.categories = { name: { equals: searchCategory, mode: 'insensitive' } };
     }
 
     if (merchant) {
         where.OR = [
             { merchantName: { contains: merchant, mode: 'insensitive' } },
+            { description: { contains: merchant, mode: 'insensitive' } },
             { merchants: { name: { contains: merchant, mode: 'insensitive' } } }
         ];
     }
@@ -281,7 +337,7 @@ async function executeGetTransactions(
         where.amount = { ...where.amount, lte: max_amount };
     }
 
-    const [transactions, totalCount] = await Promise.all([
+    const [transactions, aggregate] = await Promise.all([
         db.transactions.findMany({
             where,
             select: {
@@ -295,8 +351,16 @@ async function executeGetTransactions(
             orderBy: { date: 'desc' },
             take
         }),
-        db.transactions.count({ where })
+        db.transactions.aggregate({
+            where,
+            _count: true,
+            _sum: { amount: true }
+        })
     ]);
+
+    const totalAmount = Math.round(Number(aggregate._sum.amount || 0) * 100) / 100;
+    const showing = transactions.length;
+    const summary = `Found ${aggregate._count} transactions totaling €${totalAmount}. Showing the top ${showing}.`;
 
     return {
         transactions: transactions.map((t) => ({
@@ -307,8 +371,10 @@ async function executeGetTransactions(
             is_expense: t.is_debit,
             category: t.categories?.name || 'Uncategorized'
         })),
-        total_count: totalCount,
-        showing: transactions.length
+        total_count: aggregate._count,
+        total_amount: totalAmount,
+        showing,
+        summary
     };
 }
 
@@ -327,7 +393,7 @@ async function executeGetStats(
     };
 
     const take = Math.min(limit || 5, 10);
-    const { start, end } = parseMonthRange(month);
+    const { start, end } = parseDateRange(month);
 
     switch (stat_type) {
         case 'top_categories': {
@@ -361,8 +427,8 @@ async function executeGetStats(
         }
 
         case 'monthly_comparison': {
-            const lastMonth = parseMonthRange('last');
-            const currentMonth = parseMonthRange('current');
+            const lastMonth = parseDateRange('last');
+            const currentMonth = parseDateRange('current');
 
             const [lastSpending, currentSpending] = await Promise.all([
                 db.transactions.aggregate({
@@ -494,29 +560,52 @@ async function executeSearchTransactions(
     userId: number,
     args: Record<string, unknown>
 ): Promise<unknown> {
-    const { query, limit } = args as { query: string; limit?: number };
-    const take = Math.min(limit || 5, 10);
+    const { query, limit, year } = args as { query: string; limit?: number; year?: number };
+    const take = Math.min(limit || 3, 50);
 
-    const transactions = await db.transactions.findMany({
-        where: {
-            user_id: userId,
-            OR: [
-                { merchantName: { contains: query, mode: 'insensitive' } },
-                { description: { contains: query, mode: 'insensitive' } },
-                { merchants: { name: { contains: query, mode: 'insensitive' } } }
-            ]
-        },
-        select: {
-            id: true,
-            date: true,
-            merchantName: true,
-            amount: true,
-            is_debit: true,
-            categories: { select: { name: true } }
-        },
-        orderBy: { date: 'desc' },
-        take
-    });
+    // Build where clause
+    const where: any = {
+        user_id: userId,
+        OR: [
+            { merchantName: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+            { merchants: { name: { contains: query, mode: 'insensitive' } } }
+        ]
+    };
+
+    // Add year filter if provided
+    if (year) {
+        where.date = {
+            gte: new Date(year, 0, 1),
+            lte: new Date(year, 11, 31, 23, 59, 59)
+        };
+    }
+
+    const [transactions, aggregate] = await Promise.all([
+        db.transactions.findMany({
+            where,
+            select: {
+                id: true,
+                date: true,
+                merchantName: true,
+                amount: true,
+                is_debit: true,
+                categories: { select: { name: true } }
+            },
+            orderBy: { date: 'desc' },
+            take
+        }),
+        db.transactions.aggregate({
+            where,
+            _sum: { amount: true },
+            _count: true
+        })
+    ]);
+
+    const totalAmount = Math.round(Number(aggregate._sum.amount || 0) * 100) / 100;
+    const showing = transactions.length;
+    const totalCount = aggregate._count || transactions.length;
+    const summary = `Found ${totalCount} matching transactions totaling €${totalAmount}. Showing the top ${showing}.`;
 
     return {
         transactions: transactions.map((t) => ({
@@ -527,7 +616,10 @@ async function executeSearchTransactions(
             is_expense: t.is_debit,
             category: t.categories?.name || 'Uncategorized'
         })),
-        total_found: transactions.length,
+        total_count: totalCount,
+        total_amount: totalAmount,
+        showing,
+        summary,
         query
     };
 }

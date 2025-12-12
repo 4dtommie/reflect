@@ -34,11 +34,13 @@
 	let importing = $state(false);
 	let importResult: ImportResult | null = $state(null);
 	let error: string | null = $state(null);
+	let accountMapping: Record<string, string> = {};
 
 	onMount(() => {
 		// Retrieve parsed CSV data and mapping from sessionStorage
 		const storedParseResult = sessionStorage.getItem('csv_parse_result');
 		const storedMapping = sessionStorage.getItem('csv_column_mapping');
+		const storedAccountMapping = sessionStorage.getItem('csv_account_mapping');
 
 		if (!storedParseResult || !storedMapping) {
 			error = 'No CSV data or mapping found. Please go back and complete the mapping.';
@@ -48,6 +50,7 @@
 		try {
 			parseResult = JSON.parse(storedParseResult);
 			mapping = JSON.parse(storedMapping);
+			accountMapping = storedAccountMapping ? JSON.parse(storedAccountMapping) : {};
 
 			// Start import automatically
 			handleImport();
@@ -73,6 +76,7 @@
 					rows: parseResult.rows,
 					headers: parseResult.headers,
 					mapping: mapping,
+					accountMapping: accountMapping,
 					options: {
 						skipDuplicates: true
 					}
@@ -94,6 +98,7 @@
 				sessionStorage.removeItem('csv_upload_filename');
 				sessionStorage.removeItem('csv_parse_result');
 				sessionStorage.removeItem('csv_column_mapping');
+				sessionStorage.removeItem('csv_account_mapping');
 
 				// Redirect to dashboard - insight engine will show fresh_import message
 				await goto('/');
@@ -116,6 +121,7 @@
 		sessionStorage.removeItem('csv_upload_filename');
 		sessionStorage.removeItem('csv_parse_result');
 		sessionStorage.removeItem('csv_column_mapping');
+		sessionStorage.removeItem('csv_account_mapping');
 		goto('/upload-transactions');
 	}
 

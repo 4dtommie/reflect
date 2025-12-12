@@ -15,9 +15,15 @@
 		MessageCircle,
 		Download,
 		ArrowLeft,
-		Loader2
+		Loader2,
+		Store,
+		Split,
+		MoreHorizontal,
+		CreditCard
 	} from 'lucide-svelte';
+	import * as Icons from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
+	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
 	import CategorySelector from '$lib/components/CategorySelector.svelte';
 	import { transactionModalStore, type TransactionData } from '$lib/stores/transactionModalStore';
 	import { invalidateAll } from '$app/navigation';
@@ -74,25 +80,17 @@
 			weekday: 'long',
 			day: 'numeric',
 			month: 'long',
-			year: 'numeric'
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
 		});
 	}
 
-	// Get transaction type label
-	function getTypeLabel(type: string | undefined): string {
-		if (!type) return 'No notes';
-		const labels: Record<string, string> = {
-			Payment: 'Payment',
-			Transfer: 'Transfer',
-			DirectDebit: 'Direct debit',
-			Deposit: 'Deposit',
-			Withdrawal: 'Withdrawal',
-			Refund: 'Refund',
-			Fee: 'Fee',
-			Interest: 'Interest',
-			Other: 'Other'
-		};
-		return labels[type] || type;
+	// Helper to get icon component from string name
+	function getCategoryIcon(iconName: string | null | undefined) {
+		if (!iconName) return null;
+		// @ts-ignore
+		return Icons[iconName] || null;
 	}
 
 	function handleClose() {
@@ -148,142 +146,160 @@
 	function handleDownloadPDF() {
 		console.log('Download PDF: Coming soon');
 	}
+	function handlePaymentRequest() {
+		console.log('Payment request: Coming soon');
+	}
 </script>
 
 {#if state.isOpen && state.transaction}
 	{@const tx = state.transaction}
+	{@const CategoryIcon = getCategoryIcon(tx.category?.icon)}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
-			class="modal-box w-11/12 max-w-lg overflow-hidden p-0"
+			class="modal-box w-11/12 max-w-sm overflow-visible rounded-[2rem] p-0"
 			in:scale={{ duration: 200, start: 0.95 }}
 			out:scale={{ duration: 150, start: 0.95 }}
 		>
 			{#if viewMode === 'details'}
-				<!-- Details View -->
-				<!-- Header -->
-				<div
-					class="flex items-center justify-between border-b border-base-300 bg-base-200/50 px-6 py-4"
+				<!-- Close button absolute top right -->
+				<button
+					class="btn absolute top-4 right-4 z-10 btn-circle btn-ghost btn-sm"
+					onclick={handleClose}
 				>
-					<h3 class="text-lg font-bold">
-						Transaction details of {tx.merchant?.name ?? tx.merchantName}
-					</h3>
-					<button class="btn btn-circle btn-ghost btn-sm" onclick={handleClose}>
-						<X size={20} />
+					<X size={20} />
+				</button>
+
+				<div class="flex flex-col items-center p-8 pt-10 pb-6 text-center">
+					<!-- 1. Header: Merchant Logo + Name -->
+					<div class="mb-4 flex flex-col items-center gap-3">
+						<MerchantLogo
+							merchantName={tx.merchant?.name ?? tx.merchantName}
+							categoryIcon={tx.category?.icon}
+							categoryColor={tx.category?.color}
+							size="lg"
+						/>
+						<h3 class="text-lg font-bold">{tx.merchant?.name ?? tx.merchantName}</h3>
+					</div>
+
+					<!-- 2. Centered Amount -->
+					<div class="mb-1 text-4xl font-extrabold tracking-tight">
+						<Amount
+							value={typeof tx.amount === 'string' ? parseFloat(tx.amount) : tx.amount}
+							size="custom"
+							isDebit={tx.is_debit}
+							showDecimals={true}
+							locale="NL"
+						/>
+					</div>
+
+					<!-- 3. Date -->
+					<div class="mb-6 text-sm text-base-content/60">
+						{formatDateTime(tx.date)}
+					</div>
+
+					<!-- 4. Category Pill -->
+					<button
+						class="btn mb-4 rounded-full border-base-300 px-4 font-normal normal-case btn-outline btn-sm hover:border-primary hover:bg-base-200"
+						onclick={handleChangeCategory}
+					>
+						{tx.category?.name ?? 'Uncategorized'}
 					</button>
-				</div>
 
-				<div class="flex flex-col space-y-6 p-6">
-					<!-- Amount + Logo Row -->
-					<div class="flex items-start justify-between">
-						<div>
-							<div class="text-3xl font-bold">
-								<Amount
-									value={typeof tx.amount === 'string' ? parseFloat(tx.amount) : tx.amount}
-									size="large"
-									isDebit={tx.is_debit}
-									showDecimals={true}
-									locale="NL"
-								/>
-							</div>
-							<div class="mt-1 flex items-center gap-2 text-sm text-success">
-								<CheckCircle size={16} />
-								<span>Completed</span>
+					<!-- Note/Description Input (Simplified for now, just display) -->
+					{#if tx.description}
+						<div class="mb-6 w-full text-left">
+							<label class="px-1 text-xs font-semibold text-base-content/50">Note</label>
+							<div class="w-full rounded-xl border border-base-200 bg-base-100 p-3 text-sm">
+								{tx.description}
 							</div>
 						</div>
-						<!-- Merchant Logo Placeholder -->
-						<div class="flex h-14 w-14 items-center justify-center rounded-xl bg-base-200 text-2xl">
-							🏪
-						</div>
-					</div>
+					{/if}
 
-					<!-- About the transaction -->
-					<div>
-						<h4 class="mb-4 text-base font-semibold">About the transaction</h4>
-						<div class="space-y-3">
-							<!-- Counterparty IBAN -->
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Building2 size={16} />
-									<span>Counterparty IBAN</span>
-								</div>
-								<span class="max-w-[60%] truncate text-right font-medium" title={tx.description}>
-									{tx.description || 'N/A'}
-								</span>
+					<!-- 5. Actions Row -->
+					<div class="mt-2 flex w-full items-center justify-center gap-4">
+						<!-- Change Category (Alternative to pill, requested in prompt) -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleChangeCategory}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<Tag size={20} />
 							</div>
+							<span class="text-xs font-medium">Change category</span>
+						</button>
 
-							<!-- Date & Time -->
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Clock size={16} />
-									<span>Date & time</span>
-								</div>
-								<span class="font-medium">{formatDateTime(tx.date)}</span>
+						<!-- Add Receipt -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleAddReceipt}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<FileText size={20} />
 							</div>
+							<span class="text-xs font-medium">Add receipt</span>
+						</button>
 
-							<!-- Category -->
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Tag size={16} />
-									<span>Category</span>
-								</div>
-								<span class="font-medium">{tx.category?.name ?? 'Uncategorized'}</span>
+						<!-- Split -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleSplit}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<Split size={20} />
 							</div>
+							<span class="text-xs font-medium">Split</span>
+						</button>
 
-							<!-- Reference -->
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<Globe size={16} />
-									<span>Reference</span>
-								</div>
-								<span class="font-medium">{tx.type ? getTypeLabel(tx.type) : 'Transfer'}</span>
+						<!-- Repeat -->
+						<button class="group flex flex-col items-center gap-2" onclick={handleRepeat}>
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+							>
+								<Repeat size={20} />
 							</div>
+							<span class="text-xs font-medium">Repeat</span>
+						</button>
 
-							<!-- Type -->
-							<div class="flex items-center justify-between text-sm">
-								<div class="flex items-center gap-3 opacity-70">
-									<ArrowLeftRight size={16} />
-									<span>Type</span>
+						<!-- More Actions Dropdown -->
+						<div class="dropdown dropdown-end dropdown-top">
+							<div tabindex="0" role="button" class="group flex flex-col items-center gap-2">
+								<div
+									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
+								>
+									<MoreHorizontal size={20} />
 								</div>
-								<span class="font-medium">No notes</span>
+								<span class="text-xs font-medium">More</span>
 							</div>
-						</div>
-					</div>
-
-					<!-- Actions -->
-					<div>
-						<h4 class="mb-3 text-base font-semibold">Actions</h4>
-						<div class="flex flex-wrap gap-2">
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleChangeCategory}>
-								<Pencil size={14} />
-								Change category
-							</button>
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleSplit} disabled>
-								<Scissors size={14} />
-								Split
-							</button>
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleRepeat} disabled>
-								<Repeat size={14} />
-								Repeat
-							</button>
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleAddReceipt} disabled>
-								<FileText size={14} />
-								Add receipt
-							</button>
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleContact} disabled>
-								<MessageCircle size={14} />
-								Contact
-							</button>
-							<button class="btn gap-2 btn-outline btn-sm" onclick={handleDownloadPDF} disabled>
-								<Download size={14} />
-								Download PDF
-							</button>
+							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+							<ul
+								tabindex="0"
+								class="dropdown-content menu z-[1] mb-2 w-52 rounded-box bg-base-100 p-2 shadow-lg"
+							>
+								<li>
+									<button onclick={handlePaymentRequest}>
+										<CreditCard size={16} />
+										Payment request
+									</button>
+								</li>
+								<li>
+									<button onclick={handleContact}>
+										<MessageCircle size={16} />
+										Contact support
+									</button>
+								</li>
+								<li>
+									<button onclick={handleDownloadPDF}>
+										<Download size={16} />
+										Download PDF
+									</button>
+								</li>
+							</ul>
 						</div>
 					</div>
 
-					<!-- Close button -->
-					<div class="flex justify-end border-t border-base-200 pt-4">
-						<button class="btn btn-ghost" onclick={handleClose}>Close</button>
-					</div>
+					<button
+						class="mt-8 text-sm text-base-content/50 hover:text-base-content hover:underline"
+						onclick={handleClose}
+					>
+						More actions
+					</button>
 				</div>
 			{:else if viewMode === 'changeCategory'}
 				<!-- Change Category View -->

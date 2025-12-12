@@ -15,13 +15,15 @@ export async function load({ fetch, parent, url }: { fetch: typeof globalThis.fe
 		const startDate = sixMonthsAgo.toISOString();
 
 		// Fetch transactions and categories in parallel
-		const [transactionsResponse, categoriesResponse] = await Promise.all([
+		const [transactionsResponse, categoriesResponse, bankAccountsResponse] = await Promise.all([
 			fetch(`/api/transactions?page=1&pageSize=5000&startDate=${startDate}`),
-			fetch('/api/categories')
+			fetch('/api/categories'),
+			fetch('/api/bank-accounts')
 		]);
 
 		let transactionsData: any = { transactions: [], stats: null };
 		let categoriesData: any = { categories: [] };
+		let bankAccountsData: any = { bankAccounts: [] };
 
 		if (transactionsResponse.ok) {
 			transactionsData = await transactionsResponse.json();
@@ -29,6 +31,10 @@ export async function load({ fetch, parent, url }: { fetch: typeof globalThis.fe
 
 		if (categoriesResponse.ok) {
 			categoriesData = await categoriesResponse.json();
+		}
+
+		if (bankAccountsResponse.ok) {
+			bankAccountsData = await bankAccountsResponse.json();
 		}
 
 		// Map monthlyTotals dates for client-side use and ensure weeklyAverages is included

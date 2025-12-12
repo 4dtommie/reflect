@@ -9,11 +9,13 @@
 	import VariableSpendingItem from '$lib/components/VariableSpendingItem.svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import { Search, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, replaceState } from '$app/navigation';
 	import { formatDateShort } from '$lib/utils/locale';
 	import { detectionStore } from '$lib/stores/detectionStore';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+
+	import { identifyInternalTransfers } from '$lib/utils/transactionAnalysis';
 
 	let { data }: { data: PageData } = $props();
 
@@ -21,8 +23,8 @@
 	onMount(() => {
 		if ($page.url.searchParams.get('autostart') === 'true') {
 			detectionStore.runDetection();
-			// Clean up URL
-			window.history.replaceState({}, '', '/recurring');
+			// Clean up URL using SvelteKit's replaceState
+			replaceState('/recurring', {});
 		}
 	});
 
@@ -43,25 +45,108 @@
 
 	// Type for subscription items
 	type SubscriptionItem = NonNullable<PageData['subscriptions']>[number];
+	type DetailedSubscriptionItem = SubscriptionItem & { isExcluded: boolean };
+
+	// Identify internal transfers across ALL subscription transactions
+	const internalTransferIds = $derived.by(() => {
+		const allTransactions = (data.subscriptions || []).flatMap((s) => s.transactions || []);
+		return identifyInternalTransfers(allTransactions);
+	});
+
+	// Identify connected subscriptions (Income vs Expense with same amount & interval)
+	// e.g. Monthly transfer to partner + Monthly transfer back
+	const connectedSubscriptionIds = $derived.by(() => {
+		const ids = new Set<number>();
+		const byAmount = new Map<number, SubscriptionItem[]>();
+
+		for (const sub of data.subscriptions || []) {
+			if (sub.status !== 'active') continue;
+			const absAmount = Math.round(Math.abs(Number(sub.amount)));
+			if (!byAmount.has(absAmount)) {
+				byAmount.set(absAmount, []);
+			}
+			byAmount.get(absAmount)!.push(sub);
+		}
+
+		for (const [_, group] of byAmount) {
+			// Check if we have matching Income and Expense for same interval
+			const byInterval = new Map<string, SubscriptionItem[]>();
+			for (const sub of group) {
+				const interval = sub.interval || 'unknown';
+				if (!byInterval.has(interval)) byInterval.set(interval, []);
+				byInterval.get(interval)!.push(sub);
+			}
+
+			for (const [_, subs] of byInterval) {
+				const hasIncome = subs.some((s) => s.isIncome);
+				const hasExpense = subs.some((s) => !s.isIncome);
+
+				if (hasIncome && hasExpense) {
+					// Found a match (e.g. Income €400 Monthly AND Expense €400 Monthly)
+					// Mark all of them as internal/connected
+					subs.forEach((s) => ids.add(s.id));
+				}
+			}
+		}
+
+		return ids;
+	});
+
+	function isInternalTransfer(sub: SubscriptionItem): boolean {
+		// Method 1: Matched Subscription logic (same amount/interval)
+		if (connectedSubscriptionIds.has(sub.id)) return true;
+
+		// Method 2: Transaction logic (same dates/amounts)
+		if (!sub.transactions || sub.transactions.length === 0) return false;
+		return sub.transactions.some((t) => internalTransferIds.has(t.id));
+	}
 
 	// Separate by type: subscriptions, variable costs, and income
+	// Now mapping to include isExcluded property instead of filtering
 	const subscriptions = $derived.by(() => {
-		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
-			return !s.isIncome && s.status === 'active' && s.type === 'subscription';
-		});
+		return (data.subscriptions || [])
+			.filter((s: SubscriptionItem) => {
+				return !s.isIncome && s.status === 'active' && s.type === 'subscription';
+			})
+			.map((s) => ({ ...s, isExcluded: isInternalTransfer(s) }))
+			.sort((a, b) => Math.abs(Number(b.amount)) - Math.abs(Number(a.amount)));
 	});
 
 	const variableCosts = $derived.by(() => {
-		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
-			return !s.isIncome && s.status === 'active' && s.type === 'variable_cost';
-		});
+		return (data.subscriptions || [])
+			.filter((s: SubscriptionItem) => {
+				return !s.isIncome && s.status === 'active' && s.type === 'variable_cost';
+			})
+			.map((s) => ({ ...s, isExcluded: isInternalTransfer(s) }))
+			.sort((a, b) => Math.abs(Number(b.amount)) - Math.abs(Number(a.amount)));
 	});
 
 	const incomeSubscriptions = $derived.by(() => {
-		return (data.subscriptions || []).filter((s: SubscriptionItem) => {
-			return s.isIncome && s.status === 'active';
-		});
+		return (data.subscriptions || [])
+			.filter((s: SubscriptionItem) => {
+				return s.isIncome && s.status === 'active';
+			})
+			.map((s) => ({ ...s, isExcluded: isInternalTransfer(s) }))
+			.sort((a, b) => Math.abs(Number(b.amount)) - Math.abs(Number(a.amount)));
 	});
+
+	function calculateMonthlyAmount(amount: number, interval: string | null): number {
+		const val = Number(amount);
+		switch (interval) {
+			case 'monthly':
+				return val;
+			case 'yearly':
+				return val / 12;
+			case 'quarterly':
+				return val / 3;
+			case 'weekly':
+				return val * 4.33;
+			case '4-weekly':
+				return val * (52 / 13);
+			default:
+				return val;
+		}
+	}
 
 	// Calculate income stats separately
 	const incomeStats = $derived.by(() => {
@@ -69,6 +154,8 @@
 		let yearlyTotal = 0;
 
 		for (const sub of incomeSubscriptions) {
+			if (sub.isExcluded) continue;
+
 			const amount = Number(sub.amount);
 			let monthlyAmount = 0;
 			let yearlyAmount = 0;
@@ -104,6 +191,16 @@
 		}
 
 		return { monthlyTotal, yearlyTotal };
+	});
+
+	// Calculate expense stats (Fixed Recurring)
+	const expenseStats = $derived.by(() => {
+		let monthlyTotal = 0;
+		for (const sub of subscriptions) {
+			if (sub.isExcluded) continue;
+			monthlyTotal += calculateMonthlyAmount(sub.amount, sub.interval);
+		}
+		return { monthlyTotal };
 	});
 
 	// Variable spending patterns from DB
@@ -169,7 +266,7 @@
 					monthlySpending={data.monthlySpending || []}
 					predictionData={{
 						income: incomeStats.monthlyTotal,
-						recurring: data.stats?.monthlyTotal || 0,
+						recurring: expenseStats.monthlyTotal,
 						variable: variableStats?.totalMonthlyAverage || 0
 					}}
 					class="h-full"
@@ -177,9 +274,8 @@
 			</div>
 			<NetBalanceWidget
 				monthlyIncome={incomeStats.monthlyTotal}
-				monthlyExpenses={(data.stats?.monthlyTotal || 0) +
-					(variableStats?.totalMonthlyAverage || 0)}
-				recurringExpenses={data.stats?.monthlyTotal || 0}
+				monthlyExpenses={expenseStats.monthlyTotal + (variableStats?.totalMonthlyAverage || 0)}
+				recurringExpenses={expenseStats.monthlyTotal}
 				variableExpenses={variableStats?.totalMonthlyAverage || 0}
 				monthlySavings={data.monthlySavingsAverage || 0}
 			/>
@@ -221,8 +317,8 @@
 
 			<!-- Recurring expenses -->
 			<RecurringExpensesWidget
-				subscriptions={data.subscriptions || []}
-				monthlyTotal={data.stats?.monthlyTotal || 0}
+				{subscriptions}
+				monthlyTotal={expenseStats.monthlyTotal}
 				actionLabel="View all subscriptions"
 				actionHref="/subscriptions"
 			/>
