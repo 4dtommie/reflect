@@ -21,19 +21,19 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export async function getVariableSpendingCategories(): Promise<Set<string>> {
     const now = Date.now();
-    
+
     if (variableCategoriesCache && (now - cacheTimestamp) < CACHE_TTL_MS) {
         return variableCategoriesCache;
     }
-    
+
     const categories = await db.categories.findMany({
         where: { is_variable_spending: true },
         select: { name: true }
     });
-    
+
     variableCategoriesCache = new Set(categories.map(c => c.name));
     cacheTimestamp = now;
-    
+
     return variableCategoriesCache;
 }
 
@@ -52,7 +52,7 @@ export const CATEGORY_RECURRING_CONFIG = {
     // This list is a FALLBACK for synchronous lookups only
     variable_recurring: {
         categories: [
-            'Supermarkt',
+            'Boodschappen',
             'Slager',
             'Bakker',
             'Speciaalzaken',

@@ -70,13 +70,32 @@ export function isTransferBetweenPersons(
 		}
 	}
 
-	// 4. Check if name looks like a person (simple heuristic)
-	// Pattern: "Jan Jansen" or "J. Jansen" - typically 2-3 words, no business indicators
-	const namePattern = /^[A-Z][a-z]+(\s+[A-Z][a-z]*\.?)?\s+[A-Z][a-z]+$/;
-	const businessIndicators = /\b(BV|NV|B\.V\.|N\.V\.|LTD|LLC|INC|CORP|GMBH|AG|BANK|BANKING|BEDRIJF|COMPANY|STORE|WINKEL|SHOP|RESTAURANT|CAFE|HOTEL)\b/i;
-	
-	if (namePattern.test(transaction.merchantName) && 
-	    !businessIndicators.test(transaction.merchantName)) {
+	// 4. Check if name looks like a person (multiple heuristics)
+	const merchantName = transaction.merchantName.trim();
+	const businessIndicators = /\b(BV|NV|B\.V\.|N\.V\.|LTD|LLC|INC|CORP|GMBH|AG|BANK|BANKING|BEDRIJF|COMPANY|STORE|WINKEL|SHOP|RESTAURANT|CAFE|HOTEL|SUPERMARKT|MARKET|MARKT)\b/i;
+
+	// Skip if contains business indicators
+	if (businessIndicators.test(merchantName)) {
+		return { isTransfer: false };
+	}
+
+	// Pattern 1: Standard name format - "Jan Jansen" or "J. Jansen" or "Jan van der Berg"
+	const standardNamePattern = /^[A-Z][a-z]+(\s+[A-Z][a-z]*\.?)?(\s+(van|de|der|den|het|ter|ten))*\s+[A-Z][a-z]+$/i;
+
+	// Pattern 2: Dutch/English salutations with name - "Mw M Schutte", "Dhr J. de Vries", "Mr John Smith"
+	// Salutations: Mw (Mevrouw), Dhr (De Heer), Mr, Mrs, Ms, Miss, Mevr, Hr
+	const salutationPattern = /^(Mw|Mevr|Mrs?|Ms|Miss|Dhr|Hr|De Heer)\.?\s+[A-Z]\.?\s*(\s+(van|de|der|den|het|ter|ten))*\s*[A-Z][a-z]+$/i;
+
+	// Pattern 3: Initials with last name - "T.M.C. van den Berg", "J.J. de Groot"
+	const initialsPattern = /^([A-Z]\.?\s*){1,4}(\s+(van|de|der|den|het|ter|ten))*\s+[A-Z][a-z]+$/i;
+
+	// Pattern 4: Full name with middle parts - "Thomas Van Den Berg"
+	const fullNameWithMiddlePattern = /^[A-Z][a-z]+\s+(Van|De|Der|Den|Het|Ter|Ten)\s+(Van|De|Der|Den|Het|Ter|Ten|[A-Z][a-z]+)\s*[A-Z]?[a-z]*$/i;
+
+	if (standardNamePattern.test(merchantName) ||
+		salutationPattern.test(merchantName) ||
+		initialsPattern.test(merchantName) ||
+		fullNameWithMiddlePattern.test(merchantName)) {
 		return {
 			isTransfer: true,
 			reason: 'person_name_pattern'

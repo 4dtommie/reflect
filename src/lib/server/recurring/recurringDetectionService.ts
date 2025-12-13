@@ -537,14 +537,8 @@ export class RecurringDetectionService {
                     else if (cluster.length >= 5) confidence = 0.9;
                     else if (cluster.length >= 3) confidence = 0.85;
 
-                    // Add name suffix if multiple clusters or categories
-                    let displayName = providerName;
-                    if (clustersToProcess.length > 1) {
-                        displayName += ` (€${Math.round(avgAmount)})`;
-                    } else if (categoryGroups.size > 1) {
-                        // If merchant has multiple categories, add category to name for clarity
-                        displayName += ` (${categoryName})`;
-                    }
+                    // Use clean provider name - category and amount are shown separately in UI
+                    const displayName = providerName;
 
                     candidates.push({
                         name: displayName,
@@ -638,11 +632,8 @@ export class RecurringDetectionService {
 
                 const merchantId = sorted.find((tx) => !!tx.merchant_id)?.merchant_id || undefined;
 
-                // Add amount suffix if there are multiple clusters from the same source
-                let candidateName = this.pickSalaryCandidateName(sorted);
-                if (amountClusters.length > 1) {
-                    candidateName += ` (€${Math.round(averageAmount)})`;
-                }
+                // Use clean name - amount is shown separately in UI
+                const candidateName = this.pickSalaryCandidateName(sorted);
 
                 candidates.push({
                     name: candidateName,

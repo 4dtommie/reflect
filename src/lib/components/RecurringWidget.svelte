@@ -1,5 +1,6 @@
 <script lang="ts">
 	import DashboardWidget from './DashboardWidget.svelte';
+	import MerchantLogo from './MerchantLogo.svelte';
 	import { RefreshCw, Calendar, ArrowRight } from 'lucide-svelte';
 	import { detectionStore } from '$lib/stores/detectionStore';
 	import { recurringModalStore, type RecurringData } from '$lib/stores/recurringModalStore';
@@ -67,9 +68,15 @@
 			{#each sortedTransactions as tx}
 				{@const isIncome = tx.isIncome ?? false}
 				<button
-					class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
+					class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-all hover:border-base-300 hover:bg-base-200"
 					onclick={() => handleOpenModal(tx)}
 				>
+					<MerchantLogo
+						merchantName={tx.name}
+						categoryIcon={tx.categories?.icon}
+						categoryColor={tx.categories?.color}
+						size="sm"
+					/>
 					<div class="flex min-w-0 flex-1 flex-col">
 						<span class="truncate text-sm font-medium">{tx.name}</span>
 						<div class="flex items-center gap-2 text-xs text-base-content/60">

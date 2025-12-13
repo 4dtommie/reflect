@@ -408,8 +408,14 @@ export async function categorizeTransactionsBatch(
 	for (const transaction of transactions) {
 		// Check if transaction already has a merchant_id - if so, try to use default category
 		let result: CategorizationResult;
-		if (transaction.merchant_id && !transaction.category_id && !transaction.is_category_manual) {
-			// Transaction has merchant but no category - check merchant's default category (in-memory lookup)
+
+		// First check if this is a person-to-person transfer
+		// If so, don't use merchant's default category - each transfer should be categorized independently
+		const transferCheck = isTransferBetweenPersons(transaction, Array.from(ownIbans));
+
+		if (transaction.merchant_id && !transaction.category_id && !transaction.is_category_manual && !transferCheck.isTransfer) {
+			// Transaction has merchant but no category, and is NOT a person transfer
+			// Check merchant's default category (in-memory lookup)
 			const merchant = allMerchants.byId.get(transaction.merchant_id);
 
 			if (merchant?.default_category_id) {
@@ -427,7 +433,8 @@ export async function categorizeTransactionsBatch(
 				result = categorizeTransaction(transaction, compiledKeywords, merchantsWithIBANs, options);
 			}
 		} else {
-			// Normal categorization flow
+			// Normal categorization flow (includes person-to-person transfers)
+			// Each transfer will be categorized based on its own description keywords
 			result = categorizeTransaction(transaction, compiledKeywords, merchantsWithIBANs, options);
 		}
 

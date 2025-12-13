@@ -70,14 +70,14 @@
 </script>
 
 <div
-	class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded-xl {config.container}"
+	class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded-lg {config.container}"
 	style="background-color: {backgroundColor}20"
 >
 	{#if logoUrl && !logoError}
 		<img
 			src={logoUrl}
 			alt="{merchantName} logo"
-			class="h-full w-full object-contain p-0.5"
+			class="h-full w-full object-cover"
 			onerror={handleLogoError}
 			loading="lazy"
 		/>

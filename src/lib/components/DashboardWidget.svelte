@@ -11,6 +11,7 @@
 		bgColor,
 		actionLabel,
 		actionHref,
+		class: className,
 		children
 	}: {
 		title?: string;
@@ -21,6 +22,7 @@
 		bgColor?: string;
 		actionLabel?: string;
 		actionHref?: string;
+		class?: string;
 		children: Snippet;
 	} = $props();
 
@@ -57,7 +59,7 @@
 <div
 	class="card flex break-inside-avoid flex-col rounded-3xl transition-all duration-300 {enableHover
 		? 'hover:scale-[1.01]'
-		: ''} {sizeClasses[size]} {variantClasses[variant]}"
+		: ''} {sizeClasses[size]} {variantClasses[variant]} {className}"
 >
 	<div
 		class="card-body flex h-full flex-1 flex-col {variant === 'placeholder'

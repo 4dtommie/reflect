@@ -23,6 +23,7 @@
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import Amount from '$lib/components/Amount.svelte';
+	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
 	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 	import chartColors from '$lib/config/chartColors';
 	import { identifyInternalTransfers } from '$lib/utils/transactionAnalysis';
@@ -803,9 +804,6 @@
 							<!-- Transactions list -->
 							<div class="divide-y divide-base-200">
 								{#each transactions as transaction}
-									{@const CategoryIcon = transaction.category
-										? getCategoryIcon(transaction.category.icon)
-										: null}
 									<button
 										class="-mx-2 flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-100 {internalTransferIds.has(
 											transaction.id
@@ -819,11 +817,12 @@
 									>
 										<div class="flex min-w-0 flex-1 items-center gap-3">
 											<div class="flex-shrink-0">
-												{#if CategoryIcon}
-													<CategoryIcon size={18} strokeWidth={1.5} class="text-primary" />
-												{:else}
-													<HelpCircle size={18} class="text-base-content/30" />
-												{/if}
+												<MerchantLogo
+													merchantName={transaction.merchant?.name ?? transaction.merchantName}
+													categoryIcon={transaction.category?.icon}
+													categoryColor={transaction.category?.color}
+													size="sm"
+												/>
 											</div>
 											<span
 												class="truncate text-sm font-normal {internalTransferIds.has(transaction.id)

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 
 	let username = $state('');
 	let password = $state('');
@@ -35,50 +36,100 @@
 	}
 </script>
 
-<h1 class="text-4xl font-bold mb-6">Sign up</h1>
+<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+	<!-- Signup Form Section (1/3) -->
+	<div class="md:col-span-1">
+		<DashboardWidget title="Sign up" size="auto" class="h-full">
+			{#if error}
+				<div class="mb-4 alert text-sm alert-error">{error}</div>
+			{/if}
 
-	{#if error}
-		<div class="alert alert-error mb-4">{error}</div>
-	{/if}
+			<form onsubmit={handleSubmit} class="space-y-4">
+				<div class="form-control w-full">
+					<label for="username" class="label">
+						<span class="label-text font-medium">Username</span>
+					</label>
+					<input
+						type="text"
+						id="username"
+						bind:value={username}
+						required
+						minlength="3"
+						class="input-bordered input w-full"
+						placeholder="Choose a username"
+					/>
+				</div>
 
-	<form onsubmit={handleSubmit} class="space-y-6">
-		<fieldset class="fieldset bg-base-100 border-base-300 rounded-box border p-4">
-			<legend class="fieldset-legend">Account Details</legend>
+				<div class="form-control w-full">
+					<label for="password" class="label">
+						<span class="label-text font-medium">Password</span>
+					</label>
+					<input
+						type="password"
+						id="password"
+						bind:value={password}
+						required
+						minlength="6"
+						class="input-bordered input w-full"
+						placeholder="Choose a password"
+					/>
+				</div>
 
-			<label for="username" class="label">
-				<span class="label-text">Username</span>
-			</label>
-			<input
-				type="text"
-				id="username"
-				bind:value={username}
-				required
-				minlength="3"
-				class="input input-bordered"
-				placeholder="Choose a username"
-			/>
+				<button type="submit" disabled={submitting} class="btn mt-4 w-full btn-primary">
+					{submitting ? 'Signing up...' : 'Sign up'}
+				</button>
+			</form>
 
-			<label for="password" class="label">
-				<span class="label-text">Password</span>
-			</label>
-			<input
-				type="password"
-				id="password"
-				bind:value={password}
-				required
-				minlength="6"
-				class="input input-bordered"
-				placeholder="Choose a password"
-			/>
-		</fieldset>
+			<div class="divider my-6 text-xs text-base-content/50">OR</div>
 
-		<button type="submit" disabled={submitting} class="btn btn-primary w-full">
-			{submitting ? 'Signing up...' : 'Sign up'}
-		</button>
-	</form>
+			<p class="text-center text-sm">
+				Already have an account?
+				<a href="/signin" class="link font-medium link-primary">Sign in</a>
+			</p>
+		</DashboardWidget>
+	</div>
 
-	<p class="mt-4 text-center">
-		Already have an account?
-		<a href="/signin" class="link link-primary">Sign in</a>
-	</p>
+	<!-- Content Section (2/3) -->
+	<div class="md:col-span-2">
+		<DashboardWidget
+			title="Dive deeper into your finances"
+			size="auto"
+			class="h-full bg-base-200/50"
+		>
+			<div class="prose max-w-none p-4">
+				<p class="mb-6 text-lg">Welcome to Reflect! Your personal finance companion.</p>
 
+				<div class="not-prose grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<div class="card bg-base-100 shadow-sm">
+						<div class="card-body p-4">
+							<h3 class="card-title text-base">📊 Visual Analytics</h3>
+							<p class="text-sm">
+								Understand your spending habits with intuitive charts and graphs.
+							</p>
+						</div>
+					</div>
+					<div class="card bg-base-100 shadow-sm">
+						<div class="card-body p-4">
+							<h3 class="card-title text-base">🤖 AI Categorization</h3>
+							<p class="text-sm">Automatically organize your transactions with advanced AI.</p>
+						</div>
+					</div>
+					<div class="card bg-base-100 shadow-sm">
+						<div class="card-body p-4">
+							<h3 class="card-title text-base">🔄 Recurring Tracking</h3>
+							<p class="text-sm">Keep track of subscriptions and recurring bills effortlessly.</p>
+						</div>
+					</div>
+					<div class="card bg-base-100 shadow-sm">
+						<div class="card-body p-4">
+							<h3 class="card-title text-base">💡 Smart Insights</h3>
+							<p class="text-sm">Get personalized insights to improve your financial health.</p>
+						</div>
+					</div>
+				</div>
+
+				<p class="mt-8 text-lg font-medium">Follow the plan and get rich!</p>
+			</div>
+		</DashboardWidget>
+	</div>
+</div>

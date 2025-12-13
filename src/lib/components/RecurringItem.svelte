@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Amount from './Amount.svelte';
+	import MerchantLogo from './MerchantLogo.svelte';
 	import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
 	import { formatDateShort } from '$lib/utils/locale';
@@ -141,7 +142,7 @@
 			: ''}"
 		onclick={() => (expanded = !expanded)}
 	>
-		<!-- Left: Chevron + Name + Tags -->
+		<!-- Left: Chevron + Name -->
 		<div class="flex min-w-0 flex-1 items-center gap-2">
 			<div class="flex-shrink-0 text-base-content/30">
 				{#if expanded}
@@ -177,8 +178,16 @@
 			class="rounded-lg bg-base-200/30 p-4 pb-3"
 			style="background-color: rgba(0, 0, 0, 0.03);"
 		>
-			<!-- Key Metrics Grid -->
-			<div class="mb-4 grid grid-cols-3 gap-4 border-b border-base-300/50 pb-3">
+			<!-- Key Metrics Grid with Logo -->
+			<div class="mb-4 grid grid-cols-4 gap-4 border-b border-base-300/50 pb-3">
+				<div class="flex items-center justify-center">
+					<MerchantLogo
+						merchantName={subscription.name}
+						categoryIcon={subscription.categories?.icon}
+						categoryColor={subscription.categories?.color}
+						size="lg"
+					/>
+				</div>
 				<div class="flex flex-col">
 					<span class="mb-1 text-[10px] tracking-wide uppercase opacity-50"
 						>Total {new Date().getFullYear()}</span

@@ -21,6 +21,7 @@
 	} from 'lucide-svelte';
 	import * as Icons from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
+	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
 	import CategorySelector from '$lib/components/CategorySelector.svelte';
 	import { recurringModalStore, type RecurringData } from '$lib/stores/recurringModalStore';
 	import { invalidateAll } from '$app/navigation';
@@ -217,7 +218,7 @@
 	{@const CategoryIcon = getCategoryIcon(rec.categories?.icon)}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
-			class="modal-box w-11/12 max-w-sm overflow-visible rounded-[2rem] p-0"
+			class="modal-box w-11/12 max-w-md overflow-visible rounded-[2rem] p-0"
 			in:scale={{ duration: 200, start: 0.95 }}
 			out:scale={{ duration: 150, start: 0.95 }}
 		>
@@ -231,15 +232,14 @@
 				</button>
 
 				<div class="flex flex-col items-center p-8 pt-10 pb-6 text-center">
-					<!-- 1. Header: Category Icon + Name -->
+					<!-- 1. Header: Logo + Name -->
 					<div class="mb-4 flex flex-col items-center gap-3">
-						<div class="flex h-12 w-12 items-center justify-center rounded-xl bg-base-200">
-							{#if CategoryIcon}
-								<svelte:component this={CategoryIcon} size={24} class="text-primary" />
-							{:else}
-								<Store size={24} class="text-primary" />
-							{/if}
-						</div>
+						<MerchantLogo
+							merchantName={rec.name}
+							categoryIcon={rec.categories?.icon}
+							categoryColor={rec.categories?.color}
+							size="lg"
+						/>
 						<div class="flex flex-col items-center gap-1">
 							<h3 class="text-lg font-bold">{rec.name}</h3>
 							{#if rec.categories?.name}
@@ -374,54 +374,48 @@
 					</div>
 
 					<!-- 5. Actions Row -->
-					<div class="mt-2 flex w-full items-center justify-center gap-4">
+					<div class="mt-2 flex w-full flex-wrap items-center justify-center gap-4">
 						<!-- Recategorize -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleChangeCategory}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<Tag size={20} />
-							</div>
+						<button
+							class="flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							onclick={handleChangeCategory}
+						>
+							<Tag size={16} />
 							<span class="text-xs font-medium">Recategorize</span>
 						</button>
 
 						<!-- Pause (if active) / Resume (if paused) -->
 						{#if rec.status === 'active'}
-							<button class="group flex flex-col items-center gap-2" onclick={handlePause}>
-								<div
-									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-								>
-									<Pause size={20} />
-								</div>
+							<button
+								class="flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+								onclick={handlePause}
+							>
+								<Pause size={16} />
 								<span class="text-xs font-medium">Pause</span>
 							</button>
 						{:else}
-							<button class="group flex flex-col items-center gap-2" onclick={handleResume}>
-								<div
-									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 text-success shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-								>
-									<Play size={20} />
-								</div>
+							<button
+								class="flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 text-success shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+								onclick={handleResume}
+							>
+								<Play size={16} />
 								<span class="text-xs font-medium">Resume</span>
 							</button>
 						{/if}
 
 						<!-- Stop Subscription -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleStop}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 text-error shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<Ban size={20} />
-							</div>
+						<button
+							class="flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 text-error shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							onclick={handleStop}
+						>
+							<Ban size={16} />
 							<span class="text-xs font-medium">Stop</span>
 						</button>
 					</div>
 				</div>
 			{:else if viewMode === 'changeCategory'}
 				<!-- Change Category View (Identical wrapper structure) -->
-				<div
-					class="flex items-center justify-between border-b border-base-300 bg-base-200/50 px-6 py-4"
-				>
+				<div class="flex items-center justify-between border-b border-base-300 px-6 py-4">
 					<div class="flex items-center gap-3">
 						<button
 							class="btn btn-circle btn-ghost btn-sm"

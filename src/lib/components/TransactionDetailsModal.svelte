@@ -9,15 +9,12 @@
 		Globe,
 		ArrowLeftRight,
 		Pencil,
-		Scissors,
-		Repeat,
 		FileText,
 		MessageCircle,
 		Download,
 		ArrowLeft,
 		Loader2,
 		Store,
-		Split,
 		MoreHorizontal,
 		CreditCard
 	} from 'lucide-svelte';
@@ -131,23 +128,17 @@
 	}
 
 	// Mock action handlers
-	function handleSplit() {
-		console.log('Split: Coming soon');
-	}
-	function handleRepeat() {
-		console.log('Repeat: Coming soon');
-	}
 	function handleAddReceipt() {
 		console.log('Add receipt: Coming soon');
+	}
+	function handlePaymentRequest() {
+		console.log('Payment request: Coming soon');
 	}
 	function handleContact() {
 		console.log('Contact: Coming soon');
 	}
 	function handleDownloadPDF() {
 		console.log('Download PDF: Coming soon');
-	}
-	function handlePaymentRequest() {
-		console.log('Payment request: Coming soon');
 	}
 </script>
 
@@ -156,7 +147,7 @@
 	{@const CategoryIcon = getCategoryIcon(tx.category?.icon)}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
-			class="modal-box w-11/12 max-w-sm overflow-visible rounded-[2rem] p-0"
+			class="modal-box w-11/12 max-w-md overflow-visible rounded-[2rem] p-0"
 			in:scale={{ duration: 200, start: 0.95 }}
 			out:scale={{ duration: 150, start: 0.95 }}
 		>
@@ -217,55 +208,32 @@
 
 					<!-- 5. Actions Row -->
 					<div class="mt-2 flex w-full items-center justify-center gap-4">
-						<!-- Change Category (Alternative to pill, requested in prompt) -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleChangeCategory}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<Tag size={20} />
-							</div>
+						<!-- Change Category (Pill button) -->
+						<button
+							class="group flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							onclick={handleChangeCategory}
+						>
+							<Tag size={16} />
 							<span class="text-xs font-medium">Change category</span>
 						</button>
 
-						<!-- Add Receipt -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleAddReceipt}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<FileText size={20} />
-							</div>
-							<span class="text-xs font-medium">Add receipt</span>
-						</button>
-
-						<!-- Split -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleSplit}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<Split size={20} />
-							</div>
-							<span class="text-xs font-medium">Split</span>
-						</button>
-
-						<!-- Repeat -->
-						<button class="group flex flex-col items-center gap-2" onclick={handleRepeat}>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-							>
-								<Repeat size={20} />
-							</div>
-							<span class="text-xs font-medium">Repeat</span>
+						<!-- Payment Request (Pill button) -->
+						<button
+							class="group flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							onclick={handlePaymentRequest}
+						>
+							<CreditCard size={16} />
+							<span class="text-xs font-medium">Request</span>
 						</button>
 
 						<!-- More Actions Dropdown -->
 						<div class="dropdown dropdown-end dropdown-top">
-							<div tabindex="0" role="button" class="group flex flex-col items-center gap-2">
-								<div
-									class="flex h-12 w-12 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all group-hover:-translate-y-1 group-hover:shadow-md"
-								>
-									<MoreHorizontal size={20} />
-								</div>
-								<span class="text-xs font-medium">More</span>
+							<div
+								tabindex="0"
+								role="button"
+								class="flex h-10 w-10 items-center justify-center rounded-full border border-base-300 bg-base-100 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							>
+								<MoreHorizontal size={18} />
 							</div>
 							<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 							<ul
@@ -273,9 +241,9 @@
 								class="dropdown-content menu z-[1] mb-2 w-52 rounded-box bg-base-100 p-2 shadow-lg"
 							>
 								<li>
-									<button onclick={handlePaymentRequest}>
-										<CreditCard size={16} />
-										Payment request
+									<button onclick={handleAddReceipt}>
+										<FileText size={16} />
+										Add receipt
 									</button>
 								</li>
 								<li>
@@ -293,19 +261,10 @@
 							</ul>
 						</div>
 					</div>
-
-					<button
-						class="mt-8 text-sm text-base-content/50 hover:text-base-content hover:underline"
-						onclick={handleClose}
-					>
-						More actions
-					</button>
 				</div>
 			{:else if viewMode === 'changeCategory'}
 				<!-- Change Category View -->
-				<div
-					class="flex items-center justify-between border-b border-base-300 bg-base-200/50 px-6 py-4"
-				>
+				<div class="flex items-center justify-between border-b border-base-300 px-6 py-4">
 					<div class="flex items-center gap-3">
 						<button class="btn btn-circle btn-ghost btn-sm" onclick={handleBackToDetails}>
 							<ArrowLeft size={20} />

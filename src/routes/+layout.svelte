@@ -3,8 +3,8 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { User, LayoutDashboard, List, Zap } from 'lucide-svelte';
+	import { page, navigating } from '$app/stores';
+	import { User, LayoutDashboard, List, Zap, Loader2 } from 'lucide-svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
@@ -188,7 +188,7 @@
 	<div class="gradient-blob gradient-blob-4"></div>
 </div>
 
-<div class="navbar mb-4">
+<div class="navbar mb-4 px-0">
 	<!-- Logo on left -->
 	<div class="navbar-start">
 		<a href="/" class="btn-white-swoosh btn rounded-full px-6 text-xl shadow-sm">
@@ -200,13 +200,22 @@
 	<div class="navbar-center">
 		{#if data.user}
 			<ul class="menu menu-horizontal gap-2 px-1">
-				{#each navItems as { href, label, icon: Icon }}
+				{#each navItems as { href, label, icon: Icon }, i}
 					<li>
 						<a
 							{href}
 							class="btn {isActive(href)
 								? 'btn-active-grey'
-								: 'btn-white-swoosh'} gap-2 rounded-full px-6 shadow-sm"
+								: 'btn-white-swoosh'} gap-2 px-6 shadow-sm"
+							style="border-top-left-radius: {i === 0
+								? '9999px'
+								: '8px'}; border-bottom-left-radius: {i === 0
+								? '9999px'
+								: '8px'}; border-top-right-radius: {i === navItems.length - 1
+								? '9999px'
+								: '8px'}; border-bottom-right-radius: {i === navItems.length - 1
+								? '9999px'
+								: '8px'};"
 						>
 							<Icon size={20} />
 							<span class="hidden font-medium md:inline">{label}</span>
@@ -299,14 +308,22 @@
 	<!-- Main content wrapper -->
 	<div class="min-w-0 flex-1">
 		<div class="min-h-full min-w-0" style="box-sizing: border-box;">
-			{@render children()}
+			{#if $navigating}
+				<!-- Loading spinner during navigation -->
+				<div class="flex min-h-[50vh] items-center justify-center">
+					<div class="flex flex-col items-center gap-4">
+						<Loader2 size={48} class="animate-spin text-primary" />
+						<p class="text-base-content/60">Loading...</p>
+					</div>
+				</div>
+			{:else}
+				{@render children()}
+			{/if}
 		</div>
 	</div>
 {:else}
 	<!-- No drawer for unauthenticated users -->
-	<div class="bg-base-100 p-8 shadow-md">
-		{@render children()}
-	</div>
+	{@render children()}
 {/if}
 
 <!-- Reset Environment Confirmation Modal -->

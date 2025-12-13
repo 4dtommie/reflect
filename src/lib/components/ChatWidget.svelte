@@ -98,7 +98,7 @@
 			case 'action':
 				return 'bg-warning/20 text-warning';
 			case 'insight':
-				return 'bg-info/20 text-info';
+				return 'bg-info/40 text-blue-800';
 			case 'celebration':
 				return 'bg-success/20 text-success';
 			case 'tip':
@@ -352,9 +352,11 @@
 						<!-- Assistant message -->
 						<div class="flex flex-col items-start gap-1">
 							{#if msg.showLabel}
-								<p class="mt-2 ml-2 text-xs font-bold text-gray-600">Penny</p>
+								<p class="chat-label mt-2 ml-2 text-xs font-bold">Penny</p>
 							{/if}
-							<div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-white px-3 py-2 shadow-sm">
+							<div
+								class="chat-bubble-assistant max-w-[90%] rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm"
+							>
 								{#if msg.insightCategory}
 									<span
 										class="mb-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase {getCategoryBadgeClass(
@@ -370,7 +372,9 @@
 								</p>
 
 								{#if msg.data?.transactions && msg.data.transactions.length > 0 && !isTyping(msg)}
-									<div class="mt-2 flex flex-col gap-1 overflow-hidden rounded-lg bg-white">
+									<div
+										class="chat-transaction-list mt-2 flex flex-col gap-1 overflow-hidden rounded-lg"
+									>
 										{#each msg.data.transactions as t}
 											<button
 												class="flex w-full cursor-pointer items-center justify-between gap-3 p-2 text-left text-xs transition-colors hover:bg-base-100"
@@ -403,10 +407,7 @@
 								{#if msg.actionButtons && msg.actionButtons.length > 0 && !isTyping(msg) && !(msg.data?.transactions && msg.data.transactions.length > 0)}
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#each msg.actionButtons as button}
-											<a
-												href={button.href}
-												class="btn border-0 bg-gray-100 text-gray-600 btn-xs hover:bg-gray-200"
-											>
+											<a href={button.href} class="chat-action-btn btn border-0 btn-xs">
 												{button.label}
 												<ArrowRight class="h-3 w-3" />
 											</a>
@@ -476,5 +477,42 @@
 
 	:global(.chat-messages:hover::-webkit-scrollbar-thumb) {
 		background-color: oklch(var(--bc) / 0.3);
+	}
+
+	/* Chat theme styles */
+	:global(.chat-label) {
+		color: #4b5563; /* gray-600 */
+	}
+	:global([data-theme='night'] .chat-label) {
+		color: oklch(var(--bc) / 0.6);
+	}
+
+	:global(.chat-bubble-assistant) {
+		background-color: white;
+	}
+	:global([data-theme='night'] .chat-bubble-assistant) {
+		background-color: oklch(var(--b2));
+	}
+
+	:global(.chat-transaction-list) {
+		background-color: white;
+	}
+	:global([data-theme='night'] .chat-transaction-list) {
+		background-color: oklch(var(--b1));
+	}
+
+	:global(.chat-action-btn) {
+		background-color: #f3f4f6; /* gray-100 */
+		color: #4b5563; /* gray-600 */
+	}
+	:global(.chat-action-btn:hover) {
+		background-color: #e5e7eb; /* gray-200 */
+	}
+	:global([data-theme='night'] .chat-action-btn) {
+		background-color: oklch(var(--b3));
+		color: oklch(var(--bc) / 0.7);
+	}
+	:global([data-theme='night'] .chat-action-btn:hover) {
+		background-color: oklch(var(--bc) / 0.2);
 	}
 </style>
