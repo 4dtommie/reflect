@@ -1,6 +1,6 @@
 # Reflect
 
-Reflect is a personal finance assistant designed to help you understand and improve your financial habits. It transforms raw bank data into actionable insights through advanced AI categorization and interactive tools.
+Reflect is a personal finance assistant designed to help you understand and improve your financial habits. It transforms raw bank data into actionable insights through advanced AI categorization and interactive tools. 
 
 **[View Project Repository](https://github.com/4dtommie/reflect)**
 
