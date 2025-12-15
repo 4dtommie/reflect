@@ -6,6 +6,7 @@ export interface TransactionData {
     merchantName: string;
     amount: number | string;
     description: string;
+    cleaned_merchant_name?: string | null;
     is_debit?: boolean;
     category?: {
         id: number;
@@ -14,10 +15,12 @@ export interface TransactionData {
         color?: string | null;
     } | null;
     merchant?: {
+        id?: number;
         name: string;
     } | null;
     type?: string;
     is_recurring?: boolean;
+    recurring_transaction_id?: number | null;
     recurring_transaction?: {
         id: number;
         name: string;

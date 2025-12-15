@@ -178,6 +178,7 @@ const merchantDomainMap: Record<string, string> = {
  * Normalize a merchant name for lookup
  */
 function normalizeMerchantName(merchantName: string): string {
+    if (typeof merchantName !== 'string') return '';
     return merchantName
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '') // Remove special chars except spaces and hyphens

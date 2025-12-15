@@ -9,7 +9,9 @@ Reflect is an AI-powered personal finance application that helps users understan
 - **Subscription Detection** - Automatically find recurring payments and subscriptions
 - **Penny Chat** - AI assistant that answers financial questions using real data
 - **Insight Engine** - Proactive tips, alerts, and celebrations based on user behavior
+- **Transaction Insights** - Real-time per-transaction observations (refunds, patterns, spending alerts)
 - **Actions Hub** - Gamified financial improvement goals
+- **Merchant Logos** - Automatic logo display for recognized merchants
 
 ---
 
@@ -19,8 +21,10 @@ Reflect is an AI-powered personal finance application that helps users understan
 - [Subscription Detection](#subscription-detection)
 - [Penny - AI Chat Assistant](#penny---ai-chat-assistant)
 - [Insight Engine](#insight-engine)
+- [Transaction Insights](#transaction-insights)
 - [Actions Page](#actions-page)
 - [Transactions Page](#transactions-page)
+- [Merchant Logos](#merchant-logos)
 
 ---
 
@@ -57,12 +61,26 @@ The `transactionMapper.ts` detects columns by matching header names:
 - **Merchant**: "name", "naam", "merchant", "description"
 - **IBAN**: "iban", "account", "rekening"
 
-### Data Cleaning
-During preview and import:
-- Merchant names are cleaned (remove transaction codes, standardize formatting)
-- Descriptions are normalized (remove excess whitespace, special characters)
-- Amounts are parsed (handles comma/period decimals, currency symbols)
-- Dates support multiple formats (DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY, etc.)
+### Pre-Import Data Sanitization
+
+During preview and import, transactions are **cleaned and sanitized** before being stored. This improves categorization accuracy by normalizing merchant names and descriptions.
+
+#### Merchant Name Cleaning (`merchantNameCleaner.ts`)
+Removes noise from raw bank merchant names:
+- **Transaction codes**: `AH 1234 AMSTERDAM` → `Albert Heijn`
+- **PSP/Payment codes**: Removes `CCV*`, `Adyen`, `Stripe` prefixes
+- **Store numbers**: `LIDL SCHILDERSW 5765` → `Lidl Schilderswijk`
+- **Special mappings**: `NOTPROVIDED` → `ING Spaarrekening`
+- **Title case normalization**: Handles Dutch prefixes (`van`, `de`), abbreviations (`AH`, `NS`), and names (`McDonald's`)
+
+#### Description Normalization (`descriptionCleaner.ts`)
+Strips transaction metadata from descriptions:
+- Removes `Naam: X Omschrijving: Y` patterns (keeps only `Y`)
+- Removes timestamps, transaction IDs, card numbers
+- Removes invoice/policy/customer numbers
+- Normalizes whitespace
+
+Both cleaned values are stored on the transaction (`cleaned_merchant_name`, `normalized_description`) and used throughout the categorization pipeline.
 
 ## Files
 - `src/routes/(protected)/upload-transactions/+page.svelte` - Upload page
@@ -70,6 +88,8 @@ During preview and import:
 - `src/routes/(protected)/upload-transactions/import/+page.svelte` - Import execution
 - `src/lib/utils/csvParser.ts` - CSV parsing logic
 - `src/lib/utils/transactionMapper.ts` - Column detection & mapping
+- `src/lib/server/categorization/merchantNameCleaner.ts` - Merchant name sanitization
+- `src/lib/server/categorization/descriptionCleaner.ts` - Description normalization
 
 ---
 
@@ -86,47 +106,69 @@ The full categorization runs in **iterative rounds** until all transactions are 
 ┌─────────────────────────────────────────────────────────────────┐
 │                     CATEGORIZATION PIPELINE                      │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. KEYWORD MATCHING (exact merchant name → category)           │
+│  Step 1.5: MERCHANT DEFAULT CATEGORY                            │
+│     (if transaction already linked to merchant with category)   │
 │     ↓ Unmatched transactions                                    │
-│  2. IBAN MATCHING (counterparty bank account → merchant)        │
+│  Step 2: KEYWORD MATCHING (cleaned merchant name → category)    │
 │     ↓ Unmatched transactions                                    │
-│  3. MERCHANT NAME MATCHING (similar to previously categorized)  │
+│  Step 2: IBAN MATCHING (counterparty bank account → merchant)   │
 │     ↓ Unmatched transactions                                    │
-│  4. AI BATCH CATEGORIZATION (Gemini inference)                  │
+│  Step 3: MERCHANT NAME MATCHING (same name = same category)     │
+│     ↓ Unmatched transactions                                    │
+│  Step 4: AI BATCH CATEGORIZATION (Gemini inference)             │
 │     ↓ After each AI batch                                       │
-│  5. REMATCH: Re-run steps 1-3 with newly learned keywords       │
-│     ↓ Repeat until all done or max iterations                   │
+│     Re-run merchant name matching (newly categorized unlock     │
+│     other transactions with same merchant)                      │
+│     ↓ Repeat AI batches until all done                          │
+│  Step 5: FINAL MERCHANT NAME MATCHING                           │
+│     (catch any remaining matches after all AI batches)          │
+├─────────────────────────────────────────────────────────────────┤
+│                     POST-PROCESSING (optional)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Step 6: CONTEXT REFINEMENT (time/amount rules)                 │
+│  Step 7: LOW-CONFIDENCE RECATEGORIZATION (background AI review) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Matching Stages
 
-### 1. Keyword Matching
-- Fastest and most reliable method
-- Matches cleaned merchant names against a keyword database
-- Keywords are linked to categories (e.g., "albert heijn" → Groceries)
-- **Merchant name cleaning**: Removes transaction codes, normalizes formatting
+### Step 1.5: Merchant Default Category
+- **Fastest path**: If a transaction is already linked to a merchant (via previous import or IBAN match), and that merchant has a `default_category_id`, use it directly
+- Applied before keyword matching to avoid redundant lookups
+- Confidence: 100%
+
+### Step 2: Keyword & IBAN Matching
+**Keyword matching**:
+- Matches **cleaned** merchant names against a keyword database
+- Keywords are linked to categories (e.g., `albert heijn` → Groceries)
 - Confidence: 100% (exact match)
 
-### 2. IBAN Matching
+**IBAN matching**:
 - Matches the counterparty's bank account (IBAN) to known merchants
 - If a merchant has a known IBAN, all transactions to that IBAN get the merchant's default category
 - Useful for: Recurring payments, business accounts
 - Confidence: 100% (exact match)
 
-### 3. Merchant Name Matching
+### Step 3: Merchant Name Matching
 - Learns from previously categorized transactions
 - If a transaction has the same cleaned merchant name as a previously categorized one, inherit the category
 - Prioritizes **manually categorized** transactions (user-confirmed)
-- Tracks match count for confidence (e.g., "Albert Heijn → Groceries (12 matches)")
+- Tracks match count for confidence (e.g., `Albert Heijn → Groceries (12 matches)`)
 - Confidence: High (based on historical patterns)
 
-### 4. AI Batch Categorization
+### Step 4: AI Batch Categorization
 - Uses Gemini 2.5 Flash for inference
 - Processes transactions in batches (default: 10 per batch)
 - **Merchant deduplication**: Groups transactions by cleaned merchant name, sends 1 representative per merchant to AI, then applies result to all (saves API costs)
-- For each transaction, AI receives: merchant name, description, amount, date
+- For each transaction, AI receives: cleaned merchant name, description, amount, date
 - Returns: suggested category ID + confidence score (0.0-1.0)
+
+**After each AI batch**, merchant name matching is re-run on remaining uncategorized transactions. This allows newly categorized merchants from AI to "unlock" other transactions with the same merchant name.
+
+### Step 5: Final Merchant Name Matching
+After all AI batches complete, a **final pass** of merchant name matching runs. This catches edge cases where:
+- AI categorized a merchant in the last batch
+- Other transactions with that merchant were waiting but not in the AI queue
 
 ## Confidence Thresholds
 
@@ -136,18 +178,6 @@ The full categorization runs in **iterative rounds** until all transactions are 
 | < 0.5 | Leave uncategorized for manual review |
 
 Transactions below threshold are flagged for the user to review on the manual categorize page.
-
-## Rematching (Iterative Learning)
-
-After each AI batch:
-1. **Reload keywords** from database (may have new entries)
-2. **Re-run keyword matching** on remaining uncategorized transactions
-3. **Re-run merchant name matching** (new categories may match more transactions)
-4. Repeat until: all categorized, no progress, or max iterations (default: 10)
-
-This iterative approach means:
-- One AI categorization can "unlock" many keyword matches
-- Newly categorized merchants help match similar transactions
 
 ## Manual Categorization Page
 
@@ -170,9 +200,10 @@ To provide instant AI suggestions on the manual page:
 - `src/lib/server/categorization/ibanMatcher.ts` - IBAN matching
 - `src/lib/server/categorization/merchantNameMatcher.ts` - Merchant name matching
 - `src/lib/server/categorization/merchantNameCleaner.ts` - Merchant name cleaning
+- `src/lib/server/categorization/descriptionCleaner.ts` - Description normalization
 - `src/lib/server/categorization/geminiCategorizer.ts` - Gemini AI integration
 - `src/lib/server/categorization/contextRefinementService.ts` - Time/amount-based refinement
-- `src/lib/server/categorization/lowConfidenceRecategorizationService.ts` - AI re-review for low confidence
+- `src/lib/server/categorization/lowConfidenceRecategorizationService.ts` - Background AI re-review
 - `src/routes/(protected)/categorize/+page.svelte` - Manual categorization UI
 - `src/routes/api/transactions/categorize-batch/+server.ts` - Batch categorization API
 
@@ -180,7 +211,7 @@ To provide instant AI suggestions on the manual page:
 
 After the main categorization pipeline, two optional post-processing steps can further refine categories:
 
-### Context Refinement (Enabled by Default)
+### Step 6: Context Refinement (Enabled by Default)
 
 Uses **time** and **amount** to refine categories without AI. Useful for:
 - **Food categories** - Same café can be Coffee or Lunch depending on time
@@ -203,16 +234,22 @@ Uses **time** and **amount** to refine categories without AI. Useful for:
 | Bank insurance | Verzekering | €30-300 |
 | Bank fees | Bankkosten | €1-30 |
 
-**Time extraction**: Parses HH:MM patterns from transaction descriptions (e.g., "15:47" from "Pasvolgnr: 904 03-12-2025 15:47 Transactie: C00362").
+**Time extraction**: Parses HH:MM patterns from transaction descriptions (e.g., `15:47` from `Pasvolgnr: 904 03-12-2025 15:47 Transactie: C00362`).
 
-### Low-Confidence Recategorization (Disabled by Default)
+### Step 7: Low-Confidence Recategorization (Background, Disabled by Default)
 
-Transactions with **50-65% confidence** are sent to OpenAI for a second opinion:
-- **Model**: `gpt-5-mini` (same as manual categorization modal)
-- **Features**: Search grounding, reasoning, cleaned merchant name
-- Batches of 10 transactions
-- Only applies changes if new confidence > 75%
-- Enable with: `enableLowConfidenceRecategorization: true`
+Transactions with **50-65% confidence** (the "uncertain" zone) are sent to OpenAI for a detailed second opinion. This runs **in the background** after the main pipeline completes—users can navigate away and it will continue processing.
+
+| Setting | Value |
+|---------|-------|
+| **Model** | `gpt-5-mini` (same as manual categorization modal) |
+| **Features** | Search grounding, reasoning, cleaned merchant name |
+| **Batch size** | 10 transactions |
+| **Max per run** | 100 transactions |
+| **Apply threshold** | Only applies changes if new confidence ≥ 75% |
+| **Enable** | `enableLowConfidenceRecategorization: true` |
+
+The background job logs progress to the console with the 🔄 prefix.
 
 ### Options
 ```typescript
@@ -397,6 +434,9 @@ The `InsightDefinition` model now includes:
 | `christmas_season` | Current month is December |
 | `spending_high_early` | Spent >80% of last month early |
 | `savings_positive` | Positive savings this month |
+| `same_period_change` | Spending up/down vs same period last month |
+| `complete_month_change` | Last month vs 2 months ago comparison |
+| `top_category` | Top spending category exceeds threshold |
 | `always` | Always fires (fallback tips) |
 
 ## Insight Categories
@@ -437,6 +477,89 @@ The insight rules are managed at `/insights` via a master-detail interface:
 - **Quick Settings**: Priority slider, category dropdown, and action buttons.
 - **Advanced Settings**: Collapsible section for technical configuration (Rule ID, trigger params, cooldown, contexts).
 - **Safe Deletion**: Delete button requires modal confirmation.
+
+---
+
+# Transaction Insights
+
+## Overview
+Transaction Insights provide **per-transaction observations** displayed inline on the Transactions page. Unlike global insights, these are evaluated for each individual transaction and highlight patterns, anomalies, and notable events.
+
+## Architecture
+
+```
+Transactions → collectTransactionContext() → transactionTriggerEvaluators → TransactionInsight[]
+                        ↓
+               Context (batched queries):
+               - Merchant history
+               - Refund matching
+               - Recurring patterns
+               - Category averages
+               - Merchant pairs
+```
+
+## API Endpoint
+- **POST** `/api/transaction-insights` - Evaluates all visible transactions and returns insights grouped by transaction ID.
+
+## Transaction Triggers
+
+| Trigger | Description | Category |
+|---------|-------------|----------|
+| `refund_detected` | Credit matches a previous debit (within 60 days) | celebration |
+| `weekend_warrior` | Friday/Saturday spending in "fun" categories | insight |
+| `merchant_comeback` | First visit to a merchant after 60+ day gap | insight |
+| `frequent_flyer` | 5th visit to the same merchant this month | insight |
+| `category_spike` | Category spending 2x+ higher than 3-month average | action |
+| `holiday_trip` | Cluster of travel/foreign transactions detected | insight |
+| `merchant_pair` | Two merchants that frequently appear on the same day | insight |
+| `duplicate_transaction` | Same amount + same merchant within 10 minutes | urgent |
+| `new_merchant` | First transaction with a merchant | insight |
+| `price_hike` | Recurring payment amount increased | action |
+| `salary_detected` | Salary/income transaction detected | celebration |
+| `large_expense` | Large non-recurring expense (>€500) | action |
+| `round_number` | Suspiciously round amount (€50, €100) | roast |
+| `late_night` | Transaction between 23:00-05:00 | roast |
+| `potential_subscription` | Repeated monthly payment, not yet tracked | action |
+
+## TransactionContext Collection
+
+Context is collected **once** via batched database queries, then shared across all transaction evaluations:
+
+| Context | Description |
+|---------|-------------|
+| `merchantFirstSeen` | Map of merchant_id → first transaction date |
+| `merchantLastSeen` | Map of merchant_id → most recent transaction before current batch |
+| `merchantMonthlyCount` | Map of merchant_id → visit count this month |
+| `recentByMerchant` | Map of merchant_id → recent transactions (for duplicate/pattern detection) |
+| `recurringLastAmount` | Map of recurring_id → last known amount |
+| `creditsByAmount` | Map of amount (cents) → credit transactions |
+| `debitsByAmount` | Map of amount (cents) → debit transactions |
+| `categoryAvgSpending` | Map of category_id → 3-month average spending |
+| `merchantPairs` | Map of "id1-id2" → count of same-day occurrences |
+| `holidayTransactionIds` | Set of transaction IDs flagged as travel-related |
+| `eatingOutMonthlyCount` | Count of eating out transactions this month |
+| `eatingOutMonthlyAvg` | Historical average eating out per month |
+
+## UI Display
+
+### TransactionInsightCard Component
+- **Compact Badge**: Shows icon + title on hover
+- **Expanded Card**: Displays full message + action buttons
+- **Category Styling**: Color-coded by insight category (urgent=red, celebration=green, etc.)
+- **Actions**: Optional "Track Sub", "View Category" buttons based on insight type
+
+### Integration on Transactions Page
+- Insights appear inline next to transaction rows
+- Hover reveals expanded insight card with details
+- Can dismiss insights or take suggested actions
+
+## Files
+- `src/routes/api/transaction-insights/+server.ts` - API endpoint
+- `src/lib/server/insights/insightDataCollector.ts` - Context collection (`collectTransactionContext`)
+- `src/lib/server/insights/triggerEvaluators.ts` - Trigger evaluators (`transactionTriggerEvaluators`)
+- `src/lib/server/insights/insightEngine.ts` - `getTransactionInsightsFlat()`
+- `src/lib/components/TransactionInsightCard.svelte` - UI component
+- `prisma/seedInsights.ts` - Transaction insight definitions (prefixed with `tx_`)
 
 ---
 
@@ -484,24 +607,62 @@ Completed actions shown in compact list format with saved amounts (e.g., "+€47
 # Transactions Page
 
 ## Overview
-The Transactions page (`/transactions`) displays all user transactions with filtering, search, and visualization capabilities.
+The Transactions page (`/transactions`) displays all user transactions with filtering, search, and visualization capabilities. It includes inline transaction insights and automatic internal transfer detection.
+
+## Layout
+- **Sidebar (left, 1/3 width)**:
+  - Title widget
+  - Statistics widget (total, shown, uncategorized counts)
+  - Filters widget with search, category, account, and debit/credit filters
+- **Main Content (right, 2/3 width)**:
+  - Spending chart (bar chart with income/expenses/savings)
+  - Transaction list grouped by month and day
 
 ## Features
 
 ### Category Filtering
 - URL parameter support: `/transactions?category=5` pre-selects category
-- Dropdown filter populated from user's categories
+- Hierarchical category matching (parent category includes subcategories)
+- `CategorySelector` component with search and grouping
 - Integrates with insights - "View category" links from spending insights navigate here with filter applied
 
-### Search & Filters
-- Free-text search across merchant names and descriptions
-- Date range filtering
-- Category dropdown filter
-- Amount range filtering
+### Account Filtering
+- Multi-select checkboxes for bank accounts
+- Filter transactions by IBAN
 
-### Visualization
-- Spending chart showing trends over time
-- Uses shared color configuration from `src/lib/chartColors.ts`
+### Debit/Credit Filter
+- Toggle between All, Expenses only (debit), or Income only (credit)
+
+### Search & Filters
+- Free-text search across merchant names, descriptions, and categories
+- "Clear all" button when any filter is active
+
+### Internal Transfer Detection
+- Automatically identifies transfers between user's own accounts
+- Pairs credits and debits that match (same amount, same day, opposite signs)
+- Excluded from statistics calculations to avoid double-counting
+
+### Spending Chart
+- Stacked bar chart (Income + Expenses + Savings)
+- Pan & zoom support via `chartjs-plugin-zoom`
+- Initial view shows last 9 months
+- Responsive to container size changes
+- Chart updates dynamically when filters change (preserves zoom state)
+
+### Transaction List
+- Grouped by month with month headers showing totals
+- Days grouped within months
+- Each transaction shows:
+  - Merchant logo (if available)
+  - Merchant name and category
+  - Amount (color-coded: green for income, red for expenses)
+  - Inline transaction insights (hover for details)
+- Click transaction to open details modal (or recurring modal if linked)
+
+### Transaction Insights Integration
+- Fetches insights via POST to `/api/transaction-insights`
+- Displays `TransactionInsightCard` badges inline
+- Supports dismiss and action callbacks
 
 ## URL Parameters
 | Parameter | Description |
@@ -511,3 +672,39 @@ The Transactions page (`/transactions`) displays all user transactions with filt
 ## Files
 - `src/routes/(protected)/transactions/+page.svelte` - Main page
 - `src/routes/(protected)/transactions/+page.ts` - Load function (handles URL params)
+- `src/lib/utils/transactionAnalysis.ts` - Internal transfer detection
+- `src/lib/components/CategorySelector.svelte` - Category filter dropdown
+
+---
+
+# Merchant Logos
+
+## Overview
+Reflect displays logos for recognized merchants using the Logo.dev API. Logos are shown in transaction lists, details modals, and recurring items.
+
+## How It Works
+1. Merchant name is normalized (lowercase, remove special chars)
+2. Lookup in `merchantDomainMap` (curated list of merchant → domain mappings)
+3. If found, construct Logo.dev URL with domain
+4. `MerchantLogo` component displays logo with fallback to category icon
+
+## Supported Merchants
+The system includes mappings for hundreds of Dutch and international merchants:
+
+- **Supermarkets**: Albert Heijn, Jumbo, Lidl, Aldi, Plus, Picnic
+- **Retail**: HEMA, Action, Kruidvat, Bijenkorf, Primark
+- **Streaming**: Netflix, Spotify, Disney+, YouTube, Viaplay
+- **Tech**: Amazon, Bol.com, Coolblue, Apple, Microsoft
+- **Transport**: NS, KLM, Uber, Transavia, Swapfiets
+- **Telecom**: Ziggo, KPN, Vodafone, T-Mobile, Odido
+- **Banks**: ING, Rabobank, ABN AMRO, Bunq
+- **And many more...**
+
+## Matching Strategy
+1. **Exact match**: "albert heijn" → ah.nl
+2. **Prefix match**: "Albert Heijn 1226" → ah.nl
+3. **Contains match**: "Something Netflix Something" → netflix.com
+
+## Files
+- `src/lib/utils/merchantLogos.ts` - Domain mapping & URL generation
+- `src/lib/components/MerchantLogo.svelte` - Logo display component with fallback

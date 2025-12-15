@@ -21,7 +21,7 @@
 
 	const logoUrl = $derived.by(() => {
 		const url = getMerchantLogoUrl(merchantName, 128);
-		console.log(`[MerchantLogo] "${merchantName}" -> ${url || 'NO DOMAIN MATCH'}`);
+
 		return url;
 	});
 	const config = $derived(sizeConfig[size]);
@@ -58,7 +58,6 @@
 	});
 
 	function handleLogoError() {
-		console.log(`[MerchantLogo] Logo failed to load for "${merchantName}"`);
 		logoError = true;
 	}
 

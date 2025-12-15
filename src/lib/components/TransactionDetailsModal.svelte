@@ -16,17 +16,20 @@
 		Loader2,
 		Store,
 		MoreHorizontal,
-		CreditCard
+		CreditCard,
+		RefreshCw
 	} from 'lucide-svelte';
 	import * as Icons from 'lucide-svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
 	import CategorySelector from '$lib/components/CategorySelector.svelte';
 	import { transactionModalStore, type TransactionData } from '$lib/stores/transactionModalStore';
+	import { createSubscriptionModalStore } from '$lib/stores/createSubscriptionModalStore';
+	import { recurringModalStore } from '$lib/stores/recurringModalStore';
 	import { invalidateAll } from '$app/navigation';
 
 	// Subscribe to store
-	const state = $derived($transactionModalStore);
+	const modalState = $derived($transactionModalStore);
 
 	// View mode: 'details' or 'changeCategory'
 	let viewMode = $state<'details' | 'changeCategory'>('details');
@@ -34,11 +37,18 @@
 	let isSaving = $state(false);
 	let categories = $state<any[]>([]);
 
+	// Merchant renaming state
+	let isRenaming = $state(false);
+	let tempMerchantName = $state('');
+
 	// Reset view mode when modal opens
 	$effect(() => {
-		if (state.isOpen) {
+		if (modalState.isOpen) {
 			viewMode = 'details';
-			selectedCategoryId = state.transaction?.category?.id ?? null;
+			selectedCategoryId = modalState.transaction?.category?.id ?? null;
+			isRenaming = false;
+			tempMerchantName =
+				modalState.transaction?.merchant?.name ?? modalState.transaction?.merchantName ?? '';
 			// Fetch categories when modal opens
 			fetchCategories();
 		}
@@ -53,7 +63,7 @@
 				categories = data.categories || [];
 
 				// Match current category by name to find the real ID
-				const currentCategoryName = state.transaction?.category?.name;
+				const currentCategoryName = modalState.transaction?.category?.name;
 				if (currentCategoryName && categories.length > 0) {
 					const matchedCategory = categories.find(
 						(c: any) => c.name.toLowerCase() === currentCategoryName.toLowerCase()
@@ -103,16 +113,16 @@
 	}
 
 	async function handleSaveCategory() {
-		if (!state.transaction || !selectedCategoryId) return;
+		if (!modalState.transaction || !selectedCategoryId) return;
 
 		isSaving = true;
 		try {
-			const res = await fetch(`/api/transactions/${state.transaction.id}/categorize`, {
+			const res = await fetch(`/api/transactions/${modalState.transaction.id}/categorize`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					categoryId: selectedCategoryId,
-					merchantName: state.transaction.merchantName
+					merchantName: modalState.transaction.merchantName
 				})
 			});
 
@@ -127,7 +137,42 @@
 		}
 	}
 
-	// Mock action handlers
+	// Handle recurring/subscription actions
+	async function handleToggleRecurring() {
+		if (!modalState.transaction) return;
+
+		// If already a subscription, open the recurring details modal
+		if (modalState.transaction.recurring_transaction_id) {
+			await openRecurringDetails();
+			return;
+		}
+
+		// Otherwise, open creation modal
+		createSubscriptionModalStore.open(modalState.transaction);
+		transactionModalStore.close();
+	}
+
+	async function openRecurringDetails() {
+		if (!modalState.transaction?.recurring_transaction_id) return;
+
+		try {
+			// Fetch the recurring data
+			const res = await fetch('/api/recurring');
+			if (res.ok) {
+				const data = await res.json();
+				const recurring = data.subscriptions.find(
+					(s: any) => s.id === modalState.transaction?.recurring_transaction_id
+				);
+				if (recurring) {
+					transactionModalStore.close();
+					recurringModalStore.open(recurring);
+				}
+			}
+		} catch (e) {
+			console.error('Failed to fetch recurring details:', e);
+		}
+	}
+
 	function handleAddReceipt() {
 		console.log('Add receipt: Coming soon');
 	}
@@ -137,13 +182,57 @@
 	function handleContact() {
 		console.log('Contact: Coming soon');
 	}
+	async function handleRenameMerchant() {
+		if (!modalState.transaction?.merchant?.id || !tempMerchantName.trim()) return;
+
+		isSaving = true;
+		try {
+			const res = await fetch(`/api/merchants/${modalState.transaction.merchant.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: tempMerchantName.trim()
+				})
+			});
+
+			if (res.ok) {
+				// Update local store state immediately
+				const updatedName = tempMerchantName.trim();
+				if (modalState.transaction.merchant) {
+					modalState.transaction.merchant.name = updatedName;
+				}
+				// Also update fallback/display name on transaction if needed
+				modalState.transaction.merchantName = updatedName;
+
+				await invalidateAll();
+				isRenaming = false;
+			} else {
+				console.error('Failed to rename merchant');
+			}
+		} catch (e) {
+			console.error('Failed to rename merchant:', e);
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	function startRenaming() {
+		tempMerchantName =
+			modalState.transaction?.merchant?.name ?? modalState.transaction?.merchantName ?? '';
+		isRenaming = true;
+	}
+
+	function cancelRenaming() {
+		isRenaming = false;
+	}
+
 	function handleDownloadPDF() {
 		console.log('Download PDF: Coming soon');
 	}
 </script>
 
-{#if state.isOpen && state.transaction}
-	{@const tx = state.transaction}
+{#if modalState.isOpen && modalState.transaction}
+	{@const tx = modalState.transaction}
 	{@const CategoryIcon = getCategoryIcon(tx.category?.icon)}
 	<div class="modal-open modal" role="dialog" aria-modal="true">
 		<div
@@ -169,7 +258,39 @@
 							categoryColor={tx.category?.color}
 							size="lg"
 						/>
-						<h3 class="text-lg font-bold">{tx.merchant?.name ?? tx.merchantName}</h3>
+						{#if isRenaming}
+							<div class="flex items-center gap-2">
+								<input
+									type="text"
+									class="input-bordered input input-sm w-full min-w-[200px] text-center font-bold"
+									bind:value={tempMerchantName}
+									autofocus
+								/>
+								<button
+									class="btn btn-circle text-white btn-xs btn-success"
+									onclick={handleRenameMerchant}
+									disabled={isSaving}
+								>
+									<CheckCircle size={14} />
+								</button>
+								<button class="btn btn-circle btn-ghost btn-xs" onclick={cancelRenaming}>
+									<X size={14} />
+								</button>
+							</div>
+						{:else}
+							<div class="group flex items-center justify-center gap-2">
+								<h3 class="text-lg font-bold">{tx.merchant?.name ?? tx.merchantName}</h3>
+								{#if tx.merchant}
+									<button
+										class="btn btn-circle btn-ghost btn-xs"
+										onclick={startRenaming}
+										title="Rename global merchant"
+									>
+										<Pencil size={12} />
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					<!-- 2. Centered Amount -->
@@ -188,6 +309,32 @@
 						{formatDateTime(tx.date)}
 					</div>
 
+					<!-- Subscription Indicator (Clickable) -->
+					{#if tx.recurring_transaction}
+						<button
+							onclick={openRecurringDetails}
+							class="mb-6 flex w-full max-w-[240px] cursor-pointer items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+						>
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-content shadow-sm"
+							>
+								<RefreshCw size={18} />
+							</div>
+							<div class="flex flex-col">
+								<span class="text-[10px] font-bold tracking-wider text-primary uppercase opacity-60"
+									>Subscription</span
+								>
+								<div class="flex items-center gap-2">
+									<span class="text-sm font-bold"
+										>{tx.recurring_transaction.interval.charAt(0).toUpperCase() +
+											tx.recurring_transaction.interval.slice(1)}</span
+									>
+									<!-- <span class="text-xs opacity-50">• Next: ?</span> -->
+								</div>
+							</div>
+						</button>
+					{/if}
+
 					<!-- 4. Category Pill -->
 					<button
 						class="btn mb-4 rounded-full border-base-300 px-4 font-normal normal-case btn-outline btn-sm hover:border-primary hover:bg-base-200"
@@ -200,7 +347,9 @@
 					{#if tx.description}
 						<div class="mb-6 w-full text-left">
 							<label class="px-1 text-xs font-semibold text-base-content/50">Note</label>
-							<div class="w-full rounded-xl border border-base-200 bg-base-100 p-3 text-sm">
+							<div
+								class="w-full rounded-xl border border-base-content/20 bg-base-100 p-3 text-sm shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)]"
+							>
 								{tx.description}
 							</div>
 						</div>
@@ -217,13 +366,25 @@
 							<span class="text-xs font-medium">Change category</span>
 						</button>
 
-						<!-- Payment Request (Pill button) -->
+						<!-- Recurring / Subscription -->
 						<button
-							class="group flex h-10 items-center gap-2 rounded-full border border-base-300 bg-base-100 px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
-							onclick={handlePaymentRequest}
+							class="group flex h-10 items-center gap-2 rounded-full border {modalState.transaction
+								.recurring_transaction_id
+								? 'border-primary bg-primary/5 text-primary'
+								: 'border-base-300 bg-base-100'} px-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
+							onclick={handleToggleRecurring}
+							disabled={isSaving}
 						>
-							<CreditCard size={16} />
-							<span class="text-xs font-medium">Request</span>
+							{#if isSaving}
+								<Loader2 size={16} class="animate-spin" />
+							{:else}
+								<RefreshCw size={16} />
+							{/if}
+							<span class="text-xs font-medium"
+								>{modalState.transaction.recurring_transaction_id
+									? 'View Sub'
+									: 'Make recurring'}</span
+							>
 						</button>
 
 						<!-- More Actions Dropdown -->

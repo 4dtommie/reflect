@@ -46,25 +46,35 @@
 		label: string;
 		color: string;
 		gradient: string;
+		iconText: string;
 	}[] = [
-		{ id: 'all', label: 'All', color: 'bg-gray-500', gradient: 'from-gray-500 to-gray-600' },
+		{
+			id: 'all',
+			label: 'All',
+			color: 'bg-slate-500',
+			gradient: 'from-slate-500 to-slate-600',
+			iconText: 'text-slate-600'
+		},
 		{
 			id: 'grow-wealth',
 			label: 'Grow wealth',
-			color: 'bg-green-500',
-			gradient: 'from-green-500 to-emerald-600'
+			color: 'bg-emerald-600',
+			gradient: 'from-emerald-600 to-emerald-700',
+			iconText: 'text-emerald-700'
 		},
 		{
 			id: 'community',
 			label: 'Community',
-			color: 'bg-blue-500',
-			gradient: 'from-blue-500 to-blue-600'
+			color: 'bg-blue-600',
+			gradient: 'from-blue-600 to-indigo-600',
+			iconText: 'text-blue-700'
 		},
 		{
 			id: 'mindset',
 			label: 'Mindset',
-			color: 'bg-amber-500',
-			gradient: 'from-amber-500 to-orange-600'
+			color: 'bg-amber-600',
+			gradient: 'from-amber-600 to-orange-700',
+			iconText: 'text-amber-700'
 		}
 	];
 
@@ -232,7 +242,7 @@
 	const topPicks = actionCards
 		.filter((c) => c.id !== heroCard.id)
 		.sort((a, b) => (b.votes || 0) - (a.votes || 0))
-		.slice(0, 3);
+		.slice(0, 5);
 
 	// Active actions with action buttons
 	interface ActiveAction {
@@ -321,29 +331,63 @@
 	<title>Actions - Reflect</title>
 </svelte:head>
 
-<div class="space-y-6 px-4 py-4">
+<div class="space-y-8 py-4">
 	<!-- Header with Title + Stats -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-2">
 			<PageTitleWidget title="Take action" subtitle={randomSubtitle} class="h-full" />
 		</div>
 		<div
-			class="flex flex-col justify-center gap-4 rounded-3xl bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white shadow-xl"
+			class="flex flex-col justify-center gap-4 rounded-3xl border border-base-content/20 bg-base-100 p-6 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)] transition-all hover:shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-6px_12px_40px_-3px_rgba(105,125,155,0.25),6px_12px_40px_-3px_rgba(145,120,175,0.25)]"
 		>
 			<div class="text-center">
-				<p class="text-3xl font-bold">€{impactStats.totalSaved.toLocaleString()}</p>
-				<p class="text-sm opacity-80">Total saved</p>
+				<p class="text-3xl font-bold text-emerald-700">
+					€{impactStats.totalSaved.toLocaleString()}
+				</p>
+				<p class="text-sm opacity-60">Total saved</p>
 			</div>
-			<div class="h-px bg-white/20"></div>
-			<div class="flex items-center justify-center gap-6">
-				<div class="text-center">
-					<p class="text-2xl font-bold">{impactStats.completedCount}</p>
-					<p class="text-xs opacity-80">Completed</p>
+			<div class="h-px bg-base-300"></div>
+			<div class="flex items-center justify-center gap-8">
+				<div class="flex items-center gap-2">
+					<div
+						class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-base-300"
+					>
+						<svg
+							class="h-4 w-4 text-base-content/60"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<polyline points="9 12 12 15 16 10" />
+						</svg>
+					</div>
+					<div>
+						<p class="text-sm font-semibold">{impactStats.completedCount}</p>
+						<p class="text-xs text-base-content/60">Completed</p>
+					</div>
 				</div>
-				<div class="h-10 w-px bg-white/30"></div>
-				<div class="text-center">
-					<p class="text-2xl font-bold">{impactStats.activeCount}</p>
-					<p class="text-xs opacity-80">In progress</p>
+				<div class="h-10 w-px bg-base-300"></div>
+				<div class="flex items-center gap-2">
+					<div
+						class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-base-300"
+					>
+						<svg
+							class="h-4 w-4 text-base-content/60"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M12 6v6l3 3" />
+						</svg>
+					</div>
+					<div>
+						<p class="text-sm font-semibold">{impactStats.activeCount}</p>
+						<p class="text-xs text-base-content/60">In progress</p>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -353,17 +397,19 @@
 	<div class="h-px"></div>
 
 	<!-- Side-by-side layout: 50/50 with gutter -->
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1px_1fr]">
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1px_2fr]">
 		<!-- LEFT COLUMN: Your Actions -->
 		<div class="space-y-4">
-			<h3 class="text-sm font-semibold opacity-60">In progress</h3>
+			<h3 class="text-sm font-bold text-base-content/80">In progress</h3>
 
 			<!-- IN PROGRESS CARDS -->
 			{#if inProgressActions.length > 0}
 				<div class="space-y-3">
 					{#each inProgressActions as action (action.id)}
 						{@const cat = getCategoryColor(action.outcome)}
-						<div class="rounded-2xl bg-base-100 p-4 shadow-lg">
+						<div
+							class="rounded-2xl border border-base-content/20 bg-base-100 p-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)] transition-all hover:scale-[1.01] hover:shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-6px_12px_40px_-3px_rgba(105,125,155,0.25),6px_12px_40px_-3px_rgba(145,120,175,0.25)]"
+						>
 							<!-- Thick progress bar -->
 							<div class="mb-3 h-2 w-full overflow-hidden rounded-full bg-base-200">
 								<div
@@ -373,7 +419,7 @@
 							</div>
 
 							<div class="flex items-center gap-3">
-								<div class="{cat.color} flex-shrink-0 rounded-xl p-2 text-white">
+								<div class="bg-base-200 {cat.iconText} flex-shrink-0 rounded-xl p-2">
 									<action.icon size={18} />
 								</div>
 								<div class="min-w-0 flex-1">
@@ -400,10 +446,12 @@
 			<!-- COMPLETED - COMPACT TROPHY CASE -->
 			{#if completedActions.length > 0}
 				<div class="space-y-2">
-					<h3 class="flex items-center gap-2 text-sm font-semibold opacity-60">
+					<h3 class="flex items-center gap-2 text-sm font-bold text-base-content/80">
 						<Trophy size={14} /> Completed
 					</h3>
-					<div class="divide-y divide-base-200 rounded-xl bg-base-100/50">
+					<div
+						class="divide-y divide-base-content/10 rounded-xl border border-base-content/20 bg-base-100 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)]"
+					>
 						{#each completedActions as action (action.id)}
 							<div class="flex items-center gap-3 px-3 py-2">
 								<div class="text-success">
@@ -435,7 +483,7 @@
 		<div class="space-y-4">
 			<!-- Header row with title + category tabs -->
 			<div class="flex items-center justify-between gap-2">
-				<h3 class="text-sm font-semibold opacity-60">Top picks</h3>
+				<h3 class="text-sm font-bold text-base-content/80">Act now, pick a new goal</h3>
 				<div class="flex flex-wrap justify-end gap-1.5">
 					{#each outcomeCategories as cat}
 						<button
@@ -457,20 +505,21 @@
 
 			<!-- Cards Grid -->
 			<div>
-				<div class="grid grid-cols-2 gap-3">
+				<div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
 					<!-- Hero Card (first in grid when showing all) -->
 					{#if selectedCategory === 'all'}
 						{@const cat = getCategoryColor(heroCard.outcome)}
 						<div
-							class="group relative rounded-2xl bg-base-100 p-4 shadow-lg transition-all hover:shadow-xl"
+							class="group relative rounded-2xl border border-base-content/20 bg-base-100 p-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)] transition-all hover:scale-[1.01] hover:shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-6px_12px_40px_-3px_rgba(105,125,155,0.25),6px_12px_40px_-3px_rgba(145,120,175,0.25)]"
 						>
-							<div class="absolute top-0 left-0 h-1 w-full rounded-t-2xl {cat.color}"></div>
 							<span
 								class="absolute top-2 right-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700"
 								>✨ Recommended</span
 							>
 
-							<div class="{cat.color} mb-2 inline-flex rounded-lg p-2 text-white">
+							<div
+								class="border border-base-300 bg-base-200 {cat.iconText} mb-2 inline-flex rounded-lg p-2"
+							>
 								<heroCard.icon size={18} />
 							</div>
 
@@ -491,10 +540,8 @@
 						{@const cat = getCategoryColor(card.outcome)}
 						{@const hasVoted = votedCards.has(card.id)}
 						<div
-							class="group relative rounded-2xl bg-base-100 p-4 shadow-lg transition-all hover:shadow-xl"
+							class="group relative rounded-2xl border border-base-content/20 bg-base-100 p-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)] transition-all hover:scale-[1.01] hover:shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-6px_12px_40px_-3px_rgba(105,125,155,0.25),6px_12px_40px_-3px_rgba(145,120,175,0.25)]"
 						>
-							<div class="absolute top-0 left-0 h-1 w-full rounded-t-2xl {cat.color}"></div>
-
 							{#if card.isSocial}
 								<div class="absolute top-3 right-3 flex -space-x-1.5">
 									<div
@@ -511,7 +558,9 @@
 								</div>
 							{/if}
 
-							<div class="{cat.color} mb-2 inline-flex rounded-lg p-2 text-white">
+							<div
+								class="border border-base-300 bg-base-200 {cat.iconText} mb-2 inline-flex rounded-lg p-2"
+							>
 								<card.icon size={18} />
 							</div>
 

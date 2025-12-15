@@ -32,6 +32,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const uncategorizedOnly = url.searchParams.get('uncategorized') === 'true';
 		const recentOnly = url.searchParams.get('recent') === 'true';
 		const startDate = url.searchParams.get('startDate');
+		const search = url.searchParams.get('search');
 
 		// Build where clause
 		const whereClause: any = { user_id: userId };
@@ -46,6 +47,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 		if (startDate) {
 			whereClause.date = { gte: new Date(startDate) };
+		}
+		if (search) {
+			const amountSearch = parseFloat(search);
+			const orConditions: any[] = [
+				{ merchantName: { contains: search, mode: 'insensitive' } },
+				{ description: { contains: search, mode: 'insensitive' } },
+				{ cleaned_merchant_name: { contains: search, mode: 'insensitive' } },
+				{ merchants: { name: { contains: search, mode: 'insensitive' } } }
+			];
+
+			if (!isNaN(amountSearch)) {
+				orConditions.push({ amount: { equals: amountSearch } });
+			}
+
+			whereClause.OR = orConditions;
 		}
 
 		// Get total count (filtered)
@@ -66,6 +82,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						name: true,
 						color: true,
 						icon: true,
+						parent_id: true,
 						category_keywords: {
 							select: {
 								keyword: true
@@ -76,7 +93,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				merchants: {
 					select: {
 						id: true,
-						name: true
+						name: true,
+						is_potential_recurring: true
+					}
+				},
+				recurring_transaction: {
+					select: {
+						id: true,
+						name: true,
+						interval: true,
+						type: true
 					}
 				}
 			}
@@ -109,15 +135,25 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					name: t.categories.name,
 					color: t.categories.color,
 					icon: t.categories.icon,
+					parent_id: t.categories.parent_id,
 					keywords: t.categories.category_keywords?.map((kw: any) => kw.keyword) || []
 				} : null,
 				merchant: t.merchants ? {
 					id: t.merchants.id,
-					name: t.merchants.name // Cleaned merchant name from merchant record
+					name: t.merchants.name,
+					is_potential_recurring: t.merchants.is_potential_recurring // Cleaned merchant name from merchant record
 				} : (cleanedMerchantName ? {
 					id: null,
 					name: cleanedMerchantName // Fallback: cleaned merchant name if no merchant linked
-				} : null)
+				} : null),
+				recurring_transaction_id: t.recurring_transaction_id,
+				recurring_transaction_type: t.recurring_transaction?.type || null,
+				recurring_transaction: t.recurring_transaction ? {
+					id: t.recurring_transaction.id,
+					name: t.recurring_transaction.name,
+					interval: t.recurring_transaction.interval
+				} : null,
+				merchant_is_potential_recurring: t.merchants?.is_potential_recurring
 			};
 		});
 

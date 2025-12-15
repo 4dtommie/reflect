@@ -206,16 +206,7 @@
 							{href}
 							class="btn {isActive(href)
 								? 'btn-active-grey'
-								: 'btn-white-swoosh'} gap-2 px-6 shadow-sm"
-							style="border-top-left-radius: {i === 0
-								? '9999px'
-								: '8px'}; border-bottom-left-radius: {i === 0
-								? '9999px'
-								: '8px'}; border-top-right-radius: {i === navItems.length - 1
-								? '9999px'
-								: '8px'}; border-bottom-right-radius: {i === navItems.length - 1
-								? '9999px'
-								: '8px'};"
+								: 'btn-white-swoosh'} gap-2 rounded-full px-6 shadow-sm"
 						>
 							<Icon size={20} />
 							<span class="hidden font-medium md:inline">{label}</span>

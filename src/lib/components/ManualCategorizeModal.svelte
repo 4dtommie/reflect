@@ -88,7 +88,9 @@
 
 			<div class="flex flex-col space-y-6 p-6">
 				<!-- Transaction Details Card -->
-				<div class="rounded-lg border border-base-200 bg-base-100 p-4 shadow-sm">
+				<div
+					class="rounded-lg border border-base-content/20 bg-base-100 p-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(59,130,246,0.05),4px_6px_15px_-3px_rgba(147,51,234,0.05)]"
+				>
 					<div class="flex items-start justify-between">
 						<div>
 							<div class="text-sm opacity-70">

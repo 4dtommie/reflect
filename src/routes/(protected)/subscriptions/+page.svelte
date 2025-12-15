@@ -43,7 +43,7 @@
 	<title>Subscriptions - Reflect</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6 py-4">
 	<!-- Row 1: Title (2 cols) + Stats (1 col) -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<div class="lg:col-span-2">

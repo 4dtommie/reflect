@@ -240,14 +240,14 @@ body {
 }
 
 .btn-active-grey {
-	background-color: #93c5fd; /* blue-300 */
-	color: #1e3a8a; /* blue-900 */
+	background-color: #3b82f6; /* blue-500 */
+	color: #ffffff;
 	border: none;
 }
 
 [data-theme='night'] .btn-active-grey {
-	background-color: #3b82f6; /* blue-500 */
-	color: #eff6ff; /* blue-50 */
+	background-color: #60a5fa; /* blue-400 */
+	color: #1e3a8a; /* blue-900 */
 }
 
 .btn-white-swoosh {

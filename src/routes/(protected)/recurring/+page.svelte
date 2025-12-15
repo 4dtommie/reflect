@@ -3,14 +3,13 @@
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
 	import NetBalanceWidget from '$lib/components/NetBalanceWidget.svelte';
-	import UpcomingPaymentsWidget from '$lib/components/UpcomingPaymentsWidget.svelte';
+
 	import RecurringExpensesWidget from '$lib/components/RecurringExpensesWidget.svelte';
 	import RecurringItem from '$lib/components/RecurringItem.svelte';
 	import VariableSpendingItem from '$lib/components/VariableSpendingItem.svelte';
 	import Amount from '$lib/components/Amount.svelte';
-	import { Search, TrendingUp, ArrowRight, RefreshCw, Trash2, ShoppingCart } from 'lucide-svelte';
-	import { invalidateAll, replaceState } from '$app/navigation';
-	import { formatDateShort } from '$lib/utils/locale';
+	import { TrendingUp, RefreshCw, ShoppingCart } from 'lucide-svelte';
+	import { replaceState } from '$app/navigation';
 	import { detectionStore } from '$lib/stores/detectionStore';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
@@ -214,30 +213,13 @@
 			incomeSubscriptions.length > 0 ||
 			variableSpending.length > 0
 	);
-
-	async function deleteAllSubscriptions() {
-		if (!confirm('Are you sure you want to delete ALL subscriptions? This cannot be undone.'))
-			return;
-
-		try {
-			const res = await fetch('/api/recurring', { method: 'DELETE' });
-			if (res.ok) {
-				await invalidateAll();
-			} else {
-				alert('Failed to delete subscriptions');
-			}
-		} catch (e) {
-			console.error(e);
-			alert('Error deleting subscriptions');
-		}
-	}
 </script>
 
 <svelte:head>
 	<title>Spending patterns - Reflect</title>
 </svelte:head>
 
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6 py-4">
 	{#if !hasData}
 		<!-- Empty state -->
 		<DashboardWidget size="large">
@@ -251,7 +233,7 @@
 					patterns in your transactions.
 				</p>
 				<button onclick={() => detectionStore.runDetection()} class="btn btn-lg btn-primary">
-					<Search size={20} class="mr-2" />
+					<RefreshCw size={20} class="mr-2" />
 					Start detection
 				</button>
 			</div>
@@ -285,41 +267,51 @@
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 			<!-- Recurring income -->
 			<DashboardWidget size="small" enableHover={false}>
-				<div class="mb-3">
-					<div class="mb-1.5 flex items-center justify-between">
-						<div class="flex items-center gap-2">
-							<TrendingUp size={18} class="text-success" />
-							<h2 class="font-semibold">Income</h2>
+				<div class="flex h-full flex-col">
+					<div class="mb-3">
+						<div class="mb-1.5 flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<TrendingUp size={18} class="text-success" />
+								<h2 class="font-semibold">Income</h2>
+							</div>
+							<span class="text-lg font-bold text-success">
+								<Amount
+									value={incomeStats.monthlyTotal}
+									size="medium"
+									showDecimals={false}
+									isDebit={false}
+									locale="NL"
+								/>
+							</span>
 						</div>
-						<span class="text-lg font-bold text-success">
-							<Amount
-								value={incomeStats.monthlyTotal}
-								size="medium"
-								showDecimals={false}
-								isDebit={false}
-								locale="NL"
-							/>
-						</span>
+						<div class="h-0.5 w-full rounded-full bg-success"></div>
 					</div>
-					<div class="h-0.5 w-full rounded-full bg-success"></div>
-				</div>
 
-				{#if incomeSubscriptions.length > 0}
-					<div>
-						{#each incomeSubscriptions as subscription (subscription.id)}
-							<RecurringItem {subscription} isIncome={true} />
-						{/each}
+					<div class="flex-grow">
+						{#if incomeSubscriptions.length > 0}
+							{#each incomeSubscriptions as subscription (subscription.id)}
+								<RecurringItem {subscription} isIncome={true} />
+							{/each}
+						{:else}
+							<p class="py-4 text-center text-sm opacity-50">No income detected</p>
+						{/if}
 					</div>
-				{:else}
-					<p class="py-4 text-center text-sm opacity-50">No income detected</p>
-				{/if}
+
+					<button
+						onclick={() => detectionStore.runDetection()}
+						class="btn mt-auto w-full gap-2 text-xs opacity-70 btn-ghost btn-sm hover:opacity-100"
+					>
+						<RefreshCw size={14} />
+						Refresh patterns
+					</button>
+				</div>
 			</DashboardWidget>
 
 			<!-- Recurring expenses -->
 			<RecurringExpensesWidget
 				{subscriptions}
 				monthlyTotal={expenseStats.monthlyTotal}
-				actionLabel="View all subscriptions"
+				actionLabel="Subscription detail"
 				actionHref="/subscriptions"
 			/>
 
@@ -356,42 +348,6 @@
 				{:else}
 					<p class="py-4 text-center text-sm opacity-50">No patterns saved</p>
 				{/if}
-			</DashboardWidget>
-		</div>
-
-		<!-- Row 3: Upcoming, Actions (2 cols) -->
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<!-- Upcoming payments -->
-			<UpcomingPaymentsWidget {subscriptions} />
-
-			<!-- Actions -->
-			<DashboardWidget size="small" title="Actions">
-				<div class="flex h-full flex-col justify-center gap-3">
-					<button
-						onclick={() => detectionStore.runDetection()}
-						class="group btn justify-between btn-primary"
-					>
-						<span class="flex items-center gap-2">
-							<Search size={18} />
-							Detect patterns
-						</span>
-						<ArrowRight size={16} class="transition-transform group-hover:translate-x-1" />
-					</button>
-
-					<button
-						class="group btn justify-between btn-outline btn-error"
-						onclick={deleteAllSubscriptions}
-					>
-						<span class="flex items-center gap-2">
-							<Trash2 size={18} />
-							Delete all
-						</span>
-					</button>
-
-					<p class="text-center text-xs opacity-50">
-						Last updated: {formatDateShort(data.subscriptions?.[0]?.updated_at || Date.now())}
-					</p>
-				</div>
 			</DashboardWidget>
 		</div>
 	{/if}

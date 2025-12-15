@@ -430,10 +430,10 @@
 		</div>
 
 		<!-- Input area -->
-		<div class="mt-1 flex gap-2">
+		<div class="mt-4 flex gap-2">
 			<input
 				type="text"
-				class="input-bordered input input-sm flex-1 text-sm"
+				class="chat-input input-bordered input input-sm flex-1 text-sm"
 				placeholder="Ask about your finances..."
 				bind:value={inputValue}
 				onkeydown={handleKeydown}
@@ -514,5 +514,12 @@
 	}
 	:global([data-theme='night'] .chat-action-btn:hover) {
 		background-color: oklch(var(--bc) / 0.2);
+	}
+
+	:global(.chat-input) {
+		background-color: white;
+	}
+	:global([data-theme='night'] .chat-input) {
+		background-color: oklch(var(--b2));
 	}
 </style>

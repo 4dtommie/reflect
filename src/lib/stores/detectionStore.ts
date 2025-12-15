@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { invalidateAll } from '$app/navigation';
+import { invalidateAll, goto } from '$app/navigation';
 
 interface DetectionState {
     showModal: boolean;
@@ -71,6 +71,7 @@ function createDetectionStore() {
                 await new Promise(resolve => setTimeout(resolve, 800));
                 set(initialState);
                 await invalidateAll();
+                await goto('/recurring');
 
             } catch (e) {
                 console.error('Detection error:', e);

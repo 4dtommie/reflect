@@ -176,5 +176,113 @@ export async function getInsightData(userId: number): Promise<InsightData> {
     return collectInsightData(userId);
 }
 
+// =============================================================================
+// TRANSACTION-LEVEL INSIGHTS
+// =============================================================================
+
+import { collectTransactionContext } from './insightDataCollector';
+import {
+    evaluateTransactionTriggers,
+    type TransactionForInsight,
+    type TransactionInsight
+} from './triggerEvaluators';
+
+/**
+ * Evaluate transaction insights for a list of transactions
+ * Returns a Map of transactionId -> insights[]
+ */
+export async function evaluateTransactionInsights(
+    userId: number,
+    transactions: TransactionForInsight[]
+): Promise<Map<number, TransactionInsight[]>> {
+    if (transactions.length === 0) {
+        return new Map();
+    }
+
+    // Fetch active transaction insights
+    const definitions = await db.insightDefinition.findMany({
+        where: {
+            is_active: true,
+            contexts: { has: 'transaction_row' }
+        },
+        orderBy: { priority: 'desc' }
+    });
+
+    // Collect context once (batched queries)
+    const context = await collectTransactionContext(userId, transactions);
+
+    // Evaluate each transaction against all triggers
+    const results = new Map<number, TransactionInsight[]>();
+
+    // Track months where we've already shown a "round number" insight
+    const roundNumberMonths = new Set<string>();
+    // Track merchants where we've already shown a "comeback" insight
+    const comebackMerchants = new Set<number>();
+
+    // Sort transactions by date (oldest first) so comeback insight goes to the first transaction
+    const sortedTransactions = [...transactions].sort((a, b) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    for (const tx of sortedTransactions) {
+        let insights = evaluateTransactionTriggers(tx, context, transactions, definitions);
+
+        // Filter 'tx_round_number' to 1 per month, and only if no other insights on this tx
+        insights = insights.filter(insight => {
+            if (insight.id.startsWith('tx_round_number')) {
+                // Don't show if this transaction has other insights (round number is a filler)
+                const otherInsights = insights.filter(i => !i.id.startsWith('tx_round_number'));
+                if (otherInsights.length > 0) {
+                    return false;
+                }
+                // Only 1 per month
+                const date = new Date(tx.date);
+                const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+                if (roundNumberMonths.has(monthKey)) {
+                    return false;
+                }
+                roundNumberMonths.add(monthKey);
+            }
+            return true;
+        });
+
+        // Filter 'merchant_comeback' to 1 per merchant
+        insights = insights.filter(insight => {
+            if (insight.id.startsWith('tx_merchant_comeback') && tx.merchant_id) {
+                if (comebackMerchants.has(tx.merchant_id)) {
+                    return false;
+                }
+                comebackMerchants.add(tx.merchant_id);
+            }
+            return true;
+        });
+
+        if (insights.length > 0) {
+            results.set(tx.id, insights);
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Get transaction insights as a flat array (for simpler consumption)
+ */
+export async function getTransactionInsightsFlat(
+    userId: number,
+    transactions: TransactionForInsight[]
+): Promise<TransactionInsight[]> {
+    const map = await evaluateTransactionInsights(userId, transactions);
+    const all: TransactionInsight[] = [];
+
+    for (const insights of map.values()) {
+        all.push(...insights);
+    }
+
+    // Sort by priority (highest first)
+    return all.sort((a, b) => b.priority - a.priority);
+}
+
 // Re-export types
 export type { InsightData } from './insightDataCollector';
+export type { TransactionForInsight, TransactionInsight } from './triggerEvaluators';

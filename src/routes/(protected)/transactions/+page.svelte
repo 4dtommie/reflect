@@ -15,18 +15,47 @@
 		Filler
 	} from 'chart.js';
 	import { browser } from '$app/environment';
-	import { HelpCircle, Trash2 } from 'lucide-svelte';
+	import {
+		HelpCircle,
+		Trash2,
+		AlertTriangle,
+		Star,
+		TrendingUp,
+		ArrowDownLeft,
+		Lightbulb,
+		Search,
+		X,
+		RefreshCw
+	} from 'lucide-svelte';
 	import * as Icons from 'lucide-svelte';
 	import { invalidateAll } from '$app/navigation';
 	import UploadCTAWidget from '$lib/components/UploadCTAWidget.svelte';
 	import TransactionStatsWidget from '$lib/components/TransactionStatsWidget.svelte';
 	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 	import PageTitleWidget from '$lib/components/PageTitleWidget.svelte';
+	import RecurringDetailsModal from '$lib/components/RecurringDetailsModal.svelte';
+	import CreateSubscriptionModal from '$lib/components/CreateSubscriptionModal.svelte';
 	import Amount from '$lib/components/Amount.svelte';
 	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
+	import TransactionInsightCard from '$lib/components/TransactionInsightCard.svelte';
 	import { transactionModalStore } from '$lib/stores/transactionModalStore';
+	import { createSubscriptionModalStore } from '$lib/stores/createSubscriptionModalStore';
+	import { recurringModalStore } from '$lib/stores/recurringModalStore';
+	import { page } from '$app/stores';
 	import chartColors from '$lib/config/chartColors';
 	import { identifyInternalTransfers } from '$lib/utils/transactionAnalysis';
+	import CategorySelector from '$lib/components/CategorySelector.svelte';
+
+	// Witty random subtitles for the page title
+	const wittySubtitles = [
+		'Where your money went (and why) 💸',
+		'Every euro tells a story',
+		'The financial paper trail',
+		'Proof that you did buy that 🍕',
+		'Your spending, unfiltered',
+		"The receipts don't lie",
+		'Money in, money out, mystery solved'
+	];
 
 	// Register Chart.js components
 	Chart.register(
@@ -71,13 +100,109 @@
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 
+	// Transaction insights
+	type TransactionInsight = {
+		id: string;
+		transactionId: number;
+		category: 'urgent' | 'action' | 'insight' | 'celebration' | 'roast';
+		message: string;
+		icon?: string;
+		priority: number;
+		relatedTransactionId?: number;
+		actionLabel?: string;
+		actionHref?: string;
+	};
+	let transactionInsights = $state<Record<number, TransactionInsight[]>>({});
+	let insightsLoading = $state(false);
+	let hoveredTransactionId = $state<number | null>(null);
+	let showFilters = $state(false);
+	let debitCreditFilter = $state<'all' | 'debit' | 'credit'>('all');
+
 	// Filters - initialize from URL param if provided
-	let selectedCategory = $state<string>(data.categoryParam ?? 'all');
-	let selectedAccount = $state<string>('all');
-	let showUncategorizedOnly = $state(false);
+	let selectedCategoryId = $state<number | null>(
+		data.categoryParam ? Number(data.categoryParam) : null
+	);
+	let selectedAccounts = $state<string[]>(data.bankAccounts?.map((a) => a.iban) || []);
+	let searchQuery = $state<string>('');
 
 	// Identify internal transfers (connected payments)
 	const internalTransferIds = $derived(identifyInternalTransfers(data.transactions));
+
+	// Fetch transaction insights when transactions are loaded
+	$effect(() => {
+		if (browser && data.transactions.length > 0 && Object.keys(transactionInsights).length === 0) {
+			fetchTransactionInsights();
+		}
+	});
+
+	async function fetchTransactionInsights() {
+		if (insightsLoading || data.transactions.length === 0) return;
+		insightsLoading = true;
+		try {
+			const response = await fetch('/api/transaction-insights', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					transactions: data.transactions.map((t) => ({
+						id: t.id,
+						date: t.date,
+						amount: t.amount,
+						merchantName: t.merchantName,
+						cleaned_merchant_name: t.cleaned_merchant_name || t.merchant?.name,
+						merchant_id: t.merchant_id,
+						is_debit: t.is_debit,
+						type: t.type,
+						category_id: t.category_id,
+						category_name: t.category?.name,
+						recurring_transaction_id: t.recurring_transaction_id,
+						recurring_transaction_type: t.recurring_transaction_type,
+						merchant_is_potential_recurring: t.merchant_is_potential_recurring
+					}))
+				})
+			});
+			if (response.ok) {
+				const result = await response.json();
+				transactionInsights = result.insightsByTransaction || {};
+				console.log(`📊 Loaded ${result.count || 0} transaction insights`);
+			}
+		} catch (err) {
+			console.warn('Failed to load transaction insights:', err);
+		} finally {
+			insightsLoading = false;
+		}
+	}
+
+	function getInsightIcon(iconName?: string) {
+		switch (iconName) {
+			case 'AlertTriangle':
+				return AlertTriangle;
+			case 'Star':
+				return Star;
+			case 'TrendingUp':
+				return TrendingUp;
+			case 'ArrowDownLeft':
+				return ArrowDownLeft;
+			default:
+				return null;
+		}
+	}
+
+	function getInsightColor(category: string): string {
+		switch (category) {
+			case 'urgent':
+				return 'badge-error';
+			case 'action':
+				return 'badge-warning';
+			case 'insight':
+				return 'badge-info';
+			case 'celebration':
+				return 'badge-success';
+			case 'roast':
+				return 'badge-secondary';
+			default:
+				return 'badge-ghost';
+		}
+	}
 
 	// Calculate active categories with counts
 	const activeCategories = $derived(() => {
@@ -150,7 +275,27 @@
 		}
 	}
 
-	function handleTransactionClick(transaction: any) {
+	async function handleTransactionClick(transaction: any) {
+		// If recurring, open the recurring modal directly
+		if (transaction.recurring_transaction_id) {
+			try {
+				const res = await fetch('/api/recurring');
+				if (res.ok) {
+					const data = await res.json();
+					const recurring = data.subscriptions.find(
+						(s: any) => s.id === transaction.recurring_transaction_id
+					);
+					if (recurring) {
+						recurringModalStore.open(recurring);
+						return;
+					}
+				}
+			} catch (e) {
+				console.error('Failed to fetch recurring details:', e);
+			}
+		}
+
+		// Otherwise, open the transaction details modal
 		transactionModalStore.open({
 			id: transaction.id,
 			date: transaction.date,
@@ -166,19 +311,68 @@
 		});
 	}
 
+	function handleInsightDismiss(transactionId: number, insightId: string) {
+		if (transactionInsights[transactionId]) {
+			transactionInsights[transactionId] = transactionInsights[transactionId].filter(
+				(i) => i.id !== insightId
+			);
+		}
+	}
+
+	function handleInsightAction(action: { type: string; transactionId: number }) {
+		if (action.type === 'add_sub') {
+			const transaction = data.transactions.find((t) => t.id === action.transactionId);
+			if (transaction) {
+				createSubscriptionModalStore.open({
+					id: transaction.id,
+					date: transaction.date,
+					merchantName: transaction.merchantName ?? transaction.merchant?.name,
+					amount: transaction.amount,
+					description: transaction.description ?? '',
+					is_debit: transaction.is_debit ?? true,
+					category: transaction.category ?? null,
+					merchant: transaction.merchant ?? null,
+					type: transaction.type,
+					is_recurring: transaction.is_recurring,
+					recurring_transaction: transaction.recurring_transaction,
+					recurring_transaction_id: transaction.recurring_transaction_id,
+					cleaned_merchant_name: transaction.cleaned_merchant_name
+				});
+			}
+		}
+	}
+
 	// Group transactions by day
 	const groupedTransactions = $derived(() => {
 		const dayGroups: Map<string, typeof data.transactions> = new Map();
 
 		const filtered = data.transactions.filter((t) => {
-			if (showUncategorizedOnly) {
-				return !t.category || t.category.name === 'Niet gecategoriseerd';
+			// Search filter
+			if (searchQuery.trim()) {
+				const query = searchQuery.toLowerCase();
+				const merchantName = (t.merchant?.name ?? t.merchantName ?? '').toLowerCase();
+				const description = (t.description ?? '').toLowerCase();
+				const categoryName = (t.category?.name ?? '').toLowerCase();
+				if (
+					!merchantName.includes(query) &&
+					!description.includes(query) &&
+					!categoryName.includes(query)
+				) {
+					return false;
+				}
 			}
-			if (selectedCategory !== 'all') {
-				return String(t.category?.id) === selectedCategory;
+			if (selectedCategoryId !== null) {
+				// Match the selected category OR any of its children
+				const categoryMatch =
+					t.category?.id === selectedCategoryId || t.category?.parent_id === selectedCategoryId;
+				if (!categoryMatch) return false;
 			}
-			if (selectedAccount !== 'all') {
-				return t.iban === selectedAccount;
+			if (selectedAccounts.length > 0 && !selectedAccounts.includes(t.iban)) return false;
+
+			// Debit/Credit filter
+			if (debitCreditFilter !== 'all') {
+				if (debitCreditFilter === 'debit' && !t.is_debit) return false;
+				if (debitCreditFilter === 'credit' && t.is_debit) return false;
 			}
 			return true;
 		});
@@ -210,12 +404,13 @@
 			// Exclude internal transfers from stats
 			if (internalTransferIds.has(t.id)) return false;
 
-			if (showUncategorizedOnly) {
-				return !t.category || t.category.name === 'Niet gecategoriseerd';
+			if (selectedCategoryId !== null) {
+				const categoryMatch =
+					t.category?.id === selectedCategoryId || t.category?.parent_id === selectedCategoryId;
+				if (!categoryMatch) return false;
 			}
 
-			if (selectedCategory !== 'all' && String(t.category?.id) !== selectedCategory) return false;
-			if (selectedAccount !== 'all' && t.iban !== selectedAccount) return false;
+			if (selectedAccounts.length > 0 && !selectedAccounts.includes(t.iban)) return false;
 			return true;
 		});
 
@@ -724,117 +919,273 @@
 	});
 </script>
 
-<div class="grid grid-cols-1 gap-8 p-4 md:grid-cols-2 lg:grid-cols-3">
-	<!-- Two-column layout: Stats on left, content on right -->
-	<div class="col-span-full grid grid-cols-1 gap-8 lg:grid-cols-3">
-		<!-- Left Column: Stats Widgets -->
-		<div class="flex flex-col gap-8">
-			<!-- Title Widget -->
-			<PageTitleWidget title="Transactions" compact={true} />
-			{#if data.stats}
-				<TransactionStatsWidget
-					totalTransactions={data.stats.totalTransactions}
-					uncategorizedCount={data.stats.totalTransactions - data.stats.categorizedCount}
-					categorizedPercentage={data.stats.categorizedPercentage}
-					topUncategorizedMerchants={data.stats.topUncategorizedMerchants}
-				/>
-			{/if}
-			<UploadCTAWidget hasTransactions={data.stats?.totalTransactions > 0} />
-		</div>
+<div class="grid grid-cols-1 gap-8 py-4 lg:grid-cols-6 lg:pr-4">
+	<!-- Header Row: Title (4 cols) + Stats (2 cols) -->
+	<div class="col-span-6 grid grid-cols-6 gap-8">
+		<PageTitleWidget
+			title="Transactions"
+			subtitle={wittySubtitles[Math.floor(Math.random() * wittySubtitles.length)]}
+			class="col-span-4"
+		/>
 
-		<!-- Right Column: Chart, and Transactions -->
-		<div class="flex flex-col gap-8 lg:col-span-2">
-			<!-- Chart Widget -->
-			{#if chartData() && chartData()!.labels.length > 0}
-				{@const chartDataValue = chartData()!}
-				<DashboardWidget size="wide" title="Monthly overview">
-					<div class="flex h-full flex-col justify-center">
-						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-						<div
-							class="chart-container relative w-full rounded {isDragging ? 'grabbing' : 'grab'}"
-							bind:this={chartContainer}
-							role="img"
-							tabindex="0"
-							aria-label="Interactive transaction chart - drag to pan, scroll to zoom"
-							style="height: 220px; min-height: 220px; width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden; position: relative; cursor: {isDragging
-								? 'grabbing'
-								: 'grab'};"
-							onmousedown={() => (isDragging = true)}
-							onmouseup={() => (isDragging = false)}
-							onmouseleave={() => (isDragging = false)}
+		<!-- Stats Widget -->
+		<DashboardWidget
+			size="auto"
+			enableHover={true}
+			enableScale={false}
+			class="col-span-2"
+			bodyClass="!p-4"
+		>
+			<div class="flex h-full flex-col justify-center gap-4">
+				<div class="text-center">
+					<p class="text-3xl font-bold">{data.stats?.totalTransactions || 0}</p>
+					<p class="text-sm opacity-50">Total transactions</p>
+				</div>
+				<div class="h-px bg-base-300"></div>
+				<div class="flex items-center justify-center gap-8">
+					<div class="text-center">
+						<p class="text-lg font-bold">
+							{transactionsByMonth().reduce(
+								(acc, month) => acc + month.days.reduce((dAcc, day) => dAcc + day[1].length, 0),
+								0
+							)}
+						</p>
+						<p class="text-xs opacity-50">Shown</p>
+					</div>
+					<div class="h-8 w-px bg-base-300"></div>
+					<div class="text-center">
+						<p class="text-lg font-bold text-warning">
+							{(data.stats?.totalTransactions || 0) - (data.stats?.categorizedCount || 0)}
+						</p>
+						<p class="text-xs opacity-50">Uncategorized</p>
+					</div>
+				</div>
+				<a
+					href="/upload-transactions"
+					class="btn w-full gap-2 bg-base-200/30 font-medium text-base-content/50 btn-ghost btn-sm hover:bg-base-200 hover:text-base-content"
+				>
+					<Icons.Plus size={14} />
+					Add transactions
+				</a>
+			</div>
+		</DashboardWidget>
+	</div>
+
+	<!-- SIDEBAR (2/6 Column = 33%) -->
+	<!-- Compact widgets -->
+	<div class="col-span-2 flex flex-col gap-4">
+		<!-- Filters Widget -->
+		<DashboardWidget
+			size="auto"
+			enableHover={true}
+			enableScale={false}
+			title="Filters"
+			bodyClass="!p-4"
+		>
+			<div class="flex flex-col gap-3">
+				<!-- Row 1: Search -->
+				<label
+					class="input-bordered input flex h-10 w-full items-center gap-2 rounded-xl border-base-content/30 bg-base-100 pl-3 focus-within:border-primary"
+				>
+					<Search class="opacity-40" size={16} />
+					<input
+						type="text"
+						class="grow text-sm"
+						placeholder="Search for name or description"
+						bind:value={searchQuery}
+					/>
+					{#if searchQuery}
+						<button
+							class="btn btn-circle opacity-40 btn-ghost btn-xs hover:opacity-100"
+							onclick={() => (searchQuery = '')}
 						>
-							<!-- Hint text -->
-							{#if showHint && chartDataValue.labels.length > 9}
-								<div
-									class="absolute top-2 left-1/2 z-20 flex -translate-x-1/2 transform items-center gap-2 rounded-full bg-base-300/90 px-3 py-1 text-xs"
-								>
-									<span>Drag to explore</span>
-									<button
-										class="text-base-content/60 hover:text-base-content"
-										onclick={() => (showHint = false)}
-										aria-label="Dismiss hint"
-									>
-										×
-									</button>
-								</div>
-							{/if}
+							<X size={14} />
+						</button>
+					{/if}
+				</label>
 
-							<canvas
-								bind:this={chartCanvas}
-								style="display: block; width: 100% !important; height: 100% !important; max-width: 100%; box-sizing: border-box;"
-							></canvas>
+				<!-- Row 2: Category (full width) -->
+				<CategorySelector
+					categories={data.categories}
+					bind:selectedCategoryId
+					placeholder="Category"
+					size="sm"
+				/>
+
+				<!-- Row 3: Debit/Credit toggle buttons -->
+				<div class="flex gap-1 rounded-full border border-base-content/10 bg-base-200/50 p-1">
+					<button
+						class="btn h-9 flex-1 rounded-full border text-xs {debitCreditFilter === 'all'
+							? 'border-base-content/20 bg-base-100'
+							: 'border-transparent btn-ghost hover:bg-base-200'}"
+						onclick={() => (debitCreditFilter = 'all')}
+					>
+						All
+					</button>
+					<button
+						class="btn h-9 flex-1 gap-1 rounded-full border text-xs {debitCreditFilter === 'debit'
+							? 'border-base-content/20 bg-base-100'
+							: 'border-transparent btn-ghost hover:bg-base-200'}"
+						onclick={() => (debitCreditFilter = 'debit')}
+					>
+						<Icons.ArrowUpRight size={14} />
+						Outgoing
+					</button>
+					<button
+						class="btn h-9 flex-1 gap-1 rounded-full border text-xs {debitCreditFilter === 'credit'
+							? 'border-base-content/20 bg-base-100'
+							: 'border-transparent btn-ghost hover:bg-base-200'}"
+						onclick={() => (debitCreditFilter = 'credit')}
+					>
+						<Icons.ArrowDownLeft size={14} />
+						Incoming
+					</button>
+				</div>
+
+				<!-- Row 4: Account Checkboxes -->
+				{#if data.bankAccounts && data.bankAccounts.length > 0}
+					<div class="flex flex-col gap-2 border-t border-base-content/10 pt-1">
+						<span class="text-xs font-bold tracking-wider uppercase opacity-50">Accounts</span>
+						<div class="flex flex-col gap-1">
+							{#each data.bankAccounts as account}
+								<label
+									class="-mx-2 label cursor-pointer justify-start gap-3 rounded-lg px-2 py-1 hover:bg-base-200/50"
+								>
+									<input
+										type="checkbox"
+										class="checkbox rounded-md checkbox-sm checkbox-primary"
+										bind:group={selectedAccounts}
+										value={account.iban}
+									/>
+									<span class="label-text text-sm font-medium">{account.name || account.iban}</span>
+								</label>
+							{/each}
 						</div>
 					</div>
-				</DashboardWidget>
-			{/if}
+				{/if}
 
-			<!-- Transaction List Snippet -->
-			{#snippet transactionList(days: any[])}
-				<div class="flex flex-col gap-6 border-l-2 border-base-200/50 pl-2">
-					{#each days as [dayKey, transactions]}
-						<!-- Day section -->
-						<div class="flex flex-col overflow-hidden rounded-lg">
-							<!-- Date header -->
-							<div class="py-2 pt-0">
-								<span class="text-sm font-medium opacity-70">
-									{formatDate(transactions[0].date)}
-								</span>
-							</div>
-							<!-- Transactions list -->
-							<div class="divide-y divide-base-200">
-								{#each transactions as transaction}
-									<button
-										class="-mx-2 flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-base-100 {internalTransferIds.has(
-											transaction.id
-										)
-											? 'opacity-50'
-											: ''}"
-										onclick={() => handleTransactionClick(transaction)}
-										title={internalTransferIds.has(transaction.id)
-											? 'Internal transfer'
-											: undefined}
-									>
-										<div class="flex min-w-0 flex-1 items-center gap-3">
-											<div class="flex-shrink-0">
-												<MerchantLogo
-													merchantName={transaction.merchant?.name ?? transaction.merchantName}
-													categoryIcon={transaction.category?.icon}
-													categoryColor={transaction.category?.color}
-													size="sm"
-												/>
-											</div>
+				<!-- Clear all filters button (at bottom) -->
+				{#if searchQuery || selectedCategoryId !== null || (data.bankAccounts && selectedAccounts.length !== data.bankAccounts.length) || debitCreditFilter !== 'all'}
+					<button
+						class="btn mt-2 w-full text-error btn-ghost btn-sm"
+						onclick={() => {
+							searchQuery = '';
+							selectedCategoryId = null;
+							selectedAccounts = data.bankAccounts?.map((a) => a.iban) || [];
+							debitCreditFilter = 'all';
+						}}
+					>
+						Clear all filters
+					</button>
+				{/if}
+			</div>
+		</DashboardWidget>
+	</div>
+
+	<!-- MAIN CONTENT Wrapper (3/5 Columns = 60%) -->
+	<div class="col-span-4">
+		<!-- INNER GRID: 3 Columns. 
+			     Transactions = 2/3 of this wrapper (40% of total width)
+				 Insights     = 1/3 of this wrapper (20% of total width) 
+			-->
+		<div class="relative grid grid-cols-3 items-start gap-x-8 gap-y-0 overflow-hidden">
+			<!-- Gradient background for insights column -->
+			<div
+				class="pointer-events-none absolute top-24 right-0 -bottom-24 w-1/3 opacity-40"
+				style="background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.15) 0%, rgba(96, 165, 250, 0.08) 50%, transparent 80%);"
+			></div>
+			{#if data.transactions.length === 0}
+				<DashboardWidget size="auto" enableHover={false} class="col-span-3">
+					<div class="py-8 text-center opacity-70">
+						<p>No transactions found.</p>
+					</div>
+				</DashboardWidget>
+			{:else if transactionsByMonth().length === 0}
+				<DashboardWidget size="auto" enableHover={false} class="col-span-3">
+					<div class="py-8 text-center opacity-70">
+						<p>No transactions match your filters.</p>
+					</div>
+				</DashboardWidget>
+			{:else}
+				{#each transactionsByMonth() as monthGroup}
+					<!-- MONTH HEADER -->
+					<!-- Spans 2 columns (Transactions area) -->
+					<div
+						class="col-span-2 mt-6 rounded-t-3xl border-x border-t border-base-content/20 bg-base-100 p-6 pb-2 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)] transition-all duration-300 first:mt-0 hover:shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-6px_12px_40px_-3px_rgba(105,125,155,0.25),6px_12px_40px_-3px_rgba(145,120,175,0.25)]"
+					>
+						<h3 class="text-lg font-bold">
+							{monthGroup.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+						</h3>
+					</div>
+					<div class="col-span-1 mt-6 first:mt-0"></div>
+					<!-- Spacer for insights area -->
+
+					{#each monthGroup.days as [dayKey, transactions], dayIndex}
+						<!-- DATE HEADER -->
+						<div class="col-span-2 border-x border-base-content/20 bg-base-100 px-6 py-2">
+							<span class="text-xs font-semibold opacity-70">
+								{formatDate(transactions[0].date)}
+							</span>
+						</div>
+						<div class="col-span-1"></div>
+						<!-- Spacer -->
+
+						{#each transactions as transaction, txIndex}
+							{@const insights = transactionInsights[transaction.id] || []}
+							{@const hasInsight = insights.length > 0}
+							{@const isHovered = hoveredTransactionId === transaction.id}
+
+							<!-- Determine if this is the very last transaction of the month to close the card -->
+							{@const isLastOfDay = txIndex === transactions.length - 1}
+							{@const isLastOfMonth = dayIndex === monthGroup.days.length - 1 && isLastOfDay}
+
+							<!-- TRANSACTION ROW -->
+							<!-- Spans 2 columns -->
+							<div
+								class="group relative col-span-2 border-x border-base-content/20 bg-base-100 px-4 {isLastOfMonth
+									? 'rounded-b-3xl border-b pb-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.05),-4px_6px_15px_-3px_rgba(105,125,155,0.05),4px_6px_15px_-3px_rgba(145,120,175,0.05)]'
+									: ''}"
+							>
+								<button
+									class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 text-left transition-all duration-200
+										{isHovered ? 'bg-base-200/50' : 'hover:bg-base-100'}
+										{internalTransferIds.has(transaction.id) ? 'opacity-50' : ''}"
+									onclick={() => handleTransactionClick(transaction)}
+									onmouseenter={() => (hoveredTransactionId = transaction.id)}
+									onmouseleave={() => (hoveredTransactionId = null)}
+								>
+									<!-- Content -->
+									<div class="flex min-w-0 flex-1 items-center gap-4">
+										<MerchantLogo
+											merchantName={transaction.merchant?.name ?? transaction.merchantName}
+											categoryIcon={transaction.category?.icon}
+											categoryColor={transaction.category?.color}
+											size="xs"
+										/>
+										<div class="flex min-w-0 flex-col">
 											<span
-												class="truncate text-sm font-normal {internalTransferIds.has(transaction.id)
+												class="truncate text-sm font-medium {internalTransferIds.has(transaction.id)
 													? 'line-through'
 													: ''}"
-												title={transaction.merchantName}
 											>
 												{transaction.merchant?.name ?? transaction.merchantName}
 											</span>
+											{#if transaction.category?.name}
+												<span class="truncate text-xs opacity-50">{transaction.category.name}</span>
+											{/if}
 										</div>
+									</div>
+									<div class="flex items-center gap-2">
+										{#if transaction.recurring_transaction_id}
+											<span
+												class="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary"
+												title="Subscription"
+											>
+												<RefreshCw size={10} />
+											</span>
+										{/if}
 										<div
-											class="flex-shrink-0 {internalTransferIds.has(transaction.id)
+											class="text-sm font-medium {internalTransferIds.has(transaction.id)
 												? 'line-through'
 												: ''}"
 										>
@@ -846,176 +1197,107 @@
 												hideEuro={true}
 											/>
 										</div>
-									</button>
-								{/each}
+									</div>
+								</button>
 							</div>
-						</div>
+
+							<!-- INSIGHT BADGE -->
+							<!-- Spans 1 column -->
+							<div class="relative col-span-1 flex h-full min-h-[50px] items-center pl-4">
+								{#if hasInsight}
+									<!-- Connector Line -->
+									<div
+										class="pointer-events-none absolute top-1/2 -left-4 h-[2px] w-8 -translate-y-1/2"
+									>
+										<svg
+											width="40"
+											height="40"
+											class="absolute top-1/2 right-0 -translate-y-1/2 overflow-visible"
+										>
+											<path
+												d="M -10,20 C 10,20 10,20 20,20"
+												fill="none"
+												stroke={isHovered ? 'oklch(var(--p))' : 'currentColor'}
+												stroke-width={isHovered ? 2 : 1}
+												class="transition-colors duration-300 {isHovered
+													? 'opacity-100'
+													: 'opacity-20'}"
+											/>
+										</svg>
+									</div>
+
+									<TransactionInsightCard
+										insight={insights[0]}
+										isHighlighted={isHovered}
+										onHover={(id) => (hoveredTransactionId = id)}
+										onDismiss={(id) => handleInsightDismiss(transaction.id, id)}
+										onAction={handleInsightAction}
+									/>
+								{/if}
+							</div>
+						{/each}
 					{/each}
-				</div>
-			{/snippet}
-
-			<!-- First Widget: Filters + First Month -->
-			<DashboardWidget size="wide" enableHover={false}>
-				<!-- Header with Filters -->
-				<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-					<h2 class="card-title">Transactions</h2>
-
-					{#if data.transactions.length > 0}
-						<div class="flex items-center gap-4">
-							<select
-								class="select-bordered select w-48 select-sm"
-								bind:value={selectedCategory}
-								disabled={showUncategorizedOnly}
-							>
-								<option value="all">All Categories</option>
-								{#each activeCategories() as category}
-									<option value={String(category.id)}>{category.name} ({category.count})</option>
-								{/each}
-							</select>
-
-							{#if data.bankAccounts && data.bankAccounts.length > 0}
-								<div class="join">
-									<select
-										class="select-bordered select join-item w-48 select-sm"
-										bind:value={selectedAccount}
-										disabled={showUncategorizedOnly}
-									>
-										<option value="all">All Accounts</option>
-										{#each data.bankAccounts as account}
-											<option value={account.iban}>{account.name || account.iban}</option>
-										{/each}
-									</select>
-									<a
-										href="/accounts"
-										class="btn join-item btn-square border-base-300 bg-base-100 btn-sm"
-										title="Manage Accounts"
-									>
-										<Icons.Settings size={16} />
-									</a>
-								</div>
-							{/if}
-
-							<label
-								class="label cursor-pointer gap-2 rounded-lg border border-base-200 px-2 py-1 transition-colors hover:bg-base-200/50"
-							>
-								<span class="label-text text-sm">Uncategorized only</span>
-								<input
-									type="checkbox"
-									class="toggle toggle-sm toggle-warning"
-									bind:checked={showUncategorizedOnly}
-								/>
-							</label>
-						</div>
-					{/if}
-				</div>
-
-				<!-- Content -->
-				{#if data.transactions.length === 0}
-					<div class="py-8 text-center opacity-70">
-						<p>No transactions found.</p>
-					</div>
-				{:else if transactionsByMonth().length === 0}
-					<div class="py-8 text-center opacity-70">
-						<p>No transactions match your filters.</p>
-					</div>
-				{:else}
-					{@const firstMonth = transactionsByMonth()[0]}
-					<div class="flex flex-col">
-						<!-- Month Header -->
-						<h3 class="mb-4 text-lg font-bold opacity-50">
-							{firstMonth.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-						</h3>
-						{@render transactionList(firstMonth.days)}
-					</div>
-				{/if}
-			</DashboardWidget>
-
-			<!-- Subsequent Widgets -->
-			{#if transactionsByMonth().length > 1}
-				{#each transactionsByMonth().slice(1) as monthGroup}
-					<DashboardWidget
-						size="wide"
-						enableHover={false}
-						title={monthGroup.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-					>
-						{@render transactionList(monthGroup.days)}
-					</DashboardWidget>
 				{/each}
 			{/if}
-
-			<!-- Delete All Transactions Button -->
-			{#if data.transactions.length > 0}
-				<DashboardWidget size="small" enableHover={false}>
-					<div class="flex justify-end">
-						<button
-							class="btn btn-outline btn-sm btn-error"
-							onclick={() => (showDeleteConfirm = true)}
-							disabled={deleting}
-						>
-							<Trash2 size={16} />
-							Delete all transactions
-						</button>
-					</div>
-				</DashboardWidget>
-			{/if}
 		</div>
+		<CreateSubscriptionModal />
 	</div>
-
-	<!-- Delete Confirmation Modal -->
-	{#if showDeleteConfirm}
-		<div class="modal-open modal">
-			<div class="modal-box">
-				<h3 class="mb-4 text-2xl font-bold">Delete all transactions</h3>
-				<p class="mb-6">
-					Are you sure you want to delete <strong>all transactions</strong>? This action cannot be
-					undone.
-				</p>
-
-				{#if deleteError}
-					<div class="mb-4 alert alert-error">
-						<span>{deleteError}</span>
-					</div>
-				{/if}
-
-				<div class="modal-action">
-					<button
-						class="btn btn-ghost"
-						onclick={() => {
-							showDeleteConfirm = false;
-							deleteError = null;
-						}}
-						disabled={deleting}
-					>
-						Cancel
-					</button>
-					<button class="btn btn-error" onclick={deleteAllTransactions} disabled={deleting}>
-						{#if deleting}
-							<span class="loading loading-sm loading-spinner"></span>
-							Deleting...
-						{:else}
-							<Trash2 size={20} />
-							Delete all
-						{/if}
-					</button>
-				</div>
-			</div>
-			<div
-				class="modal-backdrop"
-				role="button"
-				tabindex="0"
-				onclick={() => {
-					if (!deleting) {
-						showDeleteConfirm = false;
-						deleteError = null;
-					}
-				}}
-				onkeydown={(e) => {
-					if ((e.key === 'Enter' || e.key === ' ') && !deleting) {
-						showDeleteConfirm = false;
-						deleteError = null;
-					}
-				}}
-			></div>
-		</div>
-	{/if}
 </div>
+
+<!-- Delete Confirmation Modal -->
+{#if showDeleteConfirm}
+	<div class="modal-open modal">
+		<div class="modal-box">
+			<h3 class="mb-4 text-2xl font-bold">Delete all transactions</h3>
+			<p class="mb-6">
+				Are you sure you want to delete <strong>all transactions</strong>? This action cannot be
+				undone.
+			</p>
+
+			{#if deleteError}
+				<div class="mb-4 alert alert-error">
+					<span>{deleteError}</span>
+				</div>
+			{/if}
+
+			<div class="modal-action">
+				<button
+					class="btn btn-ghost"
+					onclick={() => {
+						showDeleteConfirm = false;
+						deleteError = null;
+					}}
+					disabled={deleting}
+				>
+					Cancel
+				</button>
+				<button class="btn btn-error" onclick={deleteAllTransactions} disabled={deleting}>
+					{#if deleting}
+						<span class="loading loading-sm loading-spinner"></span>
+						Deleting...
+					{:else}
+						<Trash2 size={20} />
+						Delete all
+					{/if}
+				</button>
+			</div>
+		</div>
+		<div
+			class="modal-backdrop"
+			role="button"
+			tabindex="0"
+			onclick={() => {
+				if (!deleting) {
+					showDeleteConfirm = false;
+					deleteError = null;
+				}
+			}}
+			onkeydown={(e) => {
+				if ((e.key === 'Enter' || e.key === ' ') && !deleting) {
+					showDeleteConfirm = false;
+					deleteError = null;
+				}
+			}}
+		></div>
+	</div>
+{/if}

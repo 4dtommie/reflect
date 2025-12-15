@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Chart, registerables } from 'chart.js';
 	import chartColors from '$lib/config/chartColors';
+	import DashboardWidget from '$lib/components/DashboardWidget.svelte';
 
 	Chart.register(...registerables);
 
@@ -435,10 +436,8 @@
 	});
 </script>
 
-<div
-	class="card rounded-3xl bg-base-100 shadow-xl transition-all duration-300 hover:shadow-2xl {className}"
->
-	<div class="card-body justify-center px-8 py-6">
+<DashboardWidget size="auto" enableHover={true} class={className}>
+	<div class="flex h-full flex-col justify-center px-2 py-1">
 		<h1
 			class="-mb-2 pb-2 leading-tight font-bold {compact
 				? 'text-3xl lg:text-4xl'
@@ -464,4 +463,4 @@
 			</div>
 		{/if}
 	</div>
-</div>
+</DashboardWidget>

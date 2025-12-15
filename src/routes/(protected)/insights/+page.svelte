@@ -40,11 +40,63 @@
 	let rawInsights = $state<InsightDefinition[]>(data.insights as unknown as InsightDefinition[]);
 	let triggers = $state<TriggerMeta[]>(data.triggers);
 
-	// Derived hierarchical insights (sorted by priority)
+	// Filter state
+	let filterScope = $state<'all' | 'global' | 'transaction'>('all');
+
+	const categories = ['urgent', 'action', 'insight', 'celebration', 'tip', 'roast'];
+
+	// Derived hierarchical insights (sorted by priority and filtered)
 	const hierarchicalInsights = $derived.by(() => {
-		const roots = rawInsights.filter((i) => !i.related_insight_id);
+		let filtered = rawInsights;
+
+		if (filterScope === 'global') {
+			filtered = filtered.filter((i) => !i.contexts.includes('transaction_row'));
+		} else if (filterScope === 'transaction') {
+			filtered = filtered.filter((i) => i.contexts.includes('transaction_row'));
+		}
+
+		const roots = filtered.filter((i) => !i.related_insight_id);
 		return roots.sort((a, b) => b.priority - a.priority);
 	});
+
+	// Category colors for left border indicator
+	function getCategoryColor(category: string): string {
+		switch (category) {
+			case 'urgent':
+				return 'border-l-error';
+			case 'action':
+				return 'border-l-warning';
+			case 'insight':
+				return 'border-l-info';
+			case 'celebration':
+				return 'border-l-success';
+			case 'tip':
+				return 'border-l-base-content/30';
+			case 'roast':
+				return 'border-l-secondary';
+			default:
+				return 'border-l-neutral';
+		}
+	}
+
+	function getCategoryBadgeClass(category: string): string {
+		switch (category) {
+			case 'urgent':
+				return 'badge-error';
+			case 'action':
+				return 'badge-warning';
+			case 'insight':
+				return 'badge-info';
+			case 'celebration':
+				return 'badge-success';
+			case 'tip':
+				return 'badge-ghost';
+			case 'roast':
+				return 'badge-secondary';
+			default:
+				return 'badge-neutral';
+		}
+	}
 
 	// Selected insight for detail view
 	let selectedInsightId = $state<string | null>(null);
@@ -74,43 +126,6 @@
 	let error = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 
-	const categories = ['urgent', 'action', 'insight', 'celebration', 'tip'];
-
-	// Category colors for left border indicator
-	function getCategoryColor(category: string): string {
-		switch (category) {
-			case 'urgent':
-				return 'border-l-error';
-			case 'action':
-				return 'border-l-warning';
-			case 'insight':
-				return 'border-l-info';
-			case 'celebration':
-				return 'border-l-success';
-			case 'tip':
-				return 'border-l-base-content/30';
-			default:
-				return 'border-l-neutral';
-		}
-	}
-
-	function getCategoryBadgeClass(category: string): string {
-		switch (category) {
-			case 'urgent':
-				return 'badge-error';
-			case 'action':
-				return 'badge-warning';
-			case 'insight':
-				return 'badge-info';
-			case 'celebration':
-				return 'badge-success';
-			case 'tip':
-				return 'badge-ghost';
-			default:
-				return 'badge-neutral';
-		}
-	}
-
 	// Generate display name from ID if name is not set
 	function getDisplayName(insight: InsightDefinition): string {
 		if (insight.name) return insight.name;
@@ -128,6 +143,7 @@
 
 	// Get example data for triggers (for live preview)
 	function getExampleData(triggerId: string): Record<string, string> {
+		// ... (truncated helper for brevity, standard implementation)
 		const examples: Record<string, Record<string, string>> = {
 			payment_late: { name: 'Netflix', amount: '15.99', daysText: '2 days', daysLate: '2' },
 			payment_due_soon: { name: 'Spotify', amount: '9.99', daysText: 'in 3 days', days: '3' },
@@ -139,6 +155,12 @@
 			savings_positive: { amount: '150.00' },
 			user_streak: { days: '7' },
 			spending_high_early: { percent: '85' },
+			salary_detected: { amount: '2500', merchant: 'Acme Corp' },
+			large_expense: { amount: '1200', merchant: 'Apple Store' },
+			weekend_warrior: { day: 'Friday', merchant: 'Bar' },
+			late_night: { time: '02:00', merchant: 'McDonalds' },
+			round_number: { amount: '100' },
+			duplicate_transaction: { amount: '50.00', merchant: 'Uber', timeAgo: '5 mins' },
 			always: {},
 			fresh_import: {},
 			no_transactions: {},

@@ -57,7 +57,8 @@
 						onclick={() => handleTransactionClick(transaction)}
 					>
 						<MerchantLogo
-							merchantName={transaction.merchant}
+							merchantName={transaction.merchantName ||
+								(typeof transaction.merchant === 'string' ? transaction.merchant : 'Unknown')}
 							categoryIcon={transaction.categoryIcon}
 							categoryColor={transaction.categoryColor}
 							size="sm"

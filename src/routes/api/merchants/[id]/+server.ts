@@ -6,6 +6,7 @@ import { normalizeIBAN } from '$lib/server/categorization/ibanMatcher';
 
 // Merchant update schema
 const MerchantUpdateSchema = z.object({
+	name: z.string().min(1).optional(),
 	default_category_id: z.number().nullable().optional(),
 	ibans: z.array(z.string()).optional()
 });
@@ -127,6 +128,10 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 
 		if (data.default_category_id !== undefined) {
 			updateData.default_category_id = data.default_category_id;
+		}
+
+		if (data.name !== undefined) {
+			updateData.name = data.name;
 		}
 
 		if (normalizedIbans !== undefined) {
