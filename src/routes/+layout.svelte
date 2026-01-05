@@ -168,6 +168,11 @@
 	const isActive = (href: string) => {
 		return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/');
 	};
+
+	// Check if we're on the mobile skin route or preview - hide navbar and blobs
+	const isMobileSkin = $derived(
+		$page.url.pathname.startsWith('/m') || $page.url.pathname.startsWith('/mobile-preview')
+	);
 </script>
 
 <svelte:head>
@@ -180,120 +185,123 @@
 	/>
 </svelte:head>
 
-<!-- Animated gradient blobs background -->
-<div class="gradient-blob-container" aria-hidden="true">
-	<div class="gradient-blob gradient-blob-1"></div>
-	<div class="gradient-blob gradient-blob-2"></div>
-	<div class="gradient-blob gradient-blob-3"></div>
-	<div class="gradient-blob gradient-blob-4"></div>
-</div>
-
-<div class="navbar mb-4 px-0">
-	<!-- Logo on left -->
-	<div class="navbar-start">
-		<a href="/" class="btn-white-swoosh btn rounded-full px-6 text-xl shadow-sm">
-			<span class="mirror-r">R</span>eflect
-		</a>
+{#if !isMobileSkin}
+	<!-- Animated gradient blobs background -->
+	<div class="gradient-blob-container" aria-hidden="true">
+		<div class="gradient-blob gradient-blob-1"></div>
+		<div class="gradient-blob gradient-blob-2"></div>
+		<div class="gradient-blob gradient-blob-3"></div>
+		<div class="gradient-blob gradient-blob-4"></div>
 	</div>
 
-	<!-- Navigation links in center (only for authenticated users) -->
-	<div class="navbar-center">
-		{#if data.user}
-			<ul class="menu menu-horizontal gap-2 px-1">
-				{#each navItems as { href, label, icon: Icon }, i}
-					<li>
-						<a
-							{href}
-							class="btn {isActive(href)
-								? 'btn-active-grey'
-								: 'btn-white-swoosh'} gap-2 rounded-full px-6 shadow-sm"
-						>
-							<Icon size={20} />
-							<span class="hidden font-medium md:inline">{label}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</div>
+	<div class="navbar mb-4 px-0">
+		<!-- Logo on left -->
+		<div class="navbar-start">
+			<a href="/" class="btn-white-swoosh btn rounded-full px-6 text-xl shadow-sm">
+				<span class="mirror-r">R</span>eflect
+			</a>
+		</div>
 
-	<!-- User menu on right -->
-	<div class="navbar-end">
-		{#if data.user}
-			<details use:registerDropdown ontoggle={handleDetailsToggle} class="dropdown dropdown-end">
-				<summary class="btn-white-swoosh btn gap-2 rounded-full px-6 shadow-sm">
-					<User size={20} />
-					<span class="hidden sm:inline">{data.user.username}</span>
-				</summary>
-				<ul class="dropdown-content menu z-[1] w-52 rounded-box bg-base-100 p-2 shadow-lg">
-					<li><a href="/merchants" onclick={closeDropdownOnLinkClick}>Merchant management</a></li>
-					<li><a href="/insights" onclick={closeDropdownOnLinkClick}>Insight rules</a></li>
-					<li>
-						<a href="/insights/capabilities" onclick={closeDropdownOnLinkClick}>Chat capabilities</a
-						>
-					</li>
-					<li class="my-2">
-						<div class="border-t border-base-300"></div>
-					</li>
-					<!--
-					<li>
-						<a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}
-							>Test AI categorization</a
-						>
-					</li>
-					<li>
-						<a href="/test-ai-categorize-v2" onclick={closeDropdownOnLinkClick}
-							>Test AI categorization v2</a
-						>
-					</li>
-					<li>
-						<a href="/categories/generate-embeddings" onclick={closeDropdownOnLinkClick}
-							>Generate category embeddings</a
-						>
-					</li>
-					<li class="my-2">
-						<div class="border-t border-base-300"></div>
-					</li>
-					-->
-					<li>
-						<button
-							onclick={(e) => {
-								const details = (e.currentTarget as HTMLElement).closest(
-									'details'
-								) as HTMLDetailsElement;
-								if (details) details.open = false;
-								openResetModal();
-							}}
-							class="w-full text-left text-error"
-						>
-							Reset environment
-						</button>
-					</li>
-					<li class="my-2">
-						<div class="border-t border-base-300"></div>
-					</li>
-					<li>
-						<label class="flex cursor-pointer items-center gap-2">
-							<input
-								type="checkbox"
-								checked={currentTheme === 'night'}
-								onchange={toggleTheme}
-								class="theme-controller toggle"
-							/>
-							<span>Dark mode</span>
-						</label>
-					</li>
-					<li class="my-2">
-						<div class="border-t border-base-300"></div>
-					</li>
-					<li><button onclick={signOut} class="w-full text-left">Logout</button></li>
+		<!-- Navigation links in center (only for authenticated users) -->
+		<div class="navbar-center">
+			{#if data.user}
+				<ul class="menu menu-horizontal gap-2 px-1">
+					{#each navItems as { href, label, icon: Icon }, i}
+						<li>
+							<a
+								{href}
+								class="btn {isActive(href)
+									? 'btn-active-grey'
+									: 'btn-white-swoosh'} gap-2 rounded-full px-6 shadow-sm"
+							>
+								<Icon size={20} />
+								<span class="hidden font-medium md:inline">{label}</span>
+							</a>
+						</li>
+					{/each}
 				</ul>
-			</details>
-		{:else}
-			<a href="/signin" class="btn btn-ghost">Login</a>
-		{/if}
+			{/if}
+		</div>
+
+		<!-- User menu on right -->
+		<div class="navbar-end">
+			{#if data.user}
+				<details use:registerDropdown ontoggle={handleDetailsToggle} class="dropdown dropdown-end">
+					<summary class="btn-white-swoosh btn gap-2 rounded-full px-6 shadow-sm">
+						<User size={20} />
+						<span class="hidden sm:inline">{data.user.username}</span>
+					</summary>
+					<ul class="dropdown-content menu z-[1] w-52 rounded-box bg-base-100 p-2 shadow-lg">
+						<li><a href="/merchants" onclick={closeDropdownOnLinkClick}>Merchant management</a></li>
+						<li><a href="/insights" onclick={closeDropdownOnLinkClick}>Insight rules</a></li>
+						<li>
+							<a href="/insights/capabilities" onclick={closeDropdownOnLinkClick}
+								>Chat capabilities</a
+							>
+						</li>
+						<li class="my-2">
+							<div class="border-t border-base-300"></div>
+						</li>
+						<!--
+						<li>
+							<a href="/test-ai-categorize" onclick={closeDropdownOnLinkClick}
+								>Test AI categorization</a
+							>
+						</li>
+						<li>
+							<a href="/test-ai-categorize-v2" onclick={closeDropdownOnLinkClick}
+								>Test AI categorization v2</a
+							>
+						</li>
+						<li>
+							<a href="/categories/generate-embeddings" onclick={closeDropdownOnLinkClick}
+								>Generate category embeddings</a
+							>
+						</li>
+						<li class="my-2">
+							<div class="border-t border-base-300"></div>
+						</li>
+						-->
+						<li>
+							<button
+								onclick={(e) => {
+									const details = (e.currentTarget as HTMLElement).closest(
+										'details'
+									) as HTMLDetailsElement;
+									if (details) details.open = false;
+									openResetModal();
+								}}
+								class="w-full text-left text-error"
+							>
+								Reset environment
+							</button>
+						</li>
+						<li class="my-2">
+							<div class="border-t border-base-300"></div>
+						</li>
+						<li>
+							<label class="flex cursor-pointer items-center gap-2">
+								<input
+									type="checkbox"
+									checked={currentTheme === 'night'}
+									onchange={toggleTheme}
+									class="theme-controller toggle"
+								/>
+								<span>Dark mode</span>
+							</label>
+						</li>
+						<li class="my-2">
+							<div class="border-t border-base-300"></div>
+						</li>
+						<li><button onclick={signOut} class="w-full text-left">Logout</button></li>
+					</ul>
+				</details>
+			{:else}
+				<a href="/signin" class="btn btn-ghost">Login</a>
+			{/if}
+		</div>
 	</div>
-</div>
+{/if}
 
 {#if data.user}
 	<!-- Main content wrapper -->
