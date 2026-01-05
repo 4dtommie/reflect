@@ -4,7 +4,9 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev --open",
+		"dev": "./scripts/dev.sh",
+		"dev:quick": "vite dev --open",
+		"dev:stop": "./scripts/dev-stop.sh",
 		"build": "vite build",
 		"preview": "vite preview",
 		"postinstall": "prisma generate",

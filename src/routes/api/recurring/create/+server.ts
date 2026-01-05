@@ -59,6 +59,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
         if (mergeMerchant && name) {
             updateData.cleaned_merchant_name = name;
+
+            // Also update the merchant record name if linked
+            if (tx.merchant_id) {
+                await db.merchants.update({
+                    where: { id: tx.merchant_id },
+                    data: { name: name }
+                });
+                console.log(`[API] Updated merchant ${tx.merchant_id} name to "${name}"`);
+            }
         }
 
         await db.transactions.updateMany({

@@ -96,7 +96,11 @@ export async function seedDatabase() {
 		const merchantCount = await prisma.merchants.deleteMany({});
 		log(`   ✓ Deleted ${merchantCount.count} merchants`);
 
-		log('✅ Database cleared - all transactions, categories, and chats removed');
+		// Delete insight definitions
+		const insightDefCount = await (prisma as any).insightDefinition.deleteMany({});
+		log(`   ✓ Deleted ${insightDefCount.count} insight definitions`);
+
+		log('✅ Database cleared - all transactions, categories, chats, and insights removed');
 
 		// Verify category_keywords table is accessible
 		try {
@@ -2382,6 +2386,275 @@ export async function seedDatabase() {
 
 		log('✅ Created all standalone expense categories');
 		log('✅ Created Uncategorized and Other system categories');
+
+		// ============================================
+		// SEED INSIGHT DEFINITIONS
+		// ============================================
+		log('💡 Seeding insight definitions...');
+
+		const insightDefinitions = [
+			{
+				id: 'duplicate_check',
+				name: 'Double Trouble?',
+				description: 'Detects duplicate transactions',
+				category: 'urgent',
+				priority: 90,
+				trigger: 'duplicate_transaction',
+				message_template: 'Paid €{{amount}} to {{merchant}} twice. Mistake?',
+				icon: 'AlertTriangle',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'new_merchant_found',
+				name: 'Fresh Find',
+				description: 'First time paying this merchant',
+				category: 'insight',
+				priority: 70,
+				trigger: 'new_merchant',
+				message_template: 'First time at {{merchant}}. Thoughts?',
+				icon: 'Star',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'price_hike_alert',
+				name: 'Inflation Alert',
+				description: 'Recurring payment increased',
+				category: 'action',
+				priority: 80,
+				trigger: 'price_hike',
+				message_template: '{{merchant}} just jumped by {{percent}}%. Rude. 📈',
+				icon: 'TrendingUp',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'refund_celebration',
+				name: 'Money Back!',
+				description: 'Credit matching a prior debit',
+				category: 'celebration',
+				priority: 60,
+				trigger: 'refund_detected',
+				message_template: 'Refund from {{date}} just landed. 💸',
+				icon: 'ArrowDownLeft',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'salary_incoming',
+				name: 'Ka-ching!',
+				description: 'Salary detection',
+				category: 'celebration',
+				priority: 95,
+				trigger: 'salary_detected',
+				message_template: 'Payday has arrived! +€{{amount}} 💰',
+				icon: 'Sparkles',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'big_spender',
+				name: 'Whale Alert',
+				description: 'Large expense alert',
+				category: 'roast',
+				priority: 50,
+				trigger: 'large_expense',
+				message_template: 'Dropped €{{amount}} at {{merchant}}. 🐳',
+				icon: 'TrendingUp',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0,
+				trigger_params: { threshold: 500 }
+			},
+			{
+				id: 'weekend_vibes',
+				name: 'Weekend Vibes',
+				description: 'High spending on Fri/Sat nights',
+				category: 'roast',
+				priority: 40,
+				trigger: 'weekend_warrior',
+				message_template: 'Living it up on {{day}} at {{merchant}}! 🎉',
+				icon: 'PartyPopper',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'late_night_snack',
+				name: 'Night Owl',
+				description: 'Spending between 11PM and 5AM',
+				category: 'roast',
+				priority: 30,
+				trigger: 'late_night',
+				message_template: '{{time}} snack at {{merchant}}? We won\'t tell. 🦉',
+				icon: 'Moon',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'round_and_round',
+				name: 'Perfectly Balanced',
+				description: 'Round number amounts',
+				category: 'celebration',
+				priority: 20,
+				trigger: 'round_number',
+				message_template: '€{{amount}} exactly. It\'s the little things. 👌',
+				icon: 'CheckCircle',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			{
+				id: 'sub_spotted',
+				name: 'Sub Spotted?',
+				description: 'Potential subscription detected',
+				category: 'insight',
+				priority: 65,
+				trigger: 'potential_subscription',
+				message_template: 'Monthly €{{amount}} at {{merchant}}. Subscription?',
+				icon: 'Calendar',
+				action_label: 'Track Subscription',
+				action_href: '/transactions?search={{merchant}}',
+				contexts: ['transaction_row'],
+				is_active: true,
+				cooldown_hours: 0
+			},
+			// ============================================
+			// CHAT/DASHBOARD CONTEXT INSIGHTS
+			// ============================================
+			{
+				id: 'fresh_import',
+				name: 'Welcome! Let\'s get started',
+				description: 'All transactions are uncategorized (fresh import)',
+				category: 'action',
+				priority: 100,
+				trigger: 'fresh_import',
+				message_template: 'I see you\'ve got {{count}} fresh transactions! Ready to categorize them?',
+				icon: 'Sparkles',
+				action_label: 'Start Categorizing',
+				action_href: '/categorize-all',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 24
+			},
+			{
+				id: 'uncategorized_pile',
+				name: 'Uncategorized Transactions',
+				description: 'High percentage of uncategorized transactions',
+				category: 'action',
+				priority: 85,
+				trigger: 'uncategorized_high',
+				message_template: 'You have {{percent}}% uncategorized. Top merchant: {{topMerchant}} ({{topMerchantCount}}x). Want to tackle those?',
+				icon: 'AlertTriangle',
+				action_label: 'Categorize',
+				action_href: '/categorize-all',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 12
+			},
+			{
+				id: 'all_categorized',
+				name: 'All Done!',
+				description: 'All transactions are categorized',
+				category: 'celebration',
+				priority: 75,
+				trigger: 'categorization_complete',
+				message_template: 'Amazing! All {{count}} transactions are categorized. You\'re a machine! 🎉',
+				icon: 'CheckCircle',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 24
+			},
+			{
+				id: 'spending_up',
+				name: 'Spending Alert',
+				description: 'Spending increased compared to last month',
+				category: 'insight',
+				priority: 70,
+				trigger: 'complete_month_change',
+				trigger_params: { threshold_percent: 15, direction: 'up' },
+				message_template: 'Last month you spent {{percent}}% more than {{twoMonthsAgo}}. That\'s €{{lastMonthAmount}} vs €{{twoMonthsAgoAmount}}.',
+				icon: 'TrendingUp',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 48
+			},
+			{
+				id: 'spending_down',
+				name: 'Nice Savings!',
+				description: 'Spending decreased compared to last month',
+				category: 'celebration',
+				priority: 70,
+				trigger: 'complete_month_change',
+				trigger_params: { threshold_percent: 15, direction: 'down' },
+				message_template: 'You spent {{percent}}% less last month compared to {{twoMonthsAgo}}! That\'s savings of €{{diff}}. 🙌',
+				icon: 'TrendingDown',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 48
+			},
+			{
+				id: 'payment_due',
+				name: 'Payment Coming Up',
+				description: 'A recurring payment is due soon',
+				category: 'urgent',
+				priority: 90,
+				trigger: 'payment_due_soon',
+				trigger_params: { days: 3 },
+				message_template: '{{name}} (€{{amount}}) is due {{daysText}}.',
+				icon: 'Calendar',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 24
+			},
+			{
+				id: 'check_recurring',
+				name: 'Review Subscriptions',
+				description: 'Suggest reviewing recurring payments',
+				category: 'tip',
+				priority: 40,
+				trigger: 'review_recurring',
+				trigger_params: { min_categorized_percent: 50 },
+				message_template: 'With {{categorizedPercent}}% categorized, you might want to review your recurring payments!',
+				icon: 'RefreshCw',
+				action_label: 'View Recurring',
+				action_href: '/recurring',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 72
+			},
+			{
+				id: 'no_transactions',
+				name: 'Upload Transactions',
+				description: 'No transactions found',
+				category: 'action',
+				priority: 95,
+				trigger: 'no_transactions',
+				message_template: 'Let\'s start by uploading some transactions!',
+				icon: 'Upload',
+				action_label: 'Upload',
+				action_href: '/upload-transactions',
+				contexts: ['chat'],
+				is_active: true,
+				cooldown_hours: 0
+			}
+		];
+
+		for (const insight of insightDefinitions) {
+			await (prisma as any).insightDefinition.upsert({
+				where: { id: insight.id },
+				update: insight,
+				create: insight
+			});
+		}
+		log(`   ✓ Seeded ${insightDefinitions.length} insight definitions`);
 
 		log('📊 Seed completed successfully!');
 		log('   - 3 Income categories');

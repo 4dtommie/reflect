@@ -106,6 +106,7 @@
 		transactionId: number;
 		category: 'urgent' | 'action' | 'insight' | 'celebration' | 'roast';
 		message: string;
+		title?: string;
 		icon?: string;
 		priority: number;
 		relatedTransactionId?: number;
@@ -128,9 +129,18 @@
 	// Identify internal transfers (connected payments)
 	const internalTransferIds = $derived(identifyInternalTransfers(data.transactions));
 
-	// Fetch transaction insights when transactions are loaded
+	// Fetch transaction insights when transactions are loaded or changed
+	// Track transaction recurring_transaction_ids to detect when subscriptions are created
+	const transactionsFingerprint = $derived(
+		data.transactions.map((t) => `${t.id}:${t.recurring_transaction_id || ''}`).join(',')
+	);
+
+	let lastFetchedFingerprint = $state('');
+
 	$effect(() => {
-		if (browser && data.transactions.length > 0 && Object.keys(transactionInsights).length === 0) {
+		const currentFingerprint = transactionsFingerprint;
+		if (browser && data.transactions.length > 0 && currentFingerprint !== lastFetchedFingerprint) {
+			lastFetchedFingerprint = currentFingerprint;
 			fetchTransactionInsights();
 		}
 	});
@@ -1088,12 +1098,7 @@
 			     Transactions = 2/3 of this wrapper (40% of total width)
 				 Insights     = 1/3 of this wrapper (20% of total width) 
 			-->
-		<div class="relative grid grid-cols-3 items-start gap-x-8 gap-y-0 overflow-hidden">
-			<!-- Gradient background for insights column -->
-			<div
-				class="pointer-events-none absolute top-24 right-0 -bottom-24 w-1/3 opacity-40"
-				style="background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.15) 0%, rgba(96, 165, 250, 0.08) 50%, transparent 80%);"
-			></div>
+		<div class="relative grid grid-cols-3 items-start gap-x-8 gap-y-0">
 			{#if data.transactions.length === 0}
 				<DashboardWidget size="auto" enableHover={false} class="col-span-3">
 					<div class="py-8 text-center opacity-70">

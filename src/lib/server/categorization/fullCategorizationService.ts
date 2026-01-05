@@ -472,7 +472,7 @@ async function processAIBatch(
 			? await categorizeBatchWithGemini(userId, batch, 'gemini-2.5-flash-lite', {
 				includeReasoning: false,
 				temperature: 0.2,
-				maxTokens: 2000, // Increased to handle larger batches safely
+				maxTokens: 2500, // Increased to handle larger batches safely
 				enableSearchGrounding: true,
 				includeCleanedMerchantName: true,
 				useCategoryNames: true

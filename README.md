@@ -22,18 +22,47 @@ Reflect is a personal finance assistant designed to help you understand and impr
 
 ## Quick Start
 
-```sh
-# Install dependencies
-npm install
+### Prerequisites
 
-# Start development server
-npm run dev
+- [Node.js](https://nodejs.org/) (v18+)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-# Build for production
-npm run build
-```
+### Local Development
+
+1. **Install dependencies**
+   ```sh
+   npm install
+   ```
+
+2. **Set up environment**
+   ```sh
+   cp .env.example .env
+   ```
+
+3. **Start development** (starts Docker DB + web server in separate terminals)
+   ```sh
+   npm run dev
+   ```
+
+This will:
+- Start a PostgreSQL database in Docker
+- Run all database migrations
+- Seed the database with initial data
+- Open two named terminal windows: **Reflectie DB** and **Reflectie Web**
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start full dev environment (Docker + migrations + seed + web server) |
+| `npm run dev:quick` | Start only the Vite dev server (DB must already be running) |
+| `npm run dev:stop` | Stop all dev terminals and Docker containers |
+| `npm run db:studio` | Open Prisma Studio to browse the database |
+| `npm run seed` | Re-run database seed script |
+| `npm run build` | Build for production |
 
 ## Documentation
 
 - [Product Documentation](./DOCUMENTATION.md) - Overview of features and functionality.
 - [Implementation Guides](./ai-guides/README.md) - Detailed implementation plans and guides.
+

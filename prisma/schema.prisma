@@ -81,7 +81,7 @@ model merchants {
   default_category_id Int?
   notes               String?
   is_active           Boolean        @default(true)
-  is_potential_recurring Boolean     @default(false)
+  is_potential_recurring Boolean?    // null = not determined, true = potential sub, false = user ignored
   created_at          DateTime       @default(now())
   updated_at          DateTime
   categories          categories?    @relation(fields: [default_category_id], references: [id])

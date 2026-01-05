@@ -25813,3 +25813,10 @@
 [2025-12-15T07:55:24.383Z] lastInsightMsg: undefined
 [2025-12-15T07:55:24.392Z] 🔍 DEBUG: lastInsightMsg ID: undefined
 [2025-12-15T07:55:24.399Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-05T17:58:52.768Z] Load function started
+[2026-01-05T17:58:52.811Z] Promise.all completed - chatInsight: undefined
+[2026-01-05T17:58:52.814Z] Entering transition logic - currentInsight: undefined
+[2026-01-05T17:58:52.819Z] Conversation found: true, messages: 5
+[2026-01-05T17:58:52.822Z] lastInsightMsg: check_recurring
+[2026-01-05T17:58:52.825Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-05T17:58:52.827Z] 🔍 DEBUG: currentInsight ID: undefined

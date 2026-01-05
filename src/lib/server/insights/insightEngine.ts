@@ -227,11 +227,11 @@ export async function evaluateTransactionInsights(
     for (const tx of sortedTransactions) {
         let insights = evaluateTransactionTriggers(tx, context, transactions, definitions);
 
-        // Filter 'tx_round_number' to 1 per month, and only if no other insights on this tx
+        // Filter 'round_and_round' (Perfectly Balanced) to 1 per month, and only if no other insights on this tx
         insights = insights.filter(insight => {
-            if (insight.id.startsWith('tx_round_number')) {
+            if (insight.id.startsWith('round_and_round')) {
                 // Don't show if this transaction has other insights (round number is a filler)
-                const otherInsights = insights.filter(i => !i.id.startsWith('tx_round_number'));
+                const otherInsights = insights.filter(i => !i.id.startsWith('round_and_round'));
                 if (otherInsights.length > 0) {
                     return false;
                 }

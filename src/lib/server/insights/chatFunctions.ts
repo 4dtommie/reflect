@@ -25,7 +25,7 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
                     },
                     year: {
                         type: 'integer',
-                        description: 'Year, e.g. 2024'
+                        description: 'Year for full-year query (e.g. 2024). Use WITHOUT month param to get entire year totals.'
                     },
                     merchant: {
                         type: 'string',
@@ -53,7 +53,7 @@ export const CHAT_FUNCTIONS: ChatCompletionTool[] = [
                     min_amount: { type: 'number', description: 'Minimum amount' },
                     max_amount: { type: 'number', description: 'Maximum amount' },
                     limit: { type: 'integer', description: 'Max results (default 3, max 50)' },
-                    year: { type: 'integer', description: 'Year for filter (e.g. 2024). Optional.' }
+                    year: { type: 'integer', description: 'Year for full-year query (e.g. 2024). Use WITHOUT month param to get entire year totals.' }
                 }
             }
         }

@@ -1026,12 +1026,12 @@ export const transactionTriggerEvaluators: Record<string, TransactionTriggerEval
         if (!tx.is_debit) return { triggered: false };
         // If already marked recurring, skip
         if (tx.recurring_transaction_id) return { triggered: false };
-        // If merchant explicitly ignored
+        // If merchant explicitly ignored (user dismissed)
         if (tx.merchant_is_potential_recurring === false) return { triggered: false };
 
         // Exclusions
         const EXCLUDED_TERMS = ['sparen', 'saving', 'beleggen', 'invest', 'overboeking', 'transfer', 'creditcard', 'paypal'];
-        const EXCLUDED_CATEGORIES = ['Sparen & beleggen', 'Leningen & schuldaflossing', 'Hypotheek & Wonen', 'Verzekeringen']; // Maybe keep Insurance? Usually recurring.
+        const EXCLUDED_CATEGORIES = ['Sparen & beleggen', 'Leningen & schuldaflossing', 'Hypotheek & Wonen', 'Verzekeringen'];
 
         const text = ((tx.cleaned_merchant_name || tx.merchantName || '') + ' ' + (tx.description || '')).toLowerCase();
         if (EXCLUDED_TERMS.some(t => text.includes(t))) return { triggered: false };
@@ -1045,6 +1045,8 @@ export const transactionTriggerEvaluators: Record<string, TransactionTriggerEval
 
         const history = context.recentByMerchant.get(tx.merchant_id) || [];
         const txDate = new Date(tx.date);
+
+        if (history.length <= 1) return { triggered: false };
 
         const match = history.find(h => {
             if (h.id === tx.id) return false;
