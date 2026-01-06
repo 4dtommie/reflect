@@ -1,36 +1,101 @@
 @import 'tailwindcss';
- @plugin "daisyui" {
-   themes: nord --default, night --prefersdark;
- }
 
-@plugin "daisyui/theme" {
-  name: "nord";
-  default: true;
-  --color-primary-content: var(--color-base-100);
-  --color-secondary-content: var(--color-base-100);
-  --color-secondary: var(--color-blue-700);
-  --color-info: var(--color-sky-200);
-  --color-primary-rgb: 94, 129, 172; /* Nord10 */
-  --color-secondary-rgb: 136, 192, 208; /* Nord8 */
+@font-face {
+  font-family: 'NN Nitti Grotesk';
+  src: url('/fonts/NNNittiGrotesk-TextRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'NN Nitti Grotesk';
+  src: url('/fonts/NNNittiGrotesk-TextBold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'NN Nitti Grotesk';
+  src: url('/fonts/NNNittiGrotesk-TextMedium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'NN Nitti Grotesk Heading';
+  src: url('/fonts/NNNittiGrotesk-Heading.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@plugin "daisyui" {
+  themes: nord --default, night --prefersdark, nn-theme;
 }
 
 @plugin "daisyui/theme" {
-  name: "night";
+  name: "nn-theme";
   default: false;
-  --base-300: var(--color-base-100);
- --base-100: var(--color-base-300);
- --color-primary-rgb: 56, 189, 248; /* Sky 400 */
- --color-secondary-rgb: 129, 140, 248; /* Indigo 400 */
+  --color-base-100: var(--color-brand-white);
+  /* Using sand-100 for warm app background */
+  --color-base-200: var(--color-sand-100);
+  --color-base-300: var(--color-gray-100);
+  --color-base-content: var(--color-gray-1000);
+
+  --color-neutral: var(--color-gray-1000);
+  --color-neutral-content: var(--color-gray-50);
+
+  --color-primary: var(--color-mediumOrange-500);
+  --color-primary-content: var(--color-brand-white);
+
+  --color-secondary: var(--color-blue-500);
+  --color-secondary-content: var(--color-brand-white);
+
+  --color-accent: var(--color-purple-500);
+  --color-accent-content: var(--color-brand-white);
+
+  --color-info: var(--color-blue-500);
+  --color-info-content: var(--color-brand-white);
+  
+  --color-success: var(--color-green-100); /* Background for success alert is usually light */
+  --color-success-content: var(--color-green-1000); /* Text for success */
+  
+  --color-warning: var(--color-mediumOrange-100);
+  --color-warning-content: var(--color-mediumOrange-1000);
+
+  --color-error: var(--color-darkOrange-100);
+  --color-error-content: var(--color-darkOrange-1000);
+
+  --radius-box: 0.5rem;
+  --radius-btn: 3rem; 
 }
 
 
 @theme {
 	--font-family-sans: 'Rubik', system-ui, -apple-system, sans-serif;
+    --font-nn: 'NN Nitti Grotesk', system-ui, -apple-system, sans-serif;
+    --font-heading: 'NN Nitti Grotesk Heading', 'NN Nitti Grotesk', system-ui, sans-serif;
 	--gradient-color-1: #a855f7;
 	--gradient-color-2: #3b82f6;
 	--gradient-color-3: #9333ea;
 	--gradient-primary: linear-gradient(to bottom right, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3));
 	--gradient-primary-animated: linear-gradient(90deg, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3), var(--gradient-color-1));
+
+	/* Custom NN Brand Colors - Tailwind v4 CSS-first config */
+	--color-mediumOrange-50: #fef8f4;
+	--color-mediumOrange-100: #fdede2;
+	--color-mediumOrange-200: #fcdac4;
+	--color-mediumOrange-300: #fac39f;
+	--color-mediumOrange-400: #f7a873;
+	--color-mediumOrange-500: #f37b2b;
+	--color-mediumOrange-600: #ea650d;
+	--color-mediumOrange-700: #d15b0c;
+	--color-mediumOrange-800: #b54e0a;
+	--color-mediumOrange-900: #8e3e08;
+	--color-mediumOrange-1000: #6b2e06;
+
+	--color-sand-50: #faf9f8;
+	--color-sand-100: #f3efed;
+	--color-sand-200: #e6dfda;
+	--color-sand-300: #d8cdc6;
+	--color-sand-400: #c6b7ac;
+	--color-sand-500: #ac9686;
 }
 
 @keyframes gradient-rotate {

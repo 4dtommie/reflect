@@ -53,9 +53,18 @@ export async function seedDatabase() {
 		console.error(...args);
 	};
 
-	log('🌱 Seeding database...');
+	log('🌱 Checking database...');
 
 	try {
+		// Check if database is already seeded by looking for existing categories
+		const existingCategories = await prisma.categories.count();
+		if (existingCategories > 0) {
+			log('✅ Database already seeded (' + existingCategories + ' categories found). Skipping seed.');
+			return;
+		}
+
+		log('📦 Database is empty, seeding now...');
+
 		// Drop all data - start with a clean database
 		// Order matters due to foreign key constraints
 		log('🗑️  Dropping all existing data...');
