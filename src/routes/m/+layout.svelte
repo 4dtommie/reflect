@@ -2,11 +2,17 @@
 	import { page } from '$app/stores';
 	import './mobile.css';
 	import TouchSimulator from '$lib/components/mobile/TouchSimulator.svelte';
+	import { mobileScrollY } from '$lib/stores/mobileScroll';
 
 	let { children } = $props();
 
 	// Check if loaded in embed mode (for iframe)
 	const isEmbed = $derived($page.url.searchParams.get('embed') === 'true');
+
+	function handleScroll(e: Event) {
+		const target = e.currentTarget as HTMLElement;
+		$mobileScrollY = target.scrollTop;
+	}
 </script>
 
 {#if isEmbed}
@@ -15,7 +21,7 @@
 			<span>9:41</span>
 		</div>
 
-		<div class="mobile-content flex min-h-screen flex-col bg-sand-50">
+		<div class="mobile-content flex min-h-screen flex-col bg-sand-50" onscroll={handleScroll}>
 			{@render children()}
 		</div>
 	</div>
@@ -27,7 +33,10 @@
 			<div class="mobile-status-bar">
 				<span>9:41</span>
 			</div>
-			<div class="mobile-content scrollbar-hide cursor-none bg-sand-50 select-none">
+			<div
+				class="mobile-content scrollbar-hide cursor-none bg-sand-50 select-none"
+				onscroll={handleScroll}
+			>
 				{@render children()}
 			</div>
 		</div>

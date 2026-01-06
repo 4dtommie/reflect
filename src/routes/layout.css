@@ -252,7 +252,7 @@ body {
 }
 
 @layer base {
-	h1 {
+	:is([data-theme='nord'], [data-theme='night']) h1 {
 		font-size: 1rem;
 		font-weight: 700;
 		font-variation-settings: 'wght' 700, 'wdth' 125;
@@ -268,14 +268,14 @@ body {
 	}
 
 	@media (min-width: 768px) {
-		h1 {
+		:is([data-theme='nord'], [data-theme='night']) h1 {
 			font-size: 1.5rem;
 			font-variation-settings: 'wght' 700, 'wdth' 150;
 		}
 	}
 
 	@media (min-width: 1024px) {
-		h1 {
+		:is([data-theme='nord'], [data-theme='night']) h1 {
 			font-size: 3rem;
 			font-variation-settings: 'wght' 700, 'wdth' 175;
 		}

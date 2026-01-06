@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, ListOrdered, MessageCircleQuestion, CircleUser } from 'lucide-svelte';
+	import { BarChart3, LayoutGrid, MessageCircleQuestion, CircleUser } from 'lucide-svelte';
 
 	let activeTab = $state('inzicht');
 </script>
@@ -8,7 +8,7 @@
 	<div class="flex h-[64px] w-full items-stretch">
 		<!-- Inzicht Tab -->
 		<button
-			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-1 py-2"
+			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 			onclick={() => (activeTab = 'inzicht')}
 		>
 			<BarChart3
@@ -31,10 +31,10 @@
 
 		<!-- Producten Tab -->
 		<button
-			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-1 py-2"
+			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 			onclick={() => (activeTab = 'producten')}
 		>
-			<ListOrdered
+			<LayoutGrid
 				class="h-6 w-6 {activeTab === 'producten' ? 'text-mediumOrange-500' : 'text-gray-600'}"
 				strokeWidth={1.5}
 			/>
@@ -56,7 +56,7 @@
 
 		<!-- Hulp Tab -->
 		<button
-			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-1 py-2"
+			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 			onclick={() => (activeTab = 'hulp')}
 		>
 			<MessageCircleQuestion
@@ -79,7 +79,7 @@
 
 		<!-- Profiel Tab -->
 		<button
-			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-1 py-2"
+			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 			onclick={() => (activeTab = 'profiel')}
 		>
 			<CircleUser

@@ -39,6 +39,12 @@
 		return null;
 	}
 
+	// Velocity tracking
+	let lastY = 0;
+	let lastTime = 0;
+	let velocityY = 0;
+	let animationFrame: number;
+
 	function handleMouseMove(e: MouseEvent) {
 		cursorX = e.clientX;
 		cursorY = e.clientY;
@@ -46,8 +52,17 @@
 		if (!isDown || !activeScrollTarget) return;
 		e.preventDefault();
 
+		const now = Date.now();
+		const dt = now - lastTime;
 		const walkX = e.pageX - startX;
 		const walkY = e.pageY - startY;
+
+		// Calculate velocity (pixels per ms)
+		if (dt > 0) {
+			velocityY = (e.pageY - lastY) / dt;
+		}
+		lastY = e.pageY;
+		lastTime = now;
 
 		// Apply scroll to the active target
 		activeScrollTarget.scrollLeft = scrollLeft - walkX;
@@ -56,6 +71,9 @@
 
 	function handleMouseDown(e: MouseEvent) {
 		isClicking = true;
+
+		// Stop any ongoing inertia
+		if (animationFrame) cancelAnimationFrame(animationFrame);
 
 		// Only enable drag within the mobile viewport
 		if (!scrollContainer.contains(e.target as Node)) return;
@@ -66,6 +84,9 @@
 		isDown = true;
 		startX = e.pageX;
 		startY = e.pageY;
+		lastY = e.pageY;
+		lastTime = Date.now();
+		velocityY = 0;
 		scrollLeft = activeScrollTarget.scrollLeft;
 		scrollTop = activeScrollTarget.scrollTop;
 	}
@@ -73,13 +94,39 @@
 	function handleMouseUp() {
 		isDown = false;
 		isClicking = false;
-		activeScrollTarget = null;
+
+		if (activeScrollTarget && Math.abs(velocityY) > 0.1) {
+			applyInertia();
+		} else {
+			activeScrollTarget = null;
+		}
+	}
+
+	function applyInertia() {
+		if (!activeScrollTarget) return;
+
+		// Deceleration factor (friction)
+		const friction = 0.95;
+
+		velocityY *= friction;
+		activeScrollTarget.scrollTop -= velocityY * 16; // * 16 for approx frame time scaling
+
+		if (Math.abs(velocityY) > 0.05) {
+			animationFrame = requestAnimationFrame(applyInertia);
+		} else {
+			activeScrollTarget = null;
+		}
 	}
 
 	function handleMouseLeave() {
 		isDown = false;
 		isClicking = false;
-		activeScrollTarget = null;
+		// Maintain inertia even if mouse leaves if we were dragging
+		if (activeScrollTarget && Math.abs(velocityY) > 0.1) {
+			handleMouseUp();
+		} else {
+			activeScrollTarget = null;
+		}
 	}
 
 	onMount(() => {
@@ -94,6 +141,7 @@
 			window.removeEventListener('mousemove', handleMouseMove);
 			window.removeEventListener('mousedown', handleMouseDown);
 			window.removeEventListener('mouseup', handleMouseUp);
+			if (animationFrame) cancelAnimationFrame(animationFrame);
 		};
 	});
 </script>

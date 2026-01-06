@@ -144,6 +144,10 @@ export default {
 					1200: '#291600',
 					1300: '#0f0800'
 				}
+			},
+			fontFamily: {
+				nn: ['"Nitti Grotesk"', 'sans-serif'],
+				heading: ['"Nitti Grotesk Heading"', 'sans-serif']
 			}
 		}
 	}

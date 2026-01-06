@@ -1,14 +1,43 @@
 /* Mobile skin specific styles */
 
+@font-face {
+  font-family: 'Nitti Grotesk';
+  src: url('/fonts/NittiGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Nitti Grotesk';
+  src: url('/fonts/NittiGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Nitti Grotesk Heading';
+  src: url('/fonts/NNNittiGrotesk-Heading.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
 /* Fixed iPhone 15 viewport dimensions */
 .mobile-viewport {
+	font-family: 'Nitti Grotesk', sans-serif;
 	width: 393px;
 	height: 852px;
 	overflow: hidden;
 	position: relative;
 	background-color: #faf9f8; /* sand-50 */
-    display: flex;
+	display: flex;
     flex-direction: column;
+}
+
+/* Force reset global h1 styles leaking from desktop theme */
+.mobile-viewport h1 {
+	background: none !important;
+	-webkit-text-fill-color: initial !important;
+	color: inherit;
+	animation: none !important;
+	font-variation-settings: normal;
 }
 
 /* Scrollable content area within viewport */
@@ -19,6 +48,7 @@
 	padding-bottom: 5rem; /* Space for bottom nav */
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+	-webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
 }
 .mobile-content::-webkit-scrollbar {
     display: none;
@@ -26,17 +56,23 @@
 
 /* iPhone-style status bar */
 .mobile-status-bar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
 	height: 54px;
 	display: flex;
 	align-items: flex-end;
 	justify-content: space-between;
 	padding: 0 24px 8px;
+	font-family: 'Nitti Grotesk', sans-serif;
 	font-size: 15px;
 	font-weight: 600;
 	color: #1a1a1a;
-	background: #faf9f8; /* sand-50 */
-	z-index: 10;
+	background: transparent;
+	z-index: 50; /* Above sticky headers (z-20) */
     flex-shrink: 0;
+    pointer-events: none; /* Let clicks pass through to header if needed */
 }
 
 /* Status bar icons container */

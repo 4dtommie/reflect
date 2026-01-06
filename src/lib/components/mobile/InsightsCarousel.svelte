@@ -3,54 +3,9 @@
 	import { ArrowRight } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 
-	let scrollContainer: HTMLElement;
-	let isDragging = false;
-
-	function handleDragStart() {
-		isDragging = true;
-		// Disable snap during drag
-		if (scrollContainer) {
-			scrollContainer.style.scrollSnapType = 'none';
-		}
-	}
-
-	function handleDragEnd() {
-		if (!isDragging) return;
-		isDragging = false;
-
-		// Re-enable snap with smooth behavior - browser will animate to snap point
-		if (scrollContainer) {
-			scrollContainer.style.scrollBehavior = 'smooth';
-			scrollContainer.style.scrollSnapType = 'x mandatory';
-
-			// Remove smooth behavior after animation completes
-			setTimeout(() => {
-				if (scrollContainer) {
-					scrollContainer.style.scrollBehavior = 'auto';
-				}
-			}, 300);
-		}
-	}
-
+	// Manual drag logic removed to rely on native CSS scroll snap and inertia
 	onMount(() => {
-		scrollContainer = document.querySelector('.carousel-scroll') as HTMLElement;
-
-		if (scrollContainer) {
-			scrollContainer.addEventListener('mousedown', handleDragStart);
-			scrollContainer.addEventListener('touchstart', handleDragStart, { passive: true });
-		}
-
-		window.addEventListener('mouseup', handleDragEnd);
-		window.addEventListener('touchend', handleDragEnd);
-
-		return () => {
-			if (scrollContainer) {
-				scrollContainer.removeEventListener('mousedown', handleDragStart);
-				scrollContainer.removeEventListener('touchstart', handleDragStart);
-			}
-			window.removeEventListener('mouseup', handleDragEnd);
-			window.removeEventListener('touchend', handleDragEnd);
-		};
+		// No manual scroll handling needed for native feel
 	});
 </script>
 
@@ -136,7 +91,6 @@
 		gap: 1rem;
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
-		scroll-snap-type: x mandatory;
 		padding-top: 0.5rem;
 		padding-bottom: 1rem;
 		scrollbar-width: none;
@@ -150,7 +104,6 @@
 	.carousel-card {
 		width: 280px;
 		flex-shrink: 0;
-		scroll-snap-align: start;
 	}
 
 	/* First card gets left padding */
