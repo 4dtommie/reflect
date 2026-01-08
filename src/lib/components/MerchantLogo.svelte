@@ -69,7 +69,7 @@
 </script>
 
 <div
-	class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded-lg {config.container}"
+	class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded {config.container}"
 	style="background-color: {backgroundColor}20"
 >
 	{#if logoUrl && !logoError}

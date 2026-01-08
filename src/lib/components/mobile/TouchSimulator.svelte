@@ -71,6 +71,7 @@
 
 	function handleMouseDown(e: MouseEvent) {
 		isClicking = true;
+		e.preventDefault(); // Stop native selection/drag
 
 		// Stop any ongoing inertia
 		if (animationFrame) cancelAnimationFrame(animationFrame);
@@ -80,6 +81,7 @@
 
 		// Find the scrollable element (could be carousel or main content)
 		activeScrollTarget = findScrollableParent(e.target as HTMLElement) || scrollContainer;
+		activeScrollTarget.classList.add('is-dragging');
 
 		isDown = true;
 		startX = e.pageX;
@@ -95,10 +97,18 @@
 		isDown = false;
 		isClicking = false;
 
-		if (activeScrollTarget && Math.abs(velocityY) > 0.1) {
-			applyInertia();
-		} else {
-			activeScrollTarget = null;
+		if (activeScrollTarget) {
+			activeScrollTarget.classList.remove('is-dragging');
+
+			// Check if we should apply inertia or let snap take over
+			const style = getComputedStyle(activeScrollTarget);
+			const hasSnap = style.scrollSnapType !== 'none' && style.scrollSnapType !== '';
+
+			if (!hasSnap && Math.abs(velocityY) > 0.1) {
+				applyInertia();
+			} else {
+				activeScrollTarget = null;
+			}
 		}
 	}
 
@@ -110,6 +120,7 @@
 
 		velocityY *= friction;
 		activeScrollTarget.scrollTop -= velocityY * 16; // * 16 for approx frame time scaling
+		activeScrollTarget.scrollLeft -= velocityY * 16 * 0.5; // Also apply to X if applicable (assumes diagonal drag support)
 
 		if (Math.abs(velocityY) > 0.05) {
 			animationFrame = requestAnimationFrame(applyInertia);

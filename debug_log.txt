@@ -26112,3 +26112,17 @@
 [2026-01-08T07:09:01.913Z] lastInsightMsg: check_recurring
 [2026-01-08T07:09:01.919Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
 [2026-01-08T07:09:01.924Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-08T11:39:02.239Z] Load function started
+[2026-01-08T11:39:02.298Z] Promise.all completed - chatInsight: spending_down
+[2026-01-08T11:39:02.303Z] Entering transition logic - currentInsight: spending_down
+[2026-01-08T11:39:02.306Z] Conversation found: true, messages: 5
+[2026-01-08T11:39:02.308Z] lastInsightMsg: check_recurring
+[2026-01-08T11:39:02.310Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-08T11:39:02.312Z] 🔍 DEBUG: currentInsight ID: spending_down
+[2026-01-08T15:22:55.127Z] Load function started
+[2026-01-08T15:22:55.152Z] Promise.all completed - chatInsight: undefined
+[2026-01-08T15:22:55.160Z] Entering transition logic - currentInsight: undefined
+[2026-01-08T15:22:55.164Z] Conversation found: true, messages: 5
+[2026-01-08T15:22:55.166Z] lastInsightMsg: spending_down
+[2026-01-08T15:22:55.168Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-08T15:22:55.170Z] 🔍 DEBUG: currentInsight ID: undefined

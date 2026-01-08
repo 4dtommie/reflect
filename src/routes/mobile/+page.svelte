@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import Card from '$lib/components/mobile/Card.svelte';
 	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
-	import BottomNav from '$lib/components/mobile/BottomNav.svelte';
 	import MoneyChart from '$lib/components/mobile/MoneyChart.svelte';
 	import InsightsCarousel from '$lib/components/mobile/InsightsCarousel.svelte';
 	import {
@@ -14,6 +13,8 @@
 		ArrowRight
 	} from 'lucide-svelte';
 	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
+	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
+	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 
 	// Data from server
 	let { data } = $props();
@@ -37,7 +38,7 @@
 <div class="space-y-6 p-4 font-nn" data-theme="nn-theme">
 	<!-- Betaalsaldo -->
 	<section>
-		<h2 class="mb-3 font-heading text-sm font-bold text-gray-900">Betaalsaldo</h2>
+		<WidgetHeader title="Betaalsaldo" class="mb-3" />
 		<Card padding="p-0">
 			<div class="p-4">
 				<div class="flex items-center justify-between">
@@ -80,15 +81,9 @@
 
 	<!-- Transacties -->
 	<section>
-		<div class="mb-3 flex items-center justify-between">
-			<h2 class="font-heading text-sm font-bold text-gray-900">Transacties</h2>
-			<a
-				href="/mobile/transactions"
-				class="flex items-center text-xs font-medium text-mediumOrange-600"
-			>
-				Alle transacties <ArrowRight class="ml-1 h-3 w-3" strokeWidth={1.5} />
-			</a>
-		</div>
+		<WidgetHeader title="Transacties" class="mb-3">
+			<WidgetAction label="Alle transacties" href="/mobile/transactions" />
+		</WidgetHeader>
 
 		<Card padding="p-0">
 			<div class="divide-y divide-gray-100">
@@ -113,9 +108,4 @@
 	<section>
 		<MoneyChart />
 	</section>
-</div>
-
-<!-- Bottom Nav (Absolute in viewport) -->
-<div class="absolute right-0 bottom-0 left-0 z-50">
-	<BottomNav />
 </div>

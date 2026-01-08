@@ -7,8 +7,8 @@
 	import { onNavigate } from '$app/navigation';
 	import { fly } from 'svelte/transition';
 	import { User, LayoutDashboard, List, Zap, Loader2 } from 'lucide-svelte';
-	import { injectAnalytics } from '@vercel/analytics/sveltekit';
-	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+	// import { injectAnalytics } from '@vercel/analytics/sveltekit';
+	// import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
 	import type { LayoutData } from './$types';
 
@@ -79,8 +79,8 @@
 		}
 
 		// Initialize Vercel Analytics and Speed Insights
-		injectAnalytics({ mode: 'production' });
-		injectSpeedInsights({ debug: false });
+		// injectAnalytics();
+		// injectSpeedInsights({ debug: false });
 	});
 
 	function toggleTheme() {

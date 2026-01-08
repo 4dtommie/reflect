@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
+import { applyDateOffset, getOffsetFromUrl } from '$lib/server/utils/dateShifter';
 
 // Extract time from description field (e.g., "22:29" pattern)
 // Kept for backward compatibility or if needed later, but usage is changing.
@@ -9,16 +10,45 @@ function extractTimeFromDescription(description: string | null): string | null {
     return timeMatch ? timeMatch[1] : null;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
     const userId = locals.user?.id;
+    const manualOffset = getOffsetFromUrl(url); // Additional offset from UI controls
 
     if (!userId) {
-        return { groupedTransactions: [] };
+        return { groupedTransactions: [], baseOffset: 0 };
     }
+
+    // Find the latest transaction date
+    const latestTransaction = await db.transactions.findFirst({
+        where: { user_id: userId },
+        orderBy: { date: 'desc' },
+        select: { date: true }
+    });
+
+    // Calculate base offset: shift so latest transaction is 30 days in the future
+    let baseOffset = 0;
+    if (latestTransaction) {
+        const latestDate = new Date(latestTransaction.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        latestDate.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.floor((today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24));
+        baseOffset = diffDays + 30;
+    }
+
+    // cutoffDate calculation for "Moving Curtain" logic:
+    // OriginalDate <= RealToday - baseOffset + manualOffset
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - baseOffset + manualOffset);
+    cutoffDate.setHours(23, 59, 59, 999);
 
     // Fetch transactions (limit to 100 to cover enough history)
     const transactions = await db.transactions.findMany({
-        where: { user_id: userId },
+        where: {
+            user_id: userId,
+            date: { lte: cutoffDate }
+        },
         orderBy: { date: 'desc' },
         take: 100,
         include: {
@@ -38,14 +68,22 @@ export const load: PageServerLoad = async ({ locals }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // Simulated Today for labelling "Vandaag"/"Gisteren" correctly
+    // If ManualOffset = 0, SimulatedToday = RealToday.
+    // If ManualOffset = 1, SimulatedToday = RealToday + 1.
+    const simulatedToday = new Date(today);
+    simulatedToday.setDate(simulatedToday.getDate() + manualOffset);
+
+    const simulatedYesterday = new Date(simulatedToday);
+    simulatedYesterday.setDate(simulatedYesterday.getDate() - 1);
 
     const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-    const shortDays = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
     for (const t of transactions) {
-        const date = new Date(t.date);
+        // Apply ONLY base offset for display (Fixed World)
+        const originalDate = new Date(t.date);
+        const date = applyDateOffset(originalDate, baseOffset);
+
         date.setHours(0, 0, 0, 0); // Normalize time for grouping
         const dateKey = date.toISOString().split('T')[0];
 
@@ -54,13 +92,12 @@ export const load: PageServerLoad = async ({ locals }) => {
         if (!group) {
             // Determine Label
             let label = '';
-            if (date.getTime() === today.getTime()) {
+            if (date.getTime() === simulatedToday.getTime()) {
                 label = 'Vandaag';
-            } else if (date.getTime() === yesterday.getTime()) {
+            } else if (date.getTime() === simulatedYesterday.getTime()) {
                 label = 'Gisteren';
             } else {
-                // E.g., "14 april" or "ma 14 apr" ? User provided screenshot shows "Vandaag", let's use "dd Month" for others or relative if close?
-                // Screenshot just shows "Vandaag", let's assume standard date format for others.
+                // E.g., "14 april"
                 label = `${date.getDate()} ${months[date.getMonth()]}`;
             }
 
@@ -88,21 +125,62 @@ export const load: PageServerLoad = async ({ locals }) => {
         });
     }
 
-    // Convert map to array
-    const groupedTransactions = Array.from(groupedMap.values()).map(g => ({
-        ...g,
-        formattedTotal: formatDailyTotal(g.totalAmount)
-    }));
+    // Convert map to array and sort by date descending
+    const groupedTransactions = Array.from(groupedMap.values())
+        .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
+        .map(g => ({
+            ...g,
+            formattedTotal: formatDailyTotal(g.totalAmount)
+        }));
 
-    return { groupedTransactions };
+    // --- Upcoming Transactions Logic ---
+    // Fetch upcoming recurring transactions (those masked by the "Time Curtain" as future)
+    // We look for actual transactions that are > cutoffDate and are recurring.
+    const rawUpcoming = await db.transactions.findMany({
+        where: {
+            user_id: userId,
+            date: { gt: cutoffDate }, // Strictly after simulated today
+            recurring_transaction_id: { not: null } // Only recurring ones
+        },
+        orderBy: { date: 'asc' }, // Closest future date first
+        take: 2,
+        include: {
+            categories: true,
+            merchants: true
+        }
+    });
+
+    const upcomingTransactions = rawUpcoming.map(t => {
+        const originalDate = new Date(t.date);
+        const displayedCurrentDate = applyDateOffset(originalDate, baseOffset);
+
+        // Calculate "over X dagen"
+        // diff = displayedDate - simulatedToday
+        // Note: simulatedToday is normalized to 00:00:00. 
+        // We should normalize displayedCurrentDate to 00:00:00 for accurate day diff.
+        const dDate = new Date(displayedCurrentDate);
+        dDate.setHours(0, 0, 0, 0);
+
+        const diffTime = dDate.getTime() - simulatedToday.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return {
+            id: t.id,
+            merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName,
+            amount: Number(t.amount),
+            isDebit: t.is_debit,
+            category: t.categories?.name || 'Overig',
+            categoryIcon: t.categories?.icon || null,
+            daysUntil: diffDays,
+            daysLabel: diffDays === 1 ? 'morgen' : `over ${diffDays} dagen`
+        };
+    }).reverse();
+
+    return { groupedTransactions, upcomingTransactions, baseOffset };
 };
 
 function formatDailyTotal(amount: number): string {
     const abs = Math.abs(amount);
     const prefix = amount < 0 ? '- ' : amount > 0 ? '+ ' : '';
-    // Use dutch locale for comma but no currency symbol here as per design pill "- € 232"
-    // Actually user screenshot shows "- € 232". Let's match that.
-    // It seems to be rounded to whole numbers in the pill? " - € 232"
-    // Let's round for the pill to keep it clean.
     return `${prefix}€ ${Math.round(abs)}`;
 }
