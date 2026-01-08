@@ -1,118 +1,155 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import Card from '$lib/components/mobile/Card.svelte';
-	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
-	import BottomNav from '$lib/components/mobile/BottomNav.svelte';
-	import MoneyChart from '$lib/components/mobile/MoneyChart.svelte';
-	import InsightsCarousel from '$lib/components/mobile/InsightsCarousel.svelte';
-	import {
-		QrCode,
-		MoreVertical,
-		CreditCard,
-		RefreshCw,
-		Smartphone,
-		ArrowRight
-	} from 'lucide-svelte';
-	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
+	import { onMount } from 'svelte';
 
-	// Data from server
-	let { data } = $props();
+	let iframeSrc = '/mobile';
+	let currentTheme = $state<'nord' | 'night'>('nord');
+
+	onMount(() => {
+		const storedTheme = localStorage.getItem('theme') as 'nord' | 'night' | null;
+		if (storedTheme) {
+			currentTheme = storedTheme;
+		} else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+			currentTheme = 'night';
+		}
+	});
+
+	function toggleTheme() {
+		currentTheme = currentTheme === 'nord' ? 'night' : 'nord';
+		localStorage.setItem('theme', currentTheme);
+	}
 </script>
 
 <svelte:head>
-	<title>Reflect Mobile</title>
+	<title>Mobile Preview | Reflect</title>
 </svelte:head>
 
-<!-- Header -->
-<MobileHeader class="flex items-center justify-between px-4 pb-3">
-	<button class="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100">
-		<QrCode class="h-6 w-6 text-black" strokeWidth={1.5} />
-	</button>
-	<h1 class="font-heading text-xl font-bold text-black">Inzicht</h1>
-	<button class="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100">
-		<MoreVertical class="h-6 w-6 text-black" strokeWidth={1.5} />
-	</button>
-</MobileHeader>
+<div
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8"
+>
+	<div class="flex items-center gap-16">
+		<!-- Sidebar with controls -->
+		<div class="flex flex-col gap-6">
+			<div>
+				<h1 class="mb-2 text-3xl font-bold text-white">📱 Mobile skin preview</h1>
+				<p class="text-slate-400">iPhone 15 mockup • 393×852 viewport</p>
+			</div>
 
-<div class="space-y-6 p-4 font-nn" data-theme="nn-theme">
-	<!-- Betaalsaldo -->
-	<section>
-		<h2 class="mb-3 font-heading text-sm font-bold text-gray-900">Betaalsaldo</h2>
-		<Card padding="p-0">
-			<div class="p-4">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-3">
-						<div class="relative">
-							<CreditCard class="h-8 w-8 text-gray-400" strokeWidth={1.5} />
-							<div
-								class="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-mediumOrange-500 text-[10px] font-bold text-white ring-2 ring-white"
-							>
-								N
-							</div>
-						</div>
-						<div>
-							<div class="font-bold">P. de Vries</div>
-							<div class="text-xs text-gray-500">NL31 NNBA 1000 0006 45</div>
-						</div>
-					</div>
-					<div class="text-lg font-bold">€ 50,00</div>
+			<!-- Theme controls -->
+			<div class="flex flex-col gap-2">
+				<span class="text-sm font-medium text-slate-400">Theme</span>
+				<div class="flex gap-2">
+					<button
+						class="btn btn-sm {currentTheme === 'nord' ? 'btn-primary' : 'text-white btn-ghost'}"
+						onclick={() => {
+							currentTheme = 'nord';
+							localStorage.setItem('theme', 'nord');
+						}}
+					>
+						☀️ Light
+					</button>
+					<button
+						class="btn btn-sm {currentTheme === 'night' ? 'btn-primary' : 'text-white btn-ghost'}"
+						onclick={() => {
+							currentTheme = 'night';
+							localStorage.setItem('theme', 'night');
+						}}
+					>
+						🌙 Dark
+					</button>
 				</div>
 			</div>
-			<div class="grid grid-cols-2 border-t border-gray-100">
-				<button
-					class="btn flex h-auto flex-col gap-1 rounded-none border-r border-gray-100 py-3 font-normal normal-case btn-ghost"
-				>
-					<RefreshCw class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-					<span class="text-xs font-semibold text-gray-700">Overmaken</span>
-				</button>
-				<button
-					class="btn flex h-auto flex-col gap-1 rounded-none py-3 font-normal normal-case btn-ghost"
-				>
-					<Smartphone class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-					<span class="text-xs font-semibold text-gray-700">Betaalverzoek</span>
-				</button>
-			</div>
-		</Card>
-	</section>
-
-	<!-- Inzichten Carousel -->
-	<InsightsCarousel />
-
-	<!-- Transacties -->
-	<section>
-		<div class="mb-3 flex items-center justify-between">
-			<h2 class="font-heading text-sm font-bold text-gray-900">Transacties</h2>
-			<a href="/m/transactions" class="flex items-center text-xs font-medium text-mediumOrange-600">
-				Alle transacties <ArrowRight class="ml-1 h-3 w-3" strokeWidth={1.5} />
-			</a>
 		</div>
 
-		<Card padding="p-0">
-			<div class="divide-y divide-gray-100">
-				{#each data.transactions as t}
-					<TransactionItem
-						merchant={t.merchant}
-						subtitle={t.subline}
-						amount={t.isDebit ? -t.amount : t.amount}
-						isDebit={t.isDebit}
-						categoryIcon={t.categoryIcon}
-						compact={true}
-						class="p-4 active:bg-gray-50"
-					/>
-				{:else}
-					<div class="p-4 text-center text-sm text-gray-500">Geen transacties</div>
-				{/each}
-			</div>
-		</Card>
-	</section>
+		<!-- iPhone mockup -->
+		<div class="iphone-frame">
+			<!-- Dynamic Island -->
+			<div class="dynamic-island"></div>
 
-	<!-- Jouw geld in april -->
-	<section>
-		<MoneyChart />
-	</section>
+			<!-- Screen content -->
+			<iframe src={iframeSrc} title="Mobile Preview" class="iphone-screen" data-theme={currentTheme}
+			></iframe>
+
+			<!-- Home indicator -->
+			<div class="home-indicator"></div>
+		</div>
+	</div>
 </div>
 
-<!-- Bottom Nav (Absolute in viewport) -->
-<div class="absolute right-0 bottom-0 left-0 z-50">
-	<BottomNav />
-</div>
+<style>
+	/* Override root layout styles to remove grey border */
+	:global(html),
+	:global(body) {
+		background: transparent !important;
+		padding: 0 !important;
+		margin: 0 !important;
+	}
+
+	.iphone-frame {
+		position: relative;
+		width: 433px; /* 393 + 40px for frame */
+		height: 892px; /* 852 + 40px for frame */
+		background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+		border-radius: 55px;
+		padding: 20px;
+		box-shadow:
+			0 25px 50px -12px rgba(0, 0, 0, 0.5),
+			inset 0 2px 4px rgba(255, 255, 255, 0.1),
+			inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+	}
+
+	.iphone-frame::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		right: -3px;
+		transform: translateY(-50%);
+		width: 4px;
+		height: 100px;
+		background: #2d2d2d;
+		border-radius: 0 4px 4px 0;
+	}
+
+	.iphone-frame::after {
+		content: '';
+		position: absolute;
+		top: 20%;
+		left: -3px;
+		width: 4px;
+		height: 60px;
+		background: #2d2d2d;
+		border-radius: 4px 0 0 4px;
+		box-shadow: 0 50px 0 #2d2d2d;
+	}
+
+	.dynamic-island {
+		position: absolute;
+		top: 32px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 120px;
+		height: 35px;
+		background: #000;
+		border-radius: 20px;
+		z-index: 10;
+	}
+
+	.iphone-screen {
+		width: 393px;
+		height: 852px;
+		border-radius: 40px;
+		border: none;
+		background: white;
+		overflow: hidden;
+	}
+
+	.home-indicator {
+		position: absolute;
+		bottom: 28px;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 140px;
+		height: 5px;
+		background: rgba(255, 255, 255, 0.3);
+		border-radius: 3px;
+	}
+</style>

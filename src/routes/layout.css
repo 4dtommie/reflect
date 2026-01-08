@@ -333,3 +333,15 @@ body {
 	color: white;
 	animation: gradient-rotate 2s ease infinite;
 }
+
+/* Page transitions */
+.transition-container {
+	width: 100%;
+	height: 100%;
+	display: flow-root; /* Prevent margin collapse */
+}
+
+/* Ensure the container doesn't cause overflow issues during transition */
+main, .min-h-full {
+	overflow-x: hidden;
+}

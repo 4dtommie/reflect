@@ -4,6 +4,8 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/stores';
+	import { onNavigate } from '$app/navigation';
+	import { fly } from 'svelte/transition';
 	import { User, LayoutDashboard, List, Zap, Loader2 } from 'lucide-svelte';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
@@ -77,8 +79,8 @@
 		}
 
 		// Initialize Vercel Analytics and Speed Insights
-		injectAnalytics();
-		injectSpeedInsights();
+		injectAnalytics({ mode: 'production' });
+		injectSpeedInsights({ debug: false });
 	});
 
 	function toggleTheme() {
@@ -171,8 +173,41 @@
 
 	// Check if we're on the mobile skin route or preview - hide navbar and blobs
 	const isMobileSkin = $derived(
-		$page.url.pathname.startsWith('/m') || $page.url.pathname.startsWith('/mobile-preview')
+		$page.url.pathname.startsWith('/m') || $page.url.pathname.startsWith('/mobile')
 	);
+
+	// Navigation direction logic
+	let xTranslate = $state(200);
+	const depthMap: Record<string, number> = {
+		'/': 0,
+		'/dashboard': 1,
+		'/transactions': 1,
+		'/actions': 1,
+		'/merchants': 2,
+		'/insights': 2,
+		'/insights/capabilities': 3,
+		'/recurring': 2,
+		'/subscriptions': 2,
+		'/accounts': 2,
+		'/upload-transactions': 2
+	};
+
+	onNavigate((navigation) => {
+		const from = navigation.from?.url.pathname || '/';
+		const to = navigation.to?.url.pathname || '/';
+
+		const fromDepth = depthMap[from] ?? (from === '/' ? 0 : 2);
+		const toDepth = depthMap[to] ?? (to === '/' ? 0 : 2);
+
+		if (toDepth > fromDepth) {
+			xTranslate = 200; // Slide left (new page comes from right)
+		} else if (toDepth < fromDepth) {
+			xTranslate = -200; // Slide right (new page comes from left)
+		} else {
+			// Sibling navigation - default to slide left
+			xTranslate = 200;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -316,13 +351,29 @@
 					</div>
 				</div>
 			{:else}
-				{@render children()}
+				{#key data.url}
+					<div
+						class="transition-container"
+						in:fly={{ x: xTranslate, duration: 400, delay: 200 }}
+						out:fly={{ x: -xTranslate, duration: 400 }}
+					>
+						{@render children()}
+					</div>
+				{/key}
 			{/if}
 		</div>
 	</div>
 {:else}
 	<!-- No drawer for unauthenticated users -->
-	{@render children()}
+	{#key data.url}
+		<div
+			class="transition-container"
+			in:fly={{ x: xTranslate, duration: 400, delay: 200 }}
+			out:fly={{ x: -xTranslate, duration: 400 }}
+		>
+			{@render children()}
+		</div>
+	{/key}
 {/if}
 
 <!-- Reset Environment Confirmation Modal -->

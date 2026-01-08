@@ -12,8 +12,8 @@
 </script>
 
 <header
-	class="sticky top-0 z-20 w-full bg-sand-50/85 pt-[54px] backdrop-blur-md transition-shadow {className}"
-	style="box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {shadowOpacity});"
+	class="sticky top-0 z-20 w-full bg-sand-50/70 pt-[54px] backdrop-blur-md {className}"
+	style="box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {shadowOpacity}); transform: translateZ(0);"
 >
 	{@render children?.()}
 </header>

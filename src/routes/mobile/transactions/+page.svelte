@@ -53,7 +53,7 @@
 
 <!-- Header -->
 <MobileHeader class="flex items-center px-4 pb-4">
-	<a href="/m" class="mr-4 rounded-full p-2 hover:bg-black/5 active:bg-black/10">
+	<a href="/mobile" class="mr-4 rounded-full p-2 hover:bg-black/5 active:bg-black/10">
 		<ArrowLeft class="h-6 w-6 text-black" />
 	</a>
 	<h1 class="font-heading text-lg font-bold text-black">Alle transacties</h1>

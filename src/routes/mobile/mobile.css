@@ -19,16 +19,16 @@
   font-style: normal;
 }
 
-/* Fixed iPhone 15 viewport dimensions */
+/* Mobile viewport - fills iframe */
 .mobile-viewport {
 	font-family: 'Nitti Grotesk', sans-serif;
-	width: 393px;
-	height: 852px;
+	width: 100%;
+	height: 100%;
 	overflow: hidden;
 	position: relative;
 	background-color: #faf9f8; /* sand-50 */
 	display: flex;
-    flex-direction: column;
+	flex-direction: column;
 }
 
 /* Force reset global h1 styles leaking from desktop theme */
@@ -44,14 +44,14 @@
 .mobile-content {
 	flex: 1;
 	overflow-y: auto;
-	overflow-x: clip; /* clip instead of hidden to allow nested horizontal scroll */
+	overflow-x: hidden;
 	padding-bottom: 5rem; /* Space for bottom nav */
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+	-ms-overflow-style: none;  /* IE and Edge */
+	scrollbar-width: none;  /* Firefox */
 	-webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
 }
 .mobile-content::-webkit-scrollbar {
-    display: none;
+	display: none;
 }
 
 /* iPhone-style status bar */
@@ -71,8 +71,8 @@
 	color: #1a1a1a;
 	background: transparent;
 	z-index: 50; /* Above sticky headers (z-20) */
-    flex-shrink: 0;
-    pointer-events: none; /* Let clicks pass through to header if needed */
+	flex-shrink: 0;
+	pointer-events: none; /* Let clicks pass through to header if needed */
 }
 
 /* Status bar icons container */

@@ -4,7 +4,10 @@
 	let activeTab = $state('inzicht');
 </script>
 
-<div class="flex cursor-none flex-col bg-white font-nn shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+<div
+	class="flex cursor-none flex-col bg-white/70 font-nn shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur-md"
+	style="transform: translateZ(0);"
+>
 	<div class="flex h-[64px] w-full items-stretch">
 		<!-- Inzicht Tab -->
 		<button
