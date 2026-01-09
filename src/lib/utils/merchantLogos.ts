@@ -139,6 +139,8 @@ const merchantDomainMap: Record<string, string> = {
 
     // Government & Public
     'belastingdienst': 'belastingdienst.nl',
+    'rvo': 'rvo.nl',
+    'rvo.nl': 'rvo.nl',
 
     // Fuel & Parking
     'shell': 'shell.nl',

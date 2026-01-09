@@ -39,6 +39,8 @@
 	// Generate a consistent background color from category color or merchant name
 	const backgroundColor = $derived.by(() => {
 		if (categoryColor) return categoryColor;
+		if (!merchantName) return 'gray';
+
 		// Generate color from merchant name hash
 		let hash = 0;
 		for (let i = 0; i < merchantName.length; i++) {
@@ -50,6 +52,7 @@
 
 	// Get initials for fallback (first letter or first two letters of two words)
 	const initials = $derived.by(() => {
+		if (!merchantName) return '??';
 		const words = merchantName.trim().split(/\s+/);
 		if (words.length >= 2) {
 			return (words[0][0] + words[1][0]).toUpperCase();

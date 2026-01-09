@@ -26,6 +26,7 @@
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
+	import ExpectedWidget from '$lib/components/mobile/ExpectedWidget.svelte';
 
 	// Data from server
 	let { data } = $props();
@@ -238,4 +239,7 @@
 			</div>
 		</Card>
 	</section>
+
+	<!-- Verwacht Widget -->
+	<ExpectedWidget items={data.upcomingPayments} />
 </div>

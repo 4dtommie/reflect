@@ -129,7 +129,7 @@
 </svelte:head>
 
 <div
-	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8"
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
 >
 	<div class="flex items-center gap-16">
 		<!-- Sidebar with controls -->
@@ -322,6 +322,7 @@
 		padding: 0 !important;
 		margin: 0 !important;
 		overflow: hidden !important;
+		max-width: none !important;
 	}
 
 	.device-frame {

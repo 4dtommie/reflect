@@ -8,25 +8,22 @@ datasource db {
 }
 
 model User {
-  id              Int               @id @default(autoincrement())
-  username        String            @unique
-  password        String
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  categories      categories[]
-  transactions    transactions[]
-  user_categories user_categories[]
-  recurring_transactions RecurringTransaction[]
+  id                         Int                       @id @default(autoincrement())
+  username                   String                    @unique
+  password                   String
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  updatedAt                  DateTime                  @updatedAt @map("updated_at")
+  daily_visit_count          Int                       @default(0)
+  last_active_at             DateTime                  @default(now())
+  login_streak               Int                       @default(0)
+  streak_updated_at          DateTime?
+  bank_accounts              BankAccount[]
+  categories                 categories[]
+  chat_conversations         ChatConversation[]
+  recurring_transactions     RecurringTransaction[]
+  transactions               transactions[]
+  user_categories            user_categories[]
   variable_spending_patterns VariableSpendingPattern[]
-  chat_conversations ChatConversation[]
-  
-  // Activity tracking for smart greetings
-  last_active_at    DateTime   @default(now())
-  daily_visit_count Int        @default(0)
-  login_streak      Int        @default(0)   // Consecutive days logged in
-  streak_updated_at DateTime?                // Date streak was last updated
-
-  bank_accounts     BankAccount[]
 
   @@map("users")
 }
@@ -35,88 +32,86 @@ model BankAccount {
   id             Int      @id @default(autoincrement())
   user_id        Int
   iban           String
-  name           String   // Human readable name e.g. "Joint Account"
-  type           String?  // "checking", "savings", "credit_card"
+  name           String
+  type           String?
   is_own_account Boolean  @default(true)
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
-
   user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([user_id, iban]) // User can only have one entry per IBAN
-  @@map("bank_accounts")
+  @@unique([user_id, iban])
   @@index([user_id])
+  @@map("bank_accounts")
 }
 
 model categories {
-  id               Int               @id @default(autoincrement())
-  name             String            @unique
-  description      String?
-  color            String?
-  icon             String?
-  created_at       DateTime          @default(now())
-  updated_at       DateTime
-  parent_id        Int?
-  created_by       Int?
-  is_default       Boolean           @default(false)
-  group            String?            // "income", "essential", "lifestyle", "financial", "other"
-  tier             String?            // "most" | "medium" | "less" - for AI prompt ordering
-  is_variable_spending Boolean        @default(false) // true = frequent variable purchases (groceries, coffee, fuel)
-  users            User?             @relation(fields: [created_by], references: [id])
-  categories       categories?       @relation("categoriesTocategories", fields: [parent_id], references: [id])
-  other_categories categories[]      @relation("categoriesTocategories")
-  merchants        merchants[]
-  transactions     transactions[]
-  user_categories  user_categories[]
-  category_keywords category_keywords[]
-  recurring_transactions RecurringTransaction[]
+  id                         Int                       @id @default(autoincrement())
+  name                       String                    @unique
+  description                String?
+  color                      String?
+  icon                       String?
+  created_at                 DateTime                  @default(now())
+  updated_at                 DateTime
+  parent_id                  Int?
+  created_by                 Int?
+  is_default                 Boolean                   @default(false)
+  group                      String?
+  tier                       String?
+  is_variable_spending       Boolean                   @default(false)
+  users                      User?                     @relation(fields: [created_by], references: [id])
+  categories                 categories?               @relation("categoriesTocategories", fields: [parent_id], references: [id])
+  other_categories           categories[]              @relation("categoriesTocategories")
+  category_keywords          category_keywords[]
+  merchants                  merchants[]
+  recurring_transactions     RecurringTransaction[]
+  transactions               transactions[]
+  user_categories            user_categories[]
   variable_spending_patterns VariableSpendingPattern[]
 }
 
 model merchants {
-  id                  Int            @id @default(autoincrement())
-  name                String         @unique
-  keywords            String[]
-  ibans               String[]
-  default_category_id Int?
-  notes               String?
-  is_active           Boolean        @default(true)
-  is_potential_recurring Boolean?    // null = not determined, true = potential sub, false = user ignored
-  created_at          DateTime       @default(now())
-  updated_at          DateTime
-  categories          categories?    @relation(fields: [default_category_id], references: [id])
-  transactions        transactions[]
+  id                     Int                    @id @default(autoincrement())
+  name                   String                 @unique
+  keywords               String[]
+  ibans                  String[]
+  default_category_id    Int?
+  notes                  String?
+  is_active              Boolean                @default(true)
+  created_at             DateTime               @default(now())
+  updated_at             DateTime
+  is_potential_recurring Boolean?
+  categories             categories?            @relation(fields: [default_category_id], references: [id])
   recurring_transactions RecurringTransaction[]
+  transactions           transactions[]
 }
 
 model transactions {
-  id                 Int             @id @default(autoincrement())
-  date               DateTime
-  merchantName       String
-  iban               String
-  counterparty_iban  String?
-  is_debit           Boolean         @default(true)
-  amount             Decimal         @db.Decimal(10, 2)
-  type               TransactionType
-  description        String
-  category_id        Int?
-  is_category_manual Boolean         @default(false)
-  category_confidence Float?
-  is_recurring       Boolean?
-  created_at         DateTime        @default(now())
-  updated_at         DateTime
-  user_id            Int
-  merchant_id        Int?
-  // Data cleaning fields
-  cleaned_merchant_name    String?
-  normalized_description   String?
+  id                             Int                   @id @default(autoincrement())
+  date                           DateTime
+  merchantName                   String
+  iban                           String
+  counterparty_iban              String?
+  is_debit                       Boolean               @default(true)
+  amount                         Decimal               @db.Decimal(10, 2)
+  type                           TransactionType
+  description                    String
+  category_id                    Int?
+  is_category_manual             Boolean               @default(false)
+  is_recurring                   Boolean?
+  created_at                     DateTime              @default(now())
+  updated_at                     DateTime
+  user_id                        Int
+  merchant_id                    Int?
+  category_confidence            Float?
+  cleaned_merchant_name          String?
+  normalized_description         String?
+  recurring_transaction_id       Int?
   last_categorization_attempt_at DateTime?
-  categories         categories?     @relation(fields: [category_id], references: [id])
-  merchants          merchants?      @relation(fields: [merchant_id], references: [id])
-  users              User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  category_keywords  category_keywords[]
-  recurring_transaction_id Int?
-  recurring_transaction    RecurringTransaction? @relation(fields: [recurring_transaction_id], references: [id])
+  category_keywords              category_keywords[]
+  categories                     categories?           @relation(fields: [category_id], references: [id])
+  merchants                      merchants?            @relation(fields: [merchant_id], references: [id])
+  recurring_transaction          RecurringTransaction? @relation(fields: [recurring_transaction_id], references: [id])
+  users                          User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([user_id, category_id])
@@ -130,53 +125,51 @@ model RecurringTransaction {
   user_id            Int
   name               String
   amount             Decimal        @db.Decimal(10, 2)
-  interval           String         // "monthly", "weekly", "quarterly", "yearly", "4-weekly"
-  type               String?        // "subscription", "variable_cost", "salary", "tax", "transfer"
-  is_debit           Boolean        @default(true) // true = expense, false = income
-  status             String         @default("active") // "active", "inactive"
+  interval           String
+  status             String         @default("active")
   merchant_id        Int?
   category_id        Int?
   next_expected_date DateTime?
   created_at         DateTime       @default(now())
   updated_at         DateTime       @updatedAt
-  
-  users              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  merchants          merchants?     @relation(fields: [merchant_id], references: [id])
+  type               String?
+  is_debit           Boolean        @default(true)
   categories         categories?    @relation(fields: [category_id], references: [id])
+  merchants          merchants?     @relation(fields: [merchant_id], references: [id])
+  users              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
   transactions       transactions[]
 
-  @@map("recurring_transactions")
   @@index([user_id])
   @@index([status])
+  @@map("recurring_transactions")
 }
 
 model VariableSpendingPattern {
-  id                 Int         @id @default(autoincrement())
+  id                 Int        @id @default(autoincrement())
   user_id            Int
   category_id        Int
-  category_name      String      // Denormalized for easy display
-  monthly_average    Decimal     @db.Decimal(10, 2)
-  visits_per_month   Decimal     @db.Decimal(5, 2)
-  average_per_visit  Decimal     @db.Decimal(10, 2)
-  total_spent        Decimal     @db.Decimal(12, 2)
+  category_name      String
+  monthly_average    Decimal    @db.Decimal(10, 2)
+  visits_per_month   Decimal    @db.Decimal(5, 2)
+  average_per_visit  Decimal    @db.Decimal(10, 2)
+  total_spent        Decimal    @db.Decimal(12, 2)
   total_transactions Int
   unique_merchants   Int
-  top_merchants      Json?       // Array of { merchantName, totalSpent, transactionCount }
-  min_amount         Decimal     @db.Decimal(10, 2)
-  max_amount         Decimal     @db.Decimal(10, 2)
+  top_merchants      Json?
+  min_amount         Decimal    @db.Decimal(10, 2)
+  max_amount         Decimal    @db.Decimal(10, 2)
   first_transaction  DateTime
   last_transaction   DateTime
-  status             String      @default("active") // "active", "inactive"
-  created_at         DateTime    @default(now())
-  updated_at         DateTime    @updatedAt
-
-  users              User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  categories         categories  @relation(fields: [category_id], references: [id])
+  status             String     @default("active")
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @updatedAt
+  categories         categories @relation(fields: [category_id], references: [id])
+  users              User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, category_id])
-  @@map("variable_spending_patterns")
   @@index([user_id])
   @@index([status])
+  @@map("variable_spending_patterns")
 }
 
 model user_categories {
@@ -195,15 +188,15 @@ model user_categories {
 }
 
 model category_keywords {
-  id                  Int          @id @default(autoincrement())
-  category_id         Int
-  keyword             String
-  source              String       @default("manual") // "manual" | "ai"
+  id                    Int           @id @default(autoincrement())
+  category_id           Int
+  keyword               String
+  source                String        @default("manual")
   source_transaction_id Int?
-  confidence          Float?
-  created_at          DateTime     @default(now())
-  categories          categories   @relation(fields: [category_id], references: [id], onDelete: Cascade)
-  transactions        transactions? @relation(fields: [source_transaction_id], references: [id])
+  confidence            Float?
+  created_at            DateTime      @default(now())
+  categories            categories    @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  transactions          transactions? @relation(fields: [source_transaction_id], references: [id])
 
   @@unique([category_id, keyword])
   @@index([category_id])
@@ -211,58 +204,56 @@ model category_keywords {
 }
 
 model InsightDefinition {
-  id               String   @id
-  name             String?  // Human-readable title (e.g., "Late Payment Alert")
-  description      String?  // Short description for the list view
-  category         String   // urgent, action, insight, celebration, tip
-  priority         Int      @default(50)
-  trigger          String   // trigger type ID
-  trigger_params   Json?    // parameters for trigger evaluation
-  message_template String   // message with placeholders: "{{amount}} due in {{days}} days"
-  icon             String?  // emoji or icon name
-  action_label     String?  // CTA button text
-  action_href      String?  // CTA link
-  contexts         String[] // where to show: ['chat', 'card', 'widget']
-  cooldown_hours   Int      @default(0) // Minimum hours to wait before showing again
-  related_insight_id String? // Optional link to another insight (e.g. action this celebration follows)
-  related_insight    InsightDefinition? @relation("RelatedInsights", fields: [related_insight_id], references: [id])
+  id                 String              @id
+  category           String
+  priority           Int                 @default(50)
+  trigger            String
+  trigger_params     Json?
+  message_template   String
+  icon               String?
+  action_label       String?
+  action_href        String?
+  contexts           String[]
+  is_active          Boolean             @default(true)
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  cooldown_hours     Int                 @default(0)
+  related_insight_id String?
+  non_exclusive      Boolean             @default(false)
+  description        String?
+  name               String?
+  related_insight    InsightDefinition?  @relation("RelatedInsights", fields: [related_insight_id], references: [id])
   related_to         InsightDefinition[] @relation("RelatedInsights")
-  is_active        Boolean  @default(true)
-  non_exclusive    Boolean  @default(false) // If true, can show alongside other insights
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
 
   @@map("insight_definitions")
 }
 
 model ChatConversation {
-  id          Int           @id @default(autoincrement())
-  user_id     Int
-  title       String?       // Optional title for the conversation
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @updatedAt
-  
-  users       User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  messages    ChatMessage[]
+  id         Int           @id @default(autoincrement())
+  user_id    Int
+  title      String?
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+  users      User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
 
-  @@map("chat_conversations")
   @@index([user_id])
+  @@map("chat_conversations")
 }
 
 model ChatMessage {
   id              Int              @id @default(autoincrement())
   conversation_id Int
-  role            String           // "user" | "assistant" | "system"
+  role            String
   content         String
-  insight_id      String?          // If message was triggered by an insight
-  action_buttons  Json?            // Array of {label, href} for CTA buttons
-  data            Json?            // Structured data (e.g. transaction lists)
+  insight_id      String?
+  action_buttons  Json?
   created_at      DateTime         @default(now())
-  
+  data            Json?
   conversation    ChatConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
-  @@map("chat_messages")
   @@index([conversation_id])
+  @@map("chat_messages")
 }
 
 enum TransactionType {

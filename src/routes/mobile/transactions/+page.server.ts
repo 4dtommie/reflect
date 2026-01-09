@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         latestDate.setHours(0, 0, 0, 0);
 
         const diffDays = Math.floor((today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24));
-        baseOffset = diffDays + 30;
+        baseOffset = diffDays + 26; // Shifted 4 days back so salaries appear on 24th
     }
 
     // cutoffDate calculation for "Moving Curtain" logic:
@@ -164,7 +164,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         take: 2,
         include: {
             categories: true,
-            merchants: true
+            merchants: true,
+            recurring_transaction: true
         }
     });
 
@@ -189,6 +190,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
             isDebit: t.is_debit,
             category: t.categories?.name || 'Overig',
             categoryIcon: t.categories?.icon || null,
+            interval: t.recurring_transaction?.interval || 'Maandelijks',
             daysUntil: diffDays,
             daysLabel: diffDays === 1 ? 'morgen' : `over ${diffDays} dagen`
         };

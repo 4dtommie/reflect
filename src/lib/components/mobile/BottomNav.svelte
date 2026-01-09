@@ -1,8 +1,20 @@
 <script lang="ts">
 	import { BarChart3, LayoutGrid, MessageCircleQuestion, CircleUser, Home } from 'lucide-svelte';
+	import { page } from '$app/stores';
+	import MobileLink from './MobileLink.svelte';
 
 	let { isAtBottom = true } = $props();
-	let activeTab = $state('inzicht');
+
+	const currentPath = $derived($page.url.pathname);
+
+	const activeTab = $derived.by(() => {
+		if (currentPath === '/mobile') return 'home';
+		if (currentPath.startsWith('/mobile/kijk-vooruit')) return 'producten';
+		if (currentPath.startsWith('/mobile/transactions')) return 'home'; // Standard transactions are part of home/activity
+		if (currentPath.startsWith('/mobile/help')) return 'hulp';
+		if (currentPath.startsWith('/mobile/profile')) return 'profiel';
+		return 'home';
+	});
 </script>
 
 <div
@@ -12,36 +24,36 @@
 >
 	<div class="flex h-[64px] w-full items-stretch">
 		<!-- Home Tab -->
-		<button
+		<MobileLink
+			href="/mobile"
 			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
-			onclick={() => (activeTab = 'inzicht')}
 		>
 			<Home
-				class="h-6 w-6 {activeTab === 'inzicht'
+				class="h-6 w-6 {activeTab === 'home'
 					? 'text-mediumOrange-500'
 					: 'text-gray-600 dark:text-gray-400'}"
 				strokeWidth={1.5}
 			/>
 			<div class="relative">
 				<span
-					class="text-[11px] {activeTab === 'inzicht'
+					class="text-[11px] {activeTab === 'home'
 						? 'font-bold text-gray-900 dark:text-white'
 						: 'font-medium text-gray-900 dark:text-gray-400'}"
 				>
 					Home
 				</span>
-				{#if activeTab === 'inzicht'}
+				{#if activeTab === 'home'}
 					<div
 						class="absolute right-0 -bottom-1 left-0 h-[2px] rounded-full bg-mediumOrange-500"
 					></div>
 				{/if}
 			</div>
-		</button>
+		</MobileLink>
 
 		<!-- Producten Tab -->
-		<button
+		<MobileLink
+			href="/mobile/kijk-vooruit"
 			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
-			onclick={() => (activeTab = 'producten')}
 		>
 			<LayoutGrid
 				class="h-6 w-6 {activeTab === 'producten'
@@ -63,12 +75,12 @@
 					></div>
 				{/if}
 			</div>
-		</button>
+		</MobileLink>
 
 		<!-- Hulp Tab -->
-		<button
+		<MobileLink
+			href="/mobile/help"
 			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
-			onclick={() => (activeTab = 'hulp')}
 		>
 			<MessageCircleQuestion
 				class="h-6 w-6 {activeTab === 'hulp'
@@ -90,12 +102,12 @@
 					></div>
 				{/if}
 			</div>
-		</button>
+		</MobileLink>
 
 		<!-- Profiel Tab -->
-		<button
+		<MobileLink
+			href="/mobile/profile"
 			class="relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
-			onclick={() => (activeTab = 'profiel')}
 		>
 			<CircleUser
 				class="h-6 w-6 {activeTab === 'profiel'
@@ -117,7 +129,7 @@
 					></div>
 				{/if}
 			</div>
-		</button>
+		</MobileLink>
 	</div>
 
 	<!-- iOS Home Indicator -->

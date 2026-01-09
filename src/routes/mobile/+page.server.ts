@@ -48,36 +48,79 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         // Days difference between today and latest transaction
         const diffDays = Math.floor((today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24));
         // Add 30 days so the latest transaction appears 30 days from now
-        baseOffset = diffDays + 30;
+        baseOffset = diffDays + 26; // Shifted 4 days back so salaries appear on 24th
     }
 
-    // cutoffDate calculation for "Moving Curtain" logic:
-    // We want to show transactions where ShiftedDate <= SimulatedToday
-    // ShiftedDate = OriginalDate + baseOffset
-    // SimulatedToday = RealToday + manualOffset
-    // OriginalDate + baseOffset <= RealToday + manualOffset
-    // OriginalDate <= RealToday - baseOffset + manualOffset
+    // cutoffDate calculation for "Moving Curtain" logic
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - baseOffset + manualOffset);
-    // Add end of day buffer
     cutoffDate.setHours(23, 59, 59, 999);
 
-    const recentTransactions = await db.transactions.findMany({
-        where: {
-            user_id: userId,
-            date: { lte: cutoffDate }
-        },
-        orderBy: { date: 'desc' },
-        take: 3,
-        include: {
-            categories: true,
-            merchants: true
-        }
-    });
+    // simulatedToday represents "now" in the original data timeline
+    // baseOffset = diffDays + 30, so we add 30 back to get the actual "present" in simulation
+    const simulatedToday = new Date();
+    simulatedToday.setDate(simulatedToday.getDate() - baseOffset + 30 + manualOffset);
+    simulatedToday.setHours(0, 0, 0, 0);
+
+    const [recentTransactions, rawAankomend] = await Promise.all([
+        db.transactions.findMany({
+            where: {
+                user_id: userId,
+                date: { lte: cutoffDate }
+            },
+            orderBy: { date: 'desc' },
+            take: 3,
+            include: {
+                categories: true,
+                merchants: true
+            }
+        }),
+        db.recurringTransaction.findMany({
+            where: {
+                user_id: userId,
+                status: 'active',
+                next_expected_date: { gte: cutoffDate }
+            },
+            orderBy: { next_expected_date: 'asc' },
+            include: {
+                merchants: true,
+                categories: true
+            }
+        })
+    ]);
+
+    // Map and filter upcoming until first salary
+    const upcomingPayments = [];
+    for (const rt of rawAankomend) {
+        if (rt.type === 'salary') break;
+
+        // Compare next_expected_date against simulatedToday (both in original data timeline)
+        const nextDate = rt.next_expected_date ? new Date(rt.next_expected_date) : new Date();
+        nextDate.setHours(0, 0, 0, 0);
+        const daysUntil = Math.floor((nextDate.getTime() - simulatedToday.getTime()) / (1000 * 60 * 60 * 24));
+
+        const daysLabel = daysUntil === 0 ? 'vandaag' :
+            daysUntil === 1 ? 'morgen' :
+                `over ${daysUntil} dagen`;
+
+        upcomingPayments.push({
+            id: rt.id,
+            merchant: rt.merchants?.name || rt.name,
+            subtitle: daysLabel,
+            amount: Number(rt.amount),
+            isDebit: rt.is_debit,
+            logo: rt.merchants?.name === 'Nationale-Nederlanden' ? '/logos/nn.svg' : null,
+            icon: rt.categories?.icon,
+            daysUntil
+        });
+
+        if (upcomingPayments.length >= 3) break;
+    }
 
     return {
         baseOffset,
         userName,
+        upcomingPayments,
         transactions: recentTransactions.map((t) => {
             const time = extractTimeFromDescription(t.description);
             // Apply ONLY base offset for display (Fixed World)

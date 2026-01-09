@@ -9,6 +9,7 @@
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import { page } from '$app/stores';
+	import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
 
 	// Data from server
 	let { data } = $props();
@@ -103,7 +104,7 @@
 <div class="flex-1 bg-sand-50 px-4 pt-4 pb-24 font-nn">
 	<!-- Section Header -->
 	<WidgetHeader title="Verwacht" class="mb-4">
-		<WidgetAction label="Kijk vooruit" />
+		<WidgetAction label="Kijk vooruit" href="/mobile/kijk-vooruit" />
 	</WidgetHeader>
 
 	<!-- Upcoming Transactions -->
@@ -117,7 +118,7 @@
 						>
 							<TransactionItem
 								merchant={t.merchant}
-								subtitle={t.daysLabel}
+								subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
 								amount={t.isDebit ? -t.amount : t.amount}
 								isDebit={t.isDebit}
 								categoryIcon={t.categoryIcon}
