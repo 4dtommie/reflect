@@ -20,8 +20,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const manualOffset = getOffsetFromUrl(url); // Additional offset from UI controls
 
     if (!userId) {
-        return { transactions: [], baseOffset: 0 };
+        return { transactions: [], baseOffset: 0, userName: 'Reflect' };
     }
+
+    const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { username: true }
+    });
+
+    const userName = user?.username || 'Peter';
 
     // Find the latest transaction date
     const latestTransaction = await db.transactions.findFirst({
@@ -70,6 +77,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
     return {
         baseOffset,
+        userName,
         transactions: recentTransactions.map((t) => {
             const time = extractTimeFromDescription(t.description);
             // Apply ONLY base offset for display (Fixed World)

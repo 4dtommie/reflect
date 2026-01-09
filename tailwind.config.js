@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+	darkMode: 'class',
 	// Safelist dynamic classes that JIT might miss
 	safelist: [
 		'text-mediumOrange-500',

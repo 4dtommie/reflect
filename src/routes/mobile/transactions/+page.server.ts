@@ -105,6 +105,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
                 dateLabel: label,
                 dateObj: date,
                 totalAmount: 0,
+                totalIncoming: 0,
+                totalOutgoing: 0,
+                incomingCount: 0,
+                outgoingCount: 0,
                 transactions: []
             };
             groupedMap.set(dateKey, group);
@@ -112,7 +116,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
         // Add to group
         const amount = Number(t.amount);
-        group.totalAmount += t.is_debit ? -amount : amount;
+        const signedAmount = t.is_debit ? -amount : amount;
+        group.totalAmount += signedAmount;
+
+        if (signedAmount > 0) {
+            group.totalIncoming += signedAmount;
+            group.incomingCount++;
+        }
+        if (signedAmount < 0) {
+            group.totalOutgoing += signedAmount;
+            group.outgoingCount++;
+        }
 
         // Map transaction data
         group.transactions.push({
@@ -130,7 +144,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
         .map(g => ({
             ...g,
-            formattedTotal: formatDailyTotal(g.totalAmount)
+            formattedTotal: formatDailyTotal(g.totalAmount),
+            formattedIncoming: formatDailyTotal(g.totalIncoming),
+            formattedOutgoing: formatDailyTotal(g.totalOutgoing),
+            incomingCount: g.incomingCount,
+            outgoingCount: g.outgoingCount
         }));
 
     // --- Upcoming Transactions Logic ---

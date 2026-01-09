@@ -26126,3 +26126,66 @@
 [2026-01-08T15:22:55.166Z] lastInsightMsg: spending_down
 [2026-01-08T15:22:55.168Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
 [2026-01-08T15:22:55.170Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T06:45:47.664Z] Load function started
+[2026-01-09T06:45:47.709Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T06:45:47.715Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T06:45:47.721Z] Conversation found: true, messages: 5
+[2026-01-09T06:45:47.724Z] lastInsightMsg: spending_down
+[2026-01-09T06:45:47.727Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T06:45:47.731Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T08:27:40.984Z] Load function started
+[2026-01-09T08:27:41.035Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T08:27:41.041Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T08:27:41.046Z] Conversation found: true, messages: 5
+[2026-01-09T08:27:41.049Z] lastInsightMsg: spending_down
+[2026-01-09T08:27:41.052Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T08:27:41.064Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T08:51:21.778Z] Load function started
+[2026-01-09T08:51:21.839Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T08:51:21.843Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T08:51:21.848Z] Conversation found: true, messages: 5
+[2026-01-09T08:51:21.853Z] lastInsightMsg: spending_down
+[2026-01-09T08:51:21.857Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T08:51:21.860Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T08:51:44.356Z] Load function started
+[2026-01-09T08:51:44.393Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T08:51:44.408Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T08:51:44.419Z] Conversation found: true, messages: 5
+[2026-01-09T08:51:44.427Z] lastInsightMsg: spending_down
+[2026-01-09T08:51:44.434Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T08:51:44.441Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T08:52:05.106Z] Load function started
+[2026-01-09T08:52:05.147Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T08:52:05.163Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T08:52:05.179Z] Conversation found: true, messages: 5
+[2026-01-09T08:52:05.194Z] lastInsightMsg: spending_down
+[2026-01-09T08:52:05.205Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T08:52:05.212Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T09:26:27.328Z] Load function started
+[2026-01-09T09:26:27.382Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T09:26:27.401Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T09:26:27.422Z] Conversation found: true, messages: 5
+[2026-01-09T09:26:27.436Z] lastInsightMsg: spending_down
+[2026-01-09T09:26:27.446Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T09:26:27.461Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T09:29:11.201Z] Load function started
+[2026-01-09T09:29:11.237Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T09:29:11.245Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T09:29:11.250Z] Conversation found: true, messages: 5
+[2026-01-09T09:29:11.254Z] lastInsightMsg: spending_down
+[2026-01-09T09:29:11.257Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T09:29:11.260Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T09:52:54.990Z] Load function started
+[2026-01-09T09:52:55.029Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T09:52:55.038Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T09:52:55.044Z] Conversation found: true, messages: 5
+[2026-01-09T09:52:55.051Z] lastInsightMsg: spending_down
+[2026-01-09T09:52:55.056Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T09:52:55.060Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-09T10:00:41.426Z] Load function started
+[2026-01-09T10:00:41.479Z] Promise.all completed - chatInsight: undefined
+[2026-01-09T10:00:41.495Z] Entering transition logic - currentInsight: undefined
+[2026-01-09T10:00:41.509Z] Conversation found: true, messages: 5
+[2026-01-09T10:00:41.517Z] lastInsightMsg: spending_down
+[2026-01-09T10:00:41.526Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-09T10:00:41.536Z] 🔍 DEBUG: currentInsight ID: undefined

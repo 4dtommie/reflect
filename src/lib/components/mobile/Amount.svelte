@@ -3,10 +3,19 @@
 		amount: number;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
 		showSign?: boolean;
+		showSymbol?: boolean;
+		flat?: boolean;
 		class?: string;
 	}
 
-	let { amount, size = 'md', showSign = true, class: className = '' }: Props = $props();
+	let {
+		amount,
+		size = 'md',
+		showSign = true,
+		showSymbol = false,
+		flat = false,
+		class: className = ''
+	}: Props = $props();
 
 	// Derived state
 	const isDebit = $derived(amount < 0);
@@ -23,14 +32,14 @@
 		sm: {
 			wrap: 'text-sm',
 			signMargin: 'mr-0.5 mt-0',
-			supMargin: 'ml-[0.5px] mt-[1px]',
-			supSize: 'text-[9px]'
+			supMargin: '',
+			supSize: 'text-sm'
 		},
 		md: {
 			wrap: 'text-[19px]', // Increased size
 			signMargin: 'mr-1 mt-[1px]',
 			supMargin: 'ml-[2px] mt-[4px]', // Adjusted for new size cap height
-			supSize: 'text-[13px]' // Scaaled up
+			supSize: 'text-sm' // Standardized to 14px
 		},
 		lg: {
 			wrap: 'text-lg',
@@ -51,10 +60,17 @@
 </script>
 
 <div class="flex items-start font-bold {colorClass} {s.wrap} {className}">
+	{#if showSymbol}
+		<span class="mr-1">€</span>
+	{/if}
 	{#if showSign}
 		<span class={s.signMargin}>{isDebit ? '-' : '+'}</span>
 	{/if}
-	<div class="flex items-start">
-		{whole}<span class="{s.supMargin} {s.supSize} leading-none">,{cents}</span>
-	</div>
+	{#if flat}
+		<span>{whole},{cents}</span>
+	{:else}
+		<div class="flex items-baseline">
+			{whole}<span class="{s.supMargin} {s.supSize} leading-none">,{cents}</span>
+		</div>
+	{/if}
 </div>

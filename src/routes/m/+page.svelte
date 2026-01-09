@@ -4,10 +4,10 @@
 	import { goto } from '$app/navigation';
 
 	// Handle current theme
-	let currentTheme = $state<'nord' | 'night'>('nord');
+	let currentTheme = $state<'nord' | 'nn-night'>('nord');
 	let currentDevice = $state<'iphone' | 'pixel'>('iphone');
+	let widgetStyle = $state<'default' | 'list'>('default');
 
-	// Handle time offset
 	// Handle time offset
 	let offset = $state(0);
 	let autoPlayInterval: NodeJS.Timeout | null = null;
@@ -22,7 +22,13 @@
 		if (storedTheme) {
 			currentTheme = storedTheme;
 		} else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-			currentTheme = 'night';
+			currentTheme = 'nn-night';
+		}
+
+		// Initialize widgetStyle from localStorage
+		const storedWidgetStyle = localStorage.getItem('widgetStyle') as 'default' | 'list';
+		if (storedWidgetStyle) {
+			widgetStyle = storedWidgetStyle;
 		}
 
 		// Initialize offset from URL if present
@@ -47,7 +53,7 @@
 	});
 
 	function toggleTheme() {
-		currentTheme = currentTheme === 'nord' ? 'night' : 'nord';
+		currentTheme = currentTheme === 'nord' ? 'nn-night' : 'nord';
 		localStorage.setItem('theme', currentTheme);
 	}
 
@@ -75,14 +81,16 @@
 					searchParams.set('offset', offset.toString());
 				}
 				searchParams.set('device', currentDevice);
+				searchParams.set('theme', currentTheme);
+				searchParams.set('widgetStyle', widgetStyle);
 
 				iframeSrc = `${currentPath}?${searchParams.toString()}`;
 			} catch (e) {
 				// Fallback if access denied
-				iframeSrc = `/mobile?offset=${offset}&device=${currentDevice}`;
+				iframeSrc = `/mobile?offset=${offset}&device=${currentDevice}&theme=${currentTheme}&widgetStyle=${widgetStyle}`;
 			}
 		} else {
-			iframeSrc = `/mobile?offset=${offset}&device=${currentDevice}`;
+			iframeSrc = `/mobile?offset=${offset}&device=${currentDevice}&theme=${currentTheme}&widgetStyle=${widgetStyle}`;
 		}
 	}
 
@@ -127,31 +135,30 @@
 		<!-- Sidebar with controls -->
 		<div class="flex w-64 flex-col gap-8">
 			<div>
-				<h1 class="mb-2 text-3xl font-bold text-white">📱 Mobile skin preview</h1>
-				<p class="text-slate-400">
-					{currentDevice === 'iphone' ? 'iPhone 15' : 'Pixel 8'} mockup • 393×852 viewport
-				</p>
+				<h1 class="mb-2 text-3xl font-bold text-white">📱 Live prototype</h1>
 			</div>
 
 			<!-- Device controls -->
 			<div class="flex flex-col gap-2">
 				<span class="text-sm font-medium tracking-wider text-slate-400 uppercase">Device</span>
-				<div class="flex gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+				<div class="flex rounded-lg bg-slate-800 p-1">
 					<button
-						class="btn flex-1 btn-sm {currentDevice === 'iphone'
-							? 'btn-primary'
-							: 'text-slate-300 btn-ghost hover:bg-slate-700'}"
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {currentDevice ===
+						'iphone'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 						onclick={() => (currentDevice = 'iphone')}
 					>
-						🍎 iPhone
+						iPhone
 					</button>
 					<button
-						class="btn flex-1 btn-sm {currentDevice === 'pixel'
-							? 'btn-primary'
-							: 'text-slate-300 btn-ghost hover:bg-slate-700'}"
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {currentDevice ===
+						'pixel'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 						onclick={() => (currentDevice = 'pixel')}
 					>
-						🤖 Pixel
+						Pixel
 					</button>
 				</div>
 			</div>
@@ -159,28 +166,64 @@
 			<!-- Theme controls -->
 			<div class="flex flex-col gap-2">
 				<span class="text-sm font-medium tracking-wider text-slate-400 uppercase">Appearance</span>
-				<div class="flex gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+				<div class="flex rounded-lg bg-slate-800 p-1">
 					<button
-						class="btn flex-1 btn-sm {currentTheme === 'nord'
-							? 'btn-primary'
-							: 'text-slate-300 btn-ghost hover:bg-slate-700'}"
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {currentTheme ===
+						'nord'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 						onclick={() => {
 							currentTheme = 'nord';
 							localStorage.setItem('theme', 'nord');
 						}}
 					>
-						☀️ Light
+						Light
 					</button>
 					<button
-						class="btn flex-1 btn-sm {currentTheme === 'night'
-							? 'btn-primary'
-							: 'text-slate-300 btn-ghost hover:bg-slate-700'}"
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {currentTheme ===
+						'nn-night'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 						onclick={() => {
-							currentTheme = 'night';
-							localStorage.setItem('theme', 'night');
+							currentTheme = 'nn-night';
+							localStorage.setItem('theme', 'nn-night');
 						}}
 					>
-						🌙 Dark
+						Dark
+					</button>
+				</div>
+			</div>
+
+			<!-- Widget Style controls -->
+			<div class="flex flex-col gap-2">
+				<span class="text-sm font-medium tracking-wider text-slate-400 uppercase">Widget Style</span
+				>
+				<div class="flex rounded-lg bg-slate-800 p-1">
+					<button
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {widgetStyle ===
+						'default'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+						onclick={() => {
+							widgetStyle = 'default';
+							localStorage.setItem('widgetStyle', 'default');
+							updateIframeUrl();
+						}}
+					>
+						Card
+					</button>
+					<button
+						class="flex-1 rounded-md py-1 text-sm font-medium transition-colors {widgetStyle ===
+						'list'
+							? 'bg-slate-600 text-white shadow-sm'
+							: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+						onclick={() => {
+							widgetStyle = 'list';
+							localStorage.setItem('widgetStyle', 'list');
+							updateIframeUrl();
+						}}
+					>
+						List
 					</button>
 				</div>
 			</div>
@@ -237,15 +280,13 @@
 				</div>
 
 				<button
-					class="btn w-full btn-sm {isAutoPlaying ? 'btn-error' : 'btn-outline btn-primary'}"
+					class="w-full rounded-md border py-2 text-sm font-medium transition-colors {isAutoPlaying
+						? 'border-red-500/50 bg-red-500/10 text-red-200 hover:bg-red-500/20'
+						: 'border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500 hover:bg-slate-700 hover:text-white'}"
 					onclick={toggleAutoPlay}
 				>
-					{isAutoPlaying ? '⏹ Stop Auto-Play' : '▶️ Auto-Play (1d/s)'}
+					{isAutoPlaying ? 'Stop Auto-Play' : 'Auto-Play (1d/s)'}
 				</button>
-
-				<div class="px-2 text-center text-xs text-slate-500">
-					Simulates future dates by adding an offset to all transactions.
-				</div>
 			</div>
 		</div>
 
@@ -385,7 +426,7 @@
 		height: 852px;
 		border-radius: 40px;
 		border: none;
-		background: white;
+		background: transparent;
 		overflow: hidden;
 		transition: border-radius 0.3s ease;
 	}

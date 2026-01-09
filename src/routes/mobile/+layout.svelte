@@ -1,103 +1,112 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { beforeNavigate } from '$app/navigation';
+	import { afterNavigate } from '$app/navigation';
 	import { fly } from 'svelte/transition';
 	import './mobile.css';
 	import TouchSimulator from '$lib/components/mobile/TouchSimulator.svelte';
 	import BottomNav from '$lib/components/mobile/BottomNav.svelte';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
+	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
 	import { Battery, Signal, Wifi } from 'lucide-svelte';
+	import { tick } from 'svelte';
 
 	import type { LayoutData } from './$types';
-
-	import { onMount } from 'svelte';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	const currentPath = $derived($page.url.pathname);
-	function handleScroll(e: Event) {
-		const target = e.currentTarget as HTMLElement;
-		$mobileScrollY = target.scrollTop;
+
+	let isAtBottom = $state(true);
+	let contentEl: HTMLElement | undefined = $state();
+
+	function checkScroll() {
+		if (!contentEl) return;
+		const { scrollTop, scrollHeight, clientHeight } = contentEl;
+		// Use a 2px epsilon to handle fractional pixels
+		isAtBottom = scrollTop + clientHeight >= scrollHeight - 2;
 	}
 
-	const mobileDepthMap: Record<string, number> = {
-		'/mobile': 0,
-		'/mobile/transactions': 1
-	};
-
-	function getDepth(path: string): number {
-		return mobileDepthMap[path] ?? path.split('/').filter(Boolean).length;
+	function handleScroll() {
+		if (!contentEl) return;
+		$mobileScrollY = contentEl.scrollTop;
+		checkScroll();
 	}
-
-	// beforeNavigate fires BEFORE the navigation completes
-	beforeNavigate((navigation) => {
-		const from = navigation.from?.url.pathname || '/mobile';
-		const to = navigation.to?.url.pathname || '/mobile';
-
-		// Only handle mobile routes
-		if (!to.startsWith('/mobile')) return;
-
-		const fromDepth = getDepth(from);
-		const toDepth = getDepth(to);
-
-		const direction = toDepth < fromDepth ? 'back' : 'forward';
-		mobileNavDirection.set(direction);
-	});
-
-	// Read from store reactively
-	const direction = $derived($mobileNavDirection);
 
 	// Get device type from URL
 	const device = $derived(
 		($page.url.searchParams.get('device') as 'iphone' | 'pixel' | null) ?? 'iphone'
 	);
+
+	// Read animation values directly from stores (set by MobileLink before navigation)
+	const shouldAnimate = $derived($shouldAnimateNavigation);
+	const direction = $derived($mobileNavDirection);
+	const flyX = $derived(direction === 'back' ? -100 : 100);
+
+	// Reset animation flag after navigation completes
+	afterNavigate(async () => {
+		// Small delay to ensure transition has started
+		setTimeout(() => {
+			shouldAnimateNavigation.set(false);
+		}, 50);
+
+		// Re-check scroll after DOM updates
+		await tick();
+		checkScroll();
+	});
+
+	// Sync theme from URL
+	$effect(() => {
+		const theme = $page.url.searchParams.get('theme');
+		if (theme === 'nn-night') {
+			document.documentElement.setAttribute('data-theme', 'nn-night');
+			document.documentElement.classList.add('dark');
+		} else {
+			document.documentElement.setAttribute('data-theme', 'nn-theme');
+			document.documentElement.classList.remove('dark');
+		}
+	});
+
+	// Re-check scroll when children change
+	$effect(() => {
+		children;
+		tick().then(checkScroll);
+	});
 </script>
 
 <TouchSimulator />
 <div class="mobile-viewport">
 	<div class="mobile-status-bar {device}">
 		{#if device === 'iphone'}
-			<!-- iPhone: Time Left (or Center for Notch), Icons Right -->
-			<!-- Actually iPhone with Dynamic Island is usually: Time Left, Island Center, Icons Right -->
 			<div class="flex flex-1 justify-start pl-4 font-bold tracking-wide">9:41</div>
 			<div class="flex items-center gap-1.5 pr-2">
 				<Signal class="h-4 w-4 fill-current" strokeWidth={0} />
 				<Wifi class="h-4 w-4" strokeWidth={2.5} />
-				<Battery class="h-5 w-5 fill-black" strokeWidth={1} />
-				<!-- iPhone battery usually has filled body -->
+				<Battery class="h-5 w-5 fill-black dark:fill-white" strokeWidth={1} />
 			</div>
 		{:else}
-			<!-- Pixel: Time Left, Icons Right -->
 			<div class="flex flex-1 justify-start pl-4 font-bold tracking-wide">9:30</div>
-			<div class="flex items-center gap-1.5 pr-2">
+			<div class="flex items-center gap-1.5 pr-2 dark:text-white">
 				<Wifi class="h-4 w-4" strokeWidth={2.5} />
 				<Signal class="h-4 w-4 fill-current" strokeWidth={0} />
 				<Battery class="h-5 w-5 rotate-90 fill-current" strokeWidth={0} />
-				<!-- Android battery often filled vertical block or solid -->
 			</div>
 		{/if}
 	</div>
 
-	<div class="mobile-content" onscroll={handleScroll}>
+	<div class="mobile-content" onscroll={handleScroll} bind:this={contentEl}>
 		{#key currentPath}
-			{#if direction === 'back'}
-				<!-- BACK: Slide in from left -->
-				<div class="page-container" in:fly|global={{ x: -100, duration: 200 }}>
-					{@render children()}
-				</div>
-			{:else}
-				<!-- FORWARD: Slide in from right -->
-				<div class="page-container" in:fly|global={{ x: 100, duration: 200 }}>
-					{@render children()}
-				</div>
-			{/if}
+			<div
+				class="page-container dark:bg-gray-1300 bg-sand-50"
+				in:fly|global={{ x: shouldAnimate ? flyX : 0, duration: shouldAnimate ? 200 : 0 }}
+			>
+				{@render children()}
+			</div>
 		{/key}
 	</div>
 
-	<!-- Persistent Bottom Nav -->
 	<div class="absolute right-0 bottom-0 left-0 z-50">
-		<BottomNav />
+		<BottomNav {isAtBottom} />
 	</div>
 </div>
 
@@ -113,8 +122,12 @@
 		height: 100% !important;
 	}
 
+	:global(html.dark),
+	:global(html.dark body) {
+		background: #0a0a0a !important;
+	}
+
 	.page-container {
 		min-height: 100%;
-		background-color: #faf9f8;
 	}
 </style>

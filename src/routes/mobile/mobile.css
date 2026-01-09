@@ -8,6 +8,12 @@
 }
 @font-face {
   font-family: 'Nitti Grotesk';
+  src: url('/fonts/NNNittiGrotesk-TextMedium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Nitti Grotesk';
   src: url('/fonts/NNNittiGrotesk-TextBold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
@@ -31,6 +37,11 @@
 	flex-direction: column;
 	-webkit-user-select: none;
 	user-select: none;
+}
+
+.dark .mobile-viewport {
+	background-color: #0a0a0a !important; /* gray-1300 */
+	color: #ffffff;
 }
 
 /* Force reset global h1 styles leaking from desktop theme */
@@ -76,5 +87,9 @@
 	z-index: 50; /* Above sticky headers (z-20) */
 	flex-shrink: 0;
 	pointer-events: none; /* Let clicks pass through to header if needed */
+}
+
+:global(.dark) .mobile-status-bar {
+	color: #ffffff;
 }
 

@@ -68,11 +68,11 @@
 	});
 </script>
 
-<div
-	class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded {config.container}"
-	style="background-color: {backgroundColor}20"
->
-	{#if logoUrl && !logoError}
+{#if logoUrl && !logoError}
+	<div
+		class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded {config.container}"
+		style="background-color: {backgroundColor}20"
+	>
 		<img
 			src={logoUrl}
 			alt="{merchantName} logo"
@@ -80,12 +80,8 @@
 			onerror={handleLogoError}
 			loading="lazy"
 		/>
-	{:else if categoryIcon}
-		{@const Icon = CategoryIcon}
-		<Icon size={config.icon} style="color: {backgroundColor}" />
-	{:else}
-		<span class="font-semibold {config.text}" style="color: {backgroundColor}">
-			{initials}
-		</span>
-	{/if}
-</div>
+	</div>
+{:else}
+	{@const Icon = CategoryIcon}
+	<Icon size={24} class="flex-shrink-0 text-gray-900" strokeWidth={1.0} />
+{/if}

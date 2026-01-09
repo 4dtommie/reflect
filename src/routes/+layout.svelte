@@ -172,8 +172,10 @@
 	};
 
 	// Check if we're on the mobile skin route or preview - hide navbar and blobs
+	// Use data.url for stable initial SSR/hydration, fallback to $page.url for client-side nav
 	const isMobileSkin = $derived(
-		$page.url.pathname.startsWith('/m') || $page.url.pathname.startsWith('/mobile')
+		(data.url?.startsWith('/m') || data.url?.startsWith('/mobile')) ??
+			($page.url.pathname.startsWith('/m') || $page.url.pathname.startsWith('/mobile'))
 	);
 
 	// Navigation direction logic

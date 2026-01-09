@@ -32,6 +32,7 @@
 		HeartHandshake,
 		Sparkles,
 		Bike,
+		ChevronRight,
 		type Icon
 	} from 'lucide-svelte';
 
@@ -46,6 +47,8 @@
 		compact?: boolean; // If true, subtitle is smaller (text-xs) vs text-sm
 		fontHeading?: boolean; // If true, amount uses heading font
 		useLogo?: boolean; // If true, attempts to show merchant logo
+		showSubtitle?: boolean; // If false, hides the subtitle
+		showChevron?: boolean; // If true, shows a chevron at the end
 		class?: string;
 	}
 
@@ -58,6 +61,8 @@
 		compact = false,
 		fontHeading = false,
 		useLogo = false,
+		showSubtitle = true,
+		showChevron = false,
 		class: className = ''
 	}: Props = $props();
 
@@ -111,24 +116,40 @@
 		{:else}
 			<svelte:component
 				this={getCategoryIcon(categoryIcon)}
-				class="h-6 w-6 flex-shrink-0 text-gray-900"
+				class="h-6 w-6 flex-shrink-0 text-gray-900 dark:text-white"
 				strokeWidth={1.0}
 			/>
 		{/if}
-		<div class="flex min-w-0 flex-col pr-2">
-			<div class="truncate text-base font-medium text-gray-900">{merchant}</div>
-			<div class="truncate font-normal text-gray-500 {compact ? 'text-xs' : 'text-sm'}">
-				{subtitle}
+		<div class="flex min-w-0 flex-col pr-4">
+			<div
+				class="truncate font-normal text-gray-900 dark:text-white {compact
+					? 'text-sm'
+					: 'text-base'}"
+			>
+				{merchant}
 			</div>
+			{#if showSubtitle}
+				<div class="truncate text-sm font-normal text-gray-600 dark:text-gray-400">
+					{subtitle}
+				</div>
+			{/if}
 		</div>
 	</div>
 	<div
-		class="ml-auto flex-shrink-0 {isDebit === false ? 'rounded-[10px] bg-green-100 px-2 py-1' : ''}"
+		class="ml-auto flex shrink-0 items-center {isDebit === false
+			? 'rounded-[10px] bg-green-100 px-2 py-1 dark:bg-green-900/30'
+			: ''}"
 	>
 		<Amount
 			{amount}
-			size="md"
-			class={fontHeading ? 'font-heading' : '' + (isDebit === false ? ' !text-green-800' : '')}
+			size={compact ? 'sm' : 'md'}
+			flat={compact}
+			class={fontHeading
+				? 'font-heading'
+				: '' + (isDebit === false ? ' !text-green-800 dark:!text-green-400' : '')}
 		/>
+		{#if showChevron}
+			<ChevronRight class="ml-1 h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
+		{/if}
 	</div>
 </div>

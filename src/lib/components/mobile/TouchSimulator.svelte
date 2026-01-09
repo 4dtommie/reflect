@@ -9,10 +9,41 @@
 	let scrollLeft: number;
 	let scrollTop: number;
 
-	// Custom cursor follower
+	// Custom cursor follower - use direct DOM manipulation for 60fps performance
+	let cursorElement: HTMLElement;
 	let cursorX = 0;
 	let cursorY = 0;
 	let isClicking = false;
+	let cursorRafPending = false;
+	let cursorVisible = false;
+
+	function updateCursor() {
+		if (cursorElement) {
+			// Show cursor on first update
+			if (!cursorVisible) {
+				cursorVisible = true;
+				cursorElement.style.opacity = '1';
+			}
+			// Update position using transform (GPU-accelerated)
+			cursorElement.style.transform = `translate(${cursorX - 16}px, ${cursorY - 16}px)${isClicking ? ' scale(0.85)' : ''}`;
+			// Update visual state directly
+			if (isClicking) {
+				cursorElement.style.borderColor = 'rgb(243, 123, 43)'; // mediumOrange-500
+				cursorElement.style.backgroundColor = 'rgba(243, 123, 43, 0.6)';
+			} else {
+				cursorElement.style.borderColor = 'rgba(243, 123, 43, 0.5)';
+				cursorElement.style.backgroundColor = 'rgba(243, 123, 43, 0.2)';
+			}
+		}
+		cursorRafPending = false;
+	}
+
+	function scheduleCursorUpdate() {
+		if (!cursorRafPending) {
+			cursorRafPending = true;
+			requestAnimationFrame(updateCursor);
+		}
+	}
 
 	function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
 		while (element) {
@@ -48,6 +79,7 @@
 	function handleMouseMove(e: MouseEvent) {
 		cursorX = e.clientX;
 		cursorY = e.clientY;
+		scheduleCursorUpdate();
 
 		if (!isDown || !activeScrollTarget) return;
 		e.preventDefault();
@@ -71,6 +103,7 @@
 
 	function handleMouseDown(e: MouseEvent) {
 		isClicking = true;
+		scheduleCursorUpdate();
 		e.preventDefault(); // Stop native selection/drag
 
 		// Stop any ongoing inertia
@@ -96,6 +129,7 @@
 	function handleMouseUp() {
 		isDown = false;
 		isClicking = false;
+		scheduleCursorUpdate();
 
 		if (activeScrollTarget) {
 			activeScrollTarget.classList.remove('is-dragging');
@@ -132,6 +166,7 @@
 	function handleMouseLeave() {
 		isDown = false;
 		isClicking = false;
+		scheduleCursorUpdate();
 		// Maintain inertia even if mouse leaves if we were dragging
 		if (activeScrollTarget && Math.abs(velocityY) > 0.1) {
 			handleMouseUp();
@@ -157,12 +192,11 @@
 	});
 </script>
 
-<!-- Custom Touch Cursor -->
+<!-- Custom Touch Cursor - class changes handled via JS for performance -->
 <div
-	class="pointer-events-none fixed z-[9999] h-8 w-8 rounded-full border-2 {isClicking
-		? 'scale-[0.85] border-mediumOrange-500 bg-mediumOrange-500/60'
-		: 'border-mediumOrange-500/50 bg-mediumOrange-500/20'}"
-	style="left: {cursorX}px; top: {cursorY}px; transform: translate(-50%, -50%);"
+	bind:this={cursorElement}
+	class="pointer-events-none fixed top-0 left-0 z-[9999] h-8 w-8 rounded-full border-2 will-change-transform"
+	style="opacity: 0; border-color: rgba(243, 123, 43, 0.5); background-color: rgba(243, 123, 43, 0.2);"
 ></div>
 
 <style>
