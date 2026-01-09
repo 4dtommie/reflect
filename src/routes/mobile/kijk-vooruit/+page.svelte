@@ -7,23 +7,24 @@
 	import PeriodChart from '$lib/components/mobile/PeriodChart.svelte';
 	import { ArrowLeft, MoreVertical, Plus } from 'lucide-svelte';
 	import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
+	import { page } from '$app/stores';
 
 	let { data } = $props();
 </script>
 
 <svelte:head>
-	<title>Komende betalingen</title>
+	<title>Kijk vooruit</title>
 </svelte:head>
 
 <MobileHeader class="flex items-center justify-between px-4 pb-3">
 	<MobileLink
-		href="/mobile"
+		href={$page.url.searchParams.get('from') ?? '/mobile'}
 		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
 		direction="back"
 	>
 		<ArrowLeft class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
 	</MobileLink>
-	<h1 class="font-heading text-lg font-bold text-black dark:text-white">Komende betalingen</h1>
+	<h1 class="font-heading text-lg font-bold text-black dark:text-white">Kijk vooruit</h1>
 	<button
 		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
 	>

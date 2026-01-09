@@ -38,19 +38,19 @@
 		md: {
 			wrap: 'text-[19px]', // Increased size
 			signMargin: 'mr-1 mt-[1px]',
-			supMargin: 'ml-[2px] mt-[4px]', // Adjusted for new size cap height
+			supMargin: 'ml-[2px] mt-[3px]', // Slightly increased (was 1px)
 			supSize: 'text-sm' // Standardized to 14px
 		},
 		lg: {
 			wrap: 'text-lg',
 			signMargin: 'mr-1 mt-0.5',
-			supMargin: 'ml-[0.5px] mt-[4px]',
+			supMargin: 'ml-[0.5px] mt-[2px]', // Slightly increased (was 1px)
 			supSize: 'text-[13px]'
 		},
 		xl: {
 			wrap: 'text-2xl',
 			signMargin: 'mr-1 mt-1',
-			supMargin: 'ml-[1px] mt-[5px]',
+			supMargin: 'ml-[1px] mt-[3px]', // Slightly increased (was 2px)
 			supSize: 'text-sm'
 		}
 	};
@@ -69,7 +69,7 @@
 	{#if flat}
 		<span>{whole},{cents}</span>
 	{:else}
-		<div class="flex items-baseline">
+		<div class="flex {size === 'sm' ? 'items-baseline' : 'items-start'}">
 			{whole}<span class="{s.supMargin} {s.supSize} leading-none">,{cents}</span>
 		</div>
 	{/if}

@@ -4,12 +4,15 @@
 	import HorizontalCarousel from '$lib/components/mobile/HorizontalCarousel.svelte';
 	import AccountCard from '$lib/components/mobile/AccountCard.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
+	import EmptyState from '$lib/components/mobile/EmptyState.svelte';
 	import { ArrowLeft, Search, ArrowRight } from 'lucide-svelte';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import { page } from '$app/stores';
 	import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
+	import { Bike, GraduationCap, Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-svelte';
+	import SavingsGoalItem from '$lib/components/mobile/SavingsGoalItem.svelte';
 
 	// Data from server
 	let { data } = $props();
@@ -31,7 +34,7 @@
 	// Placeholder accounts - will come from server later
 	const accounts = [
 		{ id: 1, name: 'Gezamenlijke rekening', balance: 1200.0, type: 'checking' as const },
-		{ id: 2, name: 'Spaarrekening', balance: 5432.1, type: 'savings' as const },
+		{ id: 2, name: 'Internetsparen', balance: 7000.0, type: 'savings' as const },
 		{ id: 3, name: 'Beleggingsrekening', balance: 12847.53, type: 'checking' as const }
 	];
 
@@ -50,6 +53,30 @@
 
 	// Persist widgetStyle when navigating back
 	const backLink = '/mobile';
+
+	// Loading state for skeleton
+	let isLoading = $state(true);
+	let lastLoaded = $state<Record<number, number>>({});
+
+	$effect(() => {
+		// Check if we loaded this index recently (last 60s)
+		const lastTime = lastLoaded[carouselIndex];
+		const now = Date.now();
+
+		if (lastTime && now - lastTime < 60000) {
+			// Recently loaded, show immediately
+			isLoading = false;
+		} else {
+			// Not loaded recently, show skeleton
+			isLoading = true;
+			// Random delay between 300ms and 1000ms
+			const delay = Math.floor(Math.random() * 700) + 300;
+			setTimeout(() => {
+				isLoading = false;
+				lastLoaded[carouselIndex] = Date.now();
+			}, delay);
+		}
+	});
 </script>
 
 <svelte:head>
@@ -102,81 +129,264 @@
 
 <!-- Content: Transactions List -->
 <div class="flex-1 bg-sand-50 px-4 pt-4 pb-24 font-nn">
-	<!-- Section Header -->
-	<WidgetHeader title="Verwacht" class="mb-4">
-		<WidgetAction label="Kijk vooruit" href="/mobile/kijk-vooruit" />
-	</WidgetHeader>
+	{#if accounts[carouselIndex]?.name === 'Internetsparen'}
+		{#if isLoading}
+			<!-- Skeleton State -->
+			<div class="animate-pulse">
+				<WidgetHeader title="Betalingen" class="mb-3">
+					<div class="h-4 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
+				</WidgetHeader>
 
-	<!-- Upcoming Transactions -->
-	<div class="mb-6">
-		{#if data.upcomingTransactions && data.upcomingTransactions.length > 0}
-			<Card padding="p-0">
-				<div class="divide-y divide-gray-100">
-					{#each data.upcomingTransactions as t}
-						<div
-							class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
-						>
-							<TransactionItem
-								merchant={t.merchant}
-								subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
-								amount={t.isDebit ? -t.amount : t.amount}
-								isDebit={t.isDebit}
-								categoryIcon={t.categoryIcon}
-								compact={false}
-								fontHeading={true}
-								useLogo={true}
-							/>
+				<Card padding="p-0" class="mb-6">
+					<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						<div class="flex items-center gap-3 px-4 py-3">
+							<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
+							<div class="flex-1 space-y-2">
+								<div class="h-4 w-32 rounded bg-gray-200 dark:bg-gray-800"></div>
+								<div class="h-3 w-24 rounded bg-gray-200 dark:bg-gray-800"></div>
+							</div>
+							<div class="h-4 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
 						</div>
-					{/each}
+						<div class="flex items-center gap-3 px-4 py-3">
+							<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
+							<div class="flex-1 space-y-2">
+								<div class="h-4 w-24 rounded bg-gray-200 dark:bg-gray-800"></div>
+								<div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
+							</div>
+							<div class="h-4 w-12 rounded bg-gray-200 dark:bg-gray-800"></div>
+						</div>
+					</div>
+				</Card>
+
+				<WidgetHeader title="Spaardoelen" class="mb-3" />
+				<Card padding="p-0" class="mb-6">
+					<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						<div class="space-y-3 px-4 py-4">
+							<div class="flex justify-between">
+								<div class="flex items-center gap-3">
+									<div class="h-8 w-8 rounded bg-gray-200 dark:bg-gray-800"></div>
+									<div class="h-4 w-24 rounded bg-gray-200 dark:bg-gray-800"></div>
+								</div>
+							</div>
+							<div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800"></div>
+							<div class="flex justify-between">
+								<div class="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+								<div class="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+							</div>
+						</div>
+						<div class="space-y-3 px-4 py-4">
+							<div class="flex justify-between">
+								<div class="flex items-center gap-3">
+									<div class="h-8 w-8 rounded bg-gray-200 dark:bg-gray-800"></div>
+									<div class="h-4 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
+								</div>
+							</div>
+							<div class="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800"></div>
+							<div class="flex justify-between">
+								<div class="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+								<div class="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+							</div>
+						</div>
+					</div>
+				</Card>
+			</div>
+		{:else}
+			<!-- Savings Transactions -->
+			<WidgetHeader title="Betalingen" class="mb-3">
+				<WidgetAction label="Bekijk alles" />
+			</WidgetHeader>
+
+			<Card padding="p-0" class="mb-6">
+				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+					<TransactionItem
+						merchant="Spaaropdracht"
+						subtitle="Automatische overboeking"
+						amount={150.0}
+						isDebit={false}
+						compact={true}
+						showSubtitle={true}
+						categoryIcon="savings"
+						class="px-4 py-3"
+					/>
+					<TransactionItem
+						merchant="Vakantie potje"
+						subtitle="Eenmalige inleg"
+						amount={50.0}
+						isDebit={false}
+						compact={true}
+						showSubtitle={true}
+						categoryIcon="holiday"
+						class="px-4 py-3"
+					/>
 				</div>
 			</Card>
-		{/if}
-	</div>
 
-	<!-- Transaction Groups -->
-	<div class="space-y-6">
-		{#each data.groupedTransactions as group}
-			<section>
-				<!-- Group Header -->
-				<div class="mb-3 flex items-baseline gap-3 px-1">
-					<h2 class="font-heading text-base font-bold text-gray-900">{group.dateLabel}</h2>
-					{#if group.incomingCount > 1}
-						<div class="rounded-md bg-green-50 px-2 py-0.5 text-sm font-bold text-green-700">
-							{group.formattedIncoming}
-						</div>
-					{/if}
-					{#if group.outgoingCount > 1}
-						<div class="rounded-md bg-gray-200/60 px-2 py-0.5 text-sm font-bold text-gray-700">
-							{group.formattedOutgoing}
-						</div>
-					{/if}
+			<!-- Savings Goals -->
+			<WidgetHeader title="Spaardoelen" class="mb-3" />
+
+			<Card padding="p-0" class="mb-6">
+				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+					<SavingsGoalItem
+						title="Nieuwe fiets"
+						saved={1500}
+						target={2000}
+						icon={Bike}
+						color="bg-blue-800"
+					/>
+					<SavingsGoalItem
+						title="Studie Jip"
+						saved={5500}
+						target={12000}
+						icon={GraduationCap}
+						color="bg-blue-800"
+					/>
 				</div>
+			</Card>
 
-				<!-- Transactions List for this group -->
+			<!-- Add Button -->
+			<button
+				class="mb-8 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-transparent py-4 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-50 active:scale-[0.99] dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+			>
+				<Plus class="h-5 w-5" />
+				Spaardoel toevoegen
+			</button>
+		{/if}
+	{:else if isLoading}
+		<!-- Payments Skeleton -->
+		<div class="animate-pulse">
+			<WidgetHeader title="Verwacht" class="mb-4">
+				<div class="h-4 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
+			</WidgetHeader>
+
+			<div class="mb-6">
 				<Card padding="p-0">
 					<div class="divide-y divide-gray-100">
-						{#each group.transactions as t}
+						{#each Array(2) as _}
+							<div class="p-4">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-3">
+										<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
+										<div class="space-y-2">
+											<div class="h-4 w-32 rounded bg-gray-200 dark:bg-gray-800"></div>
+											<div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
+										</div>
+									</div>
+									<div class="h-4 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</Card>
+			</div>
+
+			<div class="space-y-6">
+				{#each Array(2) as _}
+					<section>
+						<div class="mb-3 px-1">
+							<div class="h-4 w-24 rounded bg-gray-200 dark:bg-gray-800"></div>
+						</div>
+						<Card padding="p-0">
+							<div class="divide-y divide-gray-100">
+								{#each Array(3) as _}
+									<div class="p-4">
+										<div class="flex items-center justify-between">
+											<div class="flex items-center gap-3">
+												<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
+												<div class="space-y-2">
+													<div class="h-4 w-24 rounded bg-gray-200 dark:bg-gray-800"></div>
+													<div class="h-3 w-16 rounded bg-gray-200 dark:bg-gray-800"></div>
+												</div>
+											</div>
+											<div class="h-4 w-12 rounded bg-gray-200 dark:bg-gray-800"></div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</Card>
+					</section>
+				{/each}
+			</div>
+		</div>
+	{:else}
+		<!-- Section Header -->
+		<WidgetHeader title="Verwacht" class="mb-4">
+			<WidgetAction
+				label="Kijk vooruit"
+				href="/mobile/kijk-vooruit?from=/mobile/transactions?accountIndex={carouselIndex}"
+			/>
+		</WidgetHeader>
+
+		<!-- Upcoming Transactions -->
+		<div class="mb-6">
+			{#if data.upcomingTransactions && data.upcomingTransactions.length > 0}
+				<Card padding="p-0">
+					<div class="divide-y divide-gray-100">
+						{#each data.upcomingTransactions as t}
 							<div
 								class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 							>
 								<TransactionItem
 									merchant={t.merchant}
-									subtitle={t.category}
+									subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
 									amount={t.isDebit ? -t.amount : t.amount}
 									isDebit={t.isDebit}
 									categoryIcon={t.categoryIcon}
 									compact={false}
+									fontHeading={true}
+									useLogo={true}
 								/>
 							</div>
 						{/each}
 					</div>
 				</Card>
-			</section>
-		{:else}
-			<div class="mt-8 text-center text-sm text-gray-600">Geen transacties gevonden</div>
-		{/each}
-	</div>
+			{/if}
+		</div>
 
-	<!-- Bottom spacer for safe area -->
-	<div class="h-8"></div>
+		<!-- Transaction Groups -->
+		<div class="space-y-6">
+			{#each data.groupedTransactions as group}
+				<section>
+					<!-- Group Header -->
+					<div class="mb-3 flex items-baseline gap-3 px-1">
+						<h2 class="font-heading text-base font-bold text-gray-900">{group.dateLabel}</h2>
+						{#if group.incomingCount > 1}
+							<div class="rounded-md bg-green-50 px-2 py-0.5 text-sm font-bold text-green-700">
+								{group.formattedIncoming}
+							</div>
+						{/if}
+						{#if group.outgoingCount > 1}
+							<div class="rounded-md bg-gray-200/60 px-2 py-0.5 text-sm font-bold text-gray-700">
+								{group.formattedOutgoing}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Transactions List for this group -->
+					<Card padding="p-0">
+						<div class="divide-y divide-gray-100">
+							{#each group.transactions as t}
+								<div
+									class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
+								>
+									<TransactionItem
+										merchant={t.merchant}
+										subtitle={t.category}
+										amount={t.isDebit ? -t.amount : t.amount}
+										isDebit={t.isDebit}
+										categoryIcon={t.categoryIcon}
+										compact={false}
+									/>
+								</div>
+							{/each}
+						</div>
+					</Card>
+				</section>
+			{:else}
+				<div class="mt-8 text-center text-sm text-gray-600">Geen transacties gevonden</div>
+			{/each}
+		</div>
+
+		<!-- Bottom spacer for safe area -->
+		<div class="h-8"></div>
+	{/if}
 </div>

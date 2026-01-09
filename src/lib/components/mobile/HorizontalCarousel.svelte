@@ -91,6 +91,13 @@
 			scrollToIndex(clickedCardIndex);
 		}
 	}
+
+	$effect(() => {
+		// Respond to external index changes, wait for layout
+		setTimeout(() => {
+			scrollToIndex(currentIndex);
+		}, 100);
+	});
 </script>
 
 <div class="carousel-wrapper {className}">

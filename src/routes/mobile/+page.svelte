@@ -49,7 +49,7 @@
 	// Placeholder accounts for the list view
 	const accounts = [
 		{ id: 1, name: 'Gezamenlijke rekening', balance: 1200.0, type: 'checking' as const },
-		{ id: 2, name: 'Spaarrekening', balance: 5432.1, type: 'savings' as const },
+		{ id: 2, name: 'Internetsparen', balance: 7000.0, type: 'savings' as const },
 		{ id: 3, name: 'Beleggingsrekening', balance: 12847.53, type: 'investment' as const }
 	];
 	// Random emoticon for header

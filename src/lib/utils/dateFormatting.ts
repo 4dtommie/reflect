@@ -10,7 +10,8 @@ export const intervalMap: Record<string, string> = {
     weekly: 'Wekelijks',
     quarterly: 'Kwartaallijks',
     yearly: 'Jaarlijks',
-    '4-weekly': 'Per 4 weken'
+    '4-weekly': 'Per 4 weken',
+    irregular: 'Onregelmatig'
 };
 
 /**

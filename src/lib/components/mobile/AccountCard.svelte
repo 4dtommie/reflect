@@ -52,22 +52,41 @@
 
 	<!-- Action buttons - modern pill style -->
 	<div class="flex gap-2 pt-2">
-		<button
-			class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-		>
-			<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-			<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-				>Betalen</span
+		{#if type === 'savings'}
+			<button
+				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
 			>
-		</button>
-		<button
-			class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-		>
-			<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-			<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-				>Verzoek</span
+				<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
+				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
+					>Opnemen</span
+				>
+			</button>
+			<button
+				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
 			>
-		</button>
+				<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
+				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
+					>Storten</span
+				>
+			</button>
+		{:else}
+			<button
+				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
+			>
+				<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
+				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
+					>Betalen</span
+				>
+			</button>
+			<button
+				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
+			>
+				<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
+				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
+					>Verzoek</span
+				>
+			</button>
+		{/if}
 		<button
 			class="dark:bg-gray-1100 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-sand-100 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
 		>
