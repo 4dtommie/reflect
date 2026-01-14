@@ -25,6 +25,16 @@
   font-style: normal;
 }
 
+/* Make heading family support medium weight by referencing the
+	 medium text file. This prevents `font-medium` from resolving to
+	 a bold weight when the heading font is used. */
+@font-face {
+	font-family: 'Nitti Grotesk Heading';
+	src: url('/fonts/NNNittiGrotesk-TextMedium.woff2') format('woff2');
+	font-weight: 500;
+	font-style: normal;
+}
+
 /* Mobile viewport - fills iframe */
 .mobile-viewport {
 	font-family: 'Nitti Grotesk', sans-serif;
@@ -32,7 +42,7 @@
 	height: 100dvh;
 	overflow: hidden;
 	position: relative;
-	background-color: #faf9f8; /* sand-50 */
+	background-color: #f3efed; /* sand-100 */
 	display: flex;
 	flex-direction: column;
 	-webkit-user-select: none;
@@ -68,6 +78,15 @@
 	display: none;
 }
 
+/* Bottom nav wrapper - positioned at bottom in portrait, left side in landscape */
+.bottom-nav-wrapper {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 50;
+}
+
 /* iPhone-style status bar */
 .mobile-status-bar {
 	position: absolute;
@@ -83,7 +102,9 @@
 	font-size: 15px;
 	font-weight: 600;
 	color: #1a1a1a;
-	background: transparent;
+	background: rgba(243, 239, 237, 0.85); /* sand-100 */
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
 	z-index: 50; /* Above sticky headers (z-20) */
 	flex-shrink: 0;
 	pointer-events: none; /* Let clicks pass through to header if needed */
@@ -91,5 +112,335 @@
 
 :global(.dark) .mobile-status-bar {
 	color: #ffffff;
+	background: rgba(10, 10, 10, 0.85);
 }
 
+/* ============================================
+   LANDSCAPE MODE STYLES
+   ============================================ */
+
+/* Landscape orientation */
+@media (orientation: landscape) {
+	.mobile-viewport {
+		flex-direction: row;
+		/* Simulated safe area for Dynamic Island (left side in landscape) */
+		/* On real devices, this would come from env(safe-area-inset-left) */
+		padding-left: 59px;
+	}
+
+	/* Hide status bar in landscape - it's redundant when nav is on the side */
+	.mobile-status-bar {
+		display: none;
+	}
+
+	/* Content area adjusts for sidebar nav */
+	.mobile-content {
+		padding-bottom: 1rem; /* No bottom nav in landscape */
+		order: 2; /* Content comes after the left sidebar */
+	}
+
+	/* Left sidebar nav container */
+	.bottom-nav-wrapper {
+		position: relative !important;
+		order: 1; /* Nav on left */
+		height: 100%;
+		width: auto;
+	}
+
+	/* The nav itself becomes vertical */
+	.bottom-nav {
+		flex-direction: column !important;
+		width: 80px;
+		height: 100%;
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+		justify-content: flex-start;
+		gap: 0.5rem;
+		box-shadow: none !important; /* No drop shadow in landscape */
+	}
+
+	/* Compact sticky header for landscape */
+	.mobile-header {
+		padding-top: 0.75rem !important; /* Remove status bar spacing */
+		padding-bottom: 0.5rem !important;
+	}
+
+	.mobile-header h1 {
+		font-size: 1.125rem !important; /* More compact title */
+	}
+
+	.mobile-header button {
+		height: 2rem !important;
+		width: 2.25rem !important;
+	}
+
+	/* Reduce section spacing in landscape */
+	.space-y-6 {
+		gap: 0.75rem !important;
+	}
+
+	.mb-3 {
+		margin-bottom: 0.5rem !important;
+	}
+
+	.dashboard-layout {
+		display: grid !important;
+		grid-template-columns: 260px 1fr;
+		gap: 2.5rem !important; /* Gutter between columns */
+		row-gap: 0 !important; /* CRITICAL: Remove space between header and columns */
+		align-items: start;
+		padding-top: 0 !important; 
+		padding-left: 24px !important; 
+		padding-right: 24px !important; 
+	}
+
+	/* Force kill vertical margins from space-y-6 in landscape grid */
+	.dashboard-layout > * + * {
+		margin-top: 0 !important;
+	}
+
+	.mobile-header-component {
+		grid-column: 1 / -1; /* Full width */
+		box-shadow: none !important;
+		z-index: 50;
+		padding-top: 0 !important;
+		padding-bottom: 0 !important;
+		position: sticky !important;
+		top: 0;
+	}
+
+	.mobile-header-component .header-inner {
+		position: relative;
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding-top: 0.25rem !important; /* Minimal top spacing */
+		padding-bottom: 0.25rem !important;
+	}
+
+	.mobile-header-component .header-title {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		margin: 0 !important;
+		font-size: 1.125rem !important;
+	}
+
+	/* Pill buttons (Betalen / Verzoek) compact horizontal row */
+	.mobile-viewport .dashboard-sidebar .flex.gap-2 {
+		display: flex !important;
+		flex-direction: row !important;
+		flex-wrap: nowrap !important;
+		gap: 0.25rem !important;
+		padding: 0 !important;
+	}
+
+	.mobile-viewport .dashboard-sidebar .flex.gap-2 button {
+		padding: 0 0.4rem !important; /* Balanced padding as requested */
+		height: 32px !important;
+		min-height: 32px !important;
+		flex: 1 !important;
+		min-width: 0 !important;
+		justify-content: center !important;
+		gap: 4px !important;
+	}
+
+	.mobile-viewport .dashboard-sidebar .flex.gap-2 button span {
+		font-size: 0.775rem !important;
+		white-space: nowrap !important;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.mobile-viewport .dashboard-sidebar .flex.gap-2 button svg {
+		width: 0.85rem !important;
+		height: 0.85rem !important;
+	}
+
+	/* Compact 'More' button (last child) */
+	.mobile-viewport .dashboard-sidebar .flex.gap-2 button:last-child {
+		flex: none !important;
+		width: 32px !important;
+		padding: 0 !important;
+		background: #fdfaf6 !important;
+	}
+
+	:global(.dark) .mobile-viewport .dashboard-sidebar .flex.gap-2 button:last-child {
+		background: #0f172a !important;
+	}
+
+	.dashboard-sidebar {
+		position: sticky;
+		top: 20px; /* Match dashboard-layout padding-top */
+		z-index: 10;
+	}
+
+	.dashboard-main {
+		min-width: 0; /* Prevent horizontal overflow */
+		padding-top: 0 !important; /* Gap handled by grid and header inner padding */
+	}
+
+	/* Specific alignment for transactions page to sync with sidebar list */
+	.transactions-layout .dashboard-main {
+		padding-top: 0 !important;
+	}
+
+	/* Neutralize external breakout margins in landscape */
+	.mobile-viewport .dashboard-main .InsightsCarousel-wrapper div[class*="-mx-4"] {
+		margin-left: 0 !important;
+		margin-right: 0 !important;
+	}
+
+	/* Empty spacer for former button styles location */
+
+	/* Toggle balance amount visibility in landscape */
+	.account-amount-portrait {
+		display: none !important;
+	}
+
+	.account-amount-landscape {
+		display: block !important;
+	}
+
+	/* Reduce padding on account items in landscape for density */
+	.dashboard-sidebar .px-4.py-3 {
+		padding-top: 0.5rem !important;
+		padding-bottom: 0.5rem !important;
+	}
+
+	.bottom-nav .nav-items {
+		flex-direction: column;
+		height: auto;
+		width: 100%;
+		flex: 1;
+	}
+
+	.bottom-nav .nav-item {
+		width: 100%;
+		padding: 0.75rem 0;
+	}
+
+	/* Hide the home indicator inside the nav in landscape - we use the fixed one instead */
+	.bottom-nav .home-indicator-wrapper {
+		display: none;
+	}
+
+	.mobile-header-component {
+		display: flex !important;
+		flex-direction: row !important;
+		align-items: stretch !important; /* Stretch to fill 64px */
+		justify-content: space-between !important;
+		width: 100% !important;
+		height: 64px !important;
+		left: 0 !important;
+		right: 0 !important;
+		position: relative !important;
+		padding: 0 !important;
+		transform: none !important;
+		box-shadow: none !important; 
+		background: transparent !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
+
+	.mobile-header-component .header-inner {
+		height: 100% !important;
+		width: 100% !important;
+		display: flex !important;
+		flex-direction: row !important;
+		align-items: center !important;
+		justify-content: flex-start !important; /* Clusters icon + title left */
+		position: relative !important;
+		padding: 0 !important; /* Edge-to-edge icons */
+	}
+
+	.mobile-header-component h1 {
+		position: static !important;
+		transform: none !important;
+		margin: 0 0 0 0.25rem !important; /* Neatly beside icon */
+		padding: 0 !important;
+		line-height: normal !important;
+		text-align: left !important;
+		font-size: 1.125rem !important;
+		width: auto !important;
+		white-space: nowrap !important;
+		display: block !important;
+	}
+
+	.mobile-header-component .header-btn-right {
+		margin-left: auto !important; /* Pushes settings/search to far right */
+	}
+
+	/* Specific layout for Home page (Title First, Icons Right) */
+	.home-header .header-title {
+		order: 1 !important;
+		margin-left: 0 !important;
+		margin-right: auto !important; /* Pushes everything else to the right */
+	}
+
+	.home-header .header-btn-left {
+		order: 2 !important;
+		margin-left: 0.5rem !important; /* Gap between icons */
+	}
+
+	.home-header .header-btn-right {
+		order: 3 !important;
+		margin-left: 0.5rem !important; /* Gap between icons */
+	}
+
+	.mobile-header-component button:nth-of-type(2) {
+		order: 3 !important;
+		width: 32px !important;
+		height: 32px !important;
+	}
+
+	/* Interactive Vermogen widget style in sidebar */
+	.sidebar-account-list {
+		margin-top: 0 !important;
+	}
+
+	.active-account-row {
+		background: rgba(0, 0, 0, 0.04);
+		border-radius: 0 !important; /* Keep it flush to avoid "edge" look */
+	}
+
+	:global(.dark) .active-account-row {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	/* Align right column perfectly with sidebar titles */
+	.dashboard-main {
+		padding-top: 0 !important; 
+	}
+}
+
+/* Fixed home indicator - always at bottom center */
+.home-indicator-fixed {
+	display: none; /* Hidden in portrait - BottomNav has its own */
+}
+
+@media (orientation: landscape) {
+	.home-indicator-fixed {
+		display: flex;
+		position: absolute;
+		bottom: 8px;
+		left: 0;
+		right: 0;
+		justify-content: center;
+		z-index: 100;
+		pointer-events: none;
+	}
+
+	.home-indicator-bar {
+		width: 134px;
+		height: 5px;
+		border-radius: 3px;
+		background: #1a1a1a;
+	}
+
+	:global(.dark) .home-indicator-bar {
+		background: #ffffff;
+	}
+}

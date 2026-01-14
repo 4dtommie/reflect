@@ -129,7 +129,7 @@ export async function seedDatabase() {
 			{
 				name: 'Salaris',
 				description: 'Loon uit dienstverband of als zelfstandige',
-				color: '#22c55e',
+				color: '#6dab65',
 				icon: 'Briefcase',
 				is_default: true,
 				created_by: null,
@@ -164,7 +164,7 @@ export async function seedDatabase() {
 			{
 				name: 'Belastingteruggave & toeslagen',
 				description: 'Alleen positieve bedragen mbt belasting en subsidies (NIET: kinderopvangtoeslag of huurtoeslag, die gaan naar Kinderopvang en woning categorie)',
-				color: '#4ade80',
+				color: '#9bc595',
 				icon: 'FileText',
 				is_default: true,
 				created_by: null,
@@ -209,7 +209,7 @@ export async function seedDatabase() {
 			{
 				name: 'Overig inkomen',
 				description: 'Divers inkomen, dit zal bijna niet voorkomen. Probeer eerst te kijken of het bijvoorbeeld een teruggave is voor de kleding categorie of vergelijkbare situaties.',
-				color: '#86efac',
+				color: '#bad7b6',
 				icon: 'DollarSign',
 				is_default: true,
 				created_by: null,
@@ -252,7 +252,7 @@ export async function seedDatabase() {
 			{
 				name: 'Eten & boodschappen',
 				description: 'Hoofdcategorie voor eten en boodschappen (gebruik subcategorieën voor categorisering)',
-				color: '#7c3aed',
+				color: '#6dab65',
 				icon: 'ShoppingCart',
 				is_default: true,
 				created_by: null,
@@ -267,7 +267,7 @@ export async function seedDatabase() {
 			{
 				name: 'Restaurants & uit eten',
 				description: 'Hoofdcategorie voor uit-eten gerelateerde uitgaven (gebruik subcategorieën voor categorisering)',
-				color: '#ec4899',
+				color: '#6dab65',
 				icon: 'Utensils',
 				is_default: true,
 				created_by: null,
@@ -282,7 +282,7 @@ export async function seedDatabase() {
 			{
 				name: 'Vervoer',
 				description: 'Hoofdcategorie voor vervoerskosten (gebruik subcategorieën voor categorisering)',
-				color: '#8b5cf6',
+				color: '#8d8d8d',
 				icon: 'Car',
 				is_default: true,
 				created_by: null,
@@ -297,7 +297,7 @@ export async function seedDatabase() {
 			{
 				name: 'Winkelen',
 				description: 'Hoofdcategorie voor retail aankopen (gebruik subcategorieën voor categorisering)',
-				color: '#f472b6',
+				color: '#7b77b6',
 				icon: 'ShoppingBag',
 				is_default: true,
 				created_by: null,
@@ -312,7 +312,7 @@ export async function seedDatabase() {
 			{
 				name: 'Hobby\'s & vrije tijd',
 				description: 'Hoofdcategorie voor hobby\'s en vrijetijdsactiviteiten (gebruik subcategorieën voor categorisering)',
-				color: '#f9a8d4',
+				color: '#f37b2b',
 				icon: 'Palette',
 				is_default: true,
 				created_by: null,
@@ -327,7 +327,7 @@ export async function seedDatabase() {
 			{
 				name: 'Wonen',
 				description: 'Hoofdcategorie voor woonkosten (gebruik subcategorieën voor categorisering)',
-				color: '#a78bfa',
+				color: '#75a0ce',
 				icon: 'Home',
 				is_default: true,
 				created_by: null,
@@ -345,7 +345,7 @@ export async function seedDatabase() {
 			{
 				name: 'Boodschappen',
 				description: 'Grote supermarkten, buurtwinkels en online boodschappenbezorging',
-				color: '#c4b5fd',
+				color: '#6dab65',
 				icon: 'ShoppingCart',
 				is_default: true,
 				created_by: null,
@@ -383,7 +383,7 @@ export async function seedDatabase() {
 			{
 				name: 'Slager',
 				description: 'Slagerijen en vleeswinkels',
-				color: '#7c3aed',
+				color: '#9bc595',
 				icon: 'Drumstick',
 				is_default: true,
 				created_by: null,
@@ -419,7 +419,7 @@ export async function seedDatabase() {
 			{
 				name: 'Bakker',
 				description: 'Bakkerijen en broodwinkels',
-				color: '#8b5cf6',
+				color: '#9bc595',
 				icon: 'Wheat',
 				is_default: true,
 				created_by: null,
@@ -455,7 +455,7 @@ export async function seedDatabase() {
 			{
 				name: 'Speciaalzaken',
 				description: 'Delicatessenzaken, speciaalzaken, biologische winkels, natuurvoedingswinkels, kaaswinkels, etc.',
-				color: '#a78bfa',
+				color: '#bad7b6',
 				icon: 'Leaf',
 				is_default: true,
 				created_by: null,
@@ -508,7 +508,7 @@ export async function seedDatabase() {
 			{
 				name: 'Koffie',
 				description: 'Koffiezaken en cafés, gebruik hiervoor ook de tijd als die beschikbaar is (vaak tussen 8:00 en 11:00), bedragen vaak tussen 3 en 6 euro',
-				color: '#fbcfe8',
+				color: '#9bc595',
 				icon: 'Coffee',
 				is_default: true,
 				created_by: null,
@@ -541,7 +541,7 @@ export async function seedDatabase() {
 			{
 				name: 'Snacks',
 				description: 'Automaten, kleine aankopen, snoep, snacks - vaak bedragen rond 1 tot 2 euro, vergelijkbaar met koffie maar goedkoper',
-				color: '#ec4899',
+				color: '#bad7b6',
 				icon: 'Cookie',
 				is_default: true,
 				created_by: null,
@@ -573,7 +573,7 @@ export async function seedDatabase() {
 			{
 				name: 'Lunch',
 				description: 'Lunchmaaltijden en snacks (dit zijn vaak restaurants, cafes, bakkers, tankstations en dergelijke maar dan te identificeren door bedragen rond 10 euro het tijstip (tussen 11:00 en 14:00',
-				color: '#f472b6',
+				color: '#9bc595',
 				icon: 'Sandwich',
 				is_default: true,
 				created_by: null,
@@ -603,7 +603,7 @@ export async function seedDatabase() {
 			{
 				name: 'Uit eten',
 				description: 'Restaurantmaaltijden (diner, avondeten, vooral te identificeren door tijdstip na 17:00)',
-				color: '#f9a8d4',
+				color: '#6dab65',
 				icon: 'UtensilsCrossed',
 				is_default: true,
 				created_by: null,
@@ -661,7 +661,7 @@ export async function seedDatabase() {
 			{
 				name: 'Bestellen',
 				description: 'Maaltijdbezorging en afhaalmaaltijden, verschilt vaak van uit eten door het bedrag dat lager is dan 50 euro',
-				color: '#fbcfe8',
+				color: '#9bc595',
 				icon: 'ShoppingBag',
 				is_default: true,
 				created_by: null,
@@ -705,7 +705,7 @@ export async function seedDatabase() {
 			{
 				name: 'Uitgaan/bars',
 				description: 'Uitgaan, bars, drankjes, discotheken, nachtleven (vooral te identificeren door tijdstip na 21:00)',
-				color: '#ec4899',
+				color: '#bad7b6',
 				icon: 'Wine',
 				is_default: true,
 				created_by: null,
@@ -742,7 +742,7 @@ export async function seedDatabase() {
 			{
 				name: 'Auto en fiets betalingen',
 				description: 'Lening of lease bedrag voor een auto of fiets (swapbike, fietsenwinkels), bedrag is vaak hoger dan 300 euro voor auto, rond 30-50 euro per maand voor fiets',
-				color: '#c4b5fd',
+				color: '#8d8d8d',
 				icon: 'Car',
 				is_default: true,
 				created_by: null,
@@ -779,7 +779,7 @@ export async function seedDatabase() {
 			{
 				name: 'Brandstof',
 				description: 'Benzine, diesel, opladen voor elektrische voertuigen, bedragen lager dan 15 euro zijn eerder lunch of boodschappen',
-				color: '#7c3aed',
+				color: '#9c9c9c',
 				tier: 'most',
 				icon: 'Fuel',
 				is_default: true,
@@ -815,7 +815,7 @@ export async function seedDatabase() {
 			{
 				name: 'Openbaar vervoer',
 				description: 'Openbaar vervoer',
-				color: '#8b5cf6',
+				color: '#9c9c9c',
 				icon: 'Train',
 				is_default: true,
 				created_by: null,
@@ -851,7 +851,7 @@ export async function seedDatabase() {
 			{
 				name: 'Parkeren',
 				description: 'Parkeerkosten, parkeervergunningen',
-				color: '#a78bfa',
+				color: '#bababa',
 				icon: 'SquareParking',
 				is_default: true,
 				created_by: null,
@@ -892,7 +892,7 @@ export async function seedDatabase() {
 			{
 				name: 'Onderhoud & reparaties',
 				description: 'Auto-onderhoud, reparaties, keuringen, banden',
-				color: '#c4b5fd',
+				color: '#bababa',
 				icon: 'Wrench',
 				is_default: true,
 				created_by: null,
@@ -923,7 +923,7 @@ export async function seedDatabase() {
 			{
 				name: 'Taxi & deelvervoer',
 				description: 'Taxis, Uber, Lyft, andere deelvervoersdiensten',
-				color: '#7c3aed',
+				color: '#9c9c9c',
 				icon: 'Taxi',
 				is_default: true,
 				created_by: null,
@@ -961,7 +961,7 @@ export async function seedDatabase() {
 			{
 				name: 'Kleding',
 				description: 'Kleding, schoenen, accessoires',
-				color: '#f472b6',
+				color: '#9b98c8',
 				icon: 'Shirt',
 				is_default: true,
 				created_by: null,
@@ -1017,7 +1017,7 @@ export async function seedDatabase() {
 			{
 				name: 'Elektronica',
 				description: 'Elektronica, computers, telefoons, gadgets',
-				color: '#f9a8d4',
+				color: '#8c88bf',
 				icon: 'Smartphone',
 				is_default: true,
 				created_by: null,
@@ -1049,7 +1049,7 @@ export async function seedDatabase() {
 			{
 				name: 'Algemene retail',
 				description: 'Andere retail aankopen die niet in andere subcategorieën passen',
-				color: '#fbcfe8',
+				color: '#b9b7d8',
 				icon: 'ShoppingBag',
 				is_default: true,
 				created_by: null,
@@ -1102,7 +1102,7 @@ export async function seedDatabase() {
 			{
 				name: 'Energie/water',
 				description: 'Elektriciteit, gas, water en gemeentelijke voorzieningen (afval, riool, gemeentelijke belastingen)',
-				color: '#8b5cf6',
+				color: '#75a0ce',
 				icon: 'Zap',
 				is_default: true,
 				created_by: null,
@@ -1150,7 +1150,7 @@ export async function seedDatabase() {
 			{
 				name: 'TV/internet/telefoon',
 				description: 'Internet, telefoon, TV en kabelabonnementen',
-				color: '#a78bfa',
+				color: '#9fbddd',
 				icon: 'Wifi',
 				is_default: true,
 				created_by: null,
@@ -1186,7 +1186,7 @@ export async function seedDatabase() {
 			{
 				name: 'Huur/hypotheek',
 				description: 'Maandelijkse huur of hypotheekbetalingen',
-				color: '#c4b5fd',
+				color: '#75a0ce',
 				icon: 'Home',
 				is_default: true,
 				created_by: null,
@@ -1229,7 +1229,7 @@ export async function seedDatabase() {
 			{
 				name: 'Klussen',
 				description: 'Bouwmarkten, gereedschap, klus- en verbouwmaterialen',
-				color: '#7c3aed',
+				color: '#9fbddd',
 				icon: 'Wrench',
 				is_default: true,
 				created_by: null,
@@ -1265,7 +1265,7 @@ export async function seedDatabase() {
 			{
 				name: 'Tuin',
 				description: 'Tuincentra, planten, tuinmeubels, tuingereedschap',
-				color: '#ec4899',
+				color: '#bbd0e7',
 				icon: 'Flower2',
 				is_default: true,
 				created_by: null,
@@ -1300,7 +1300,7 @@ export async function seedDatabase() {
 			{
 				name: 'Woninginrichting',
 				description: 'Meubels, woningdecoratie, huishoudelijke apparaten',
-				color: '#f472b6',
+				color: '#bbd0e7',
 				icon: 'Sofa',
 				is_default: true,
 				created_by: null,
@@ -1345,7 +1345,7 @@ export async function seedDatabase() {
 			{
 				name: 'Gezondheidszorg',
 				description: 'Medische kosten, apotheek, gezondheidsapps (NIET: sportschool/fitness - gebruik Sport categorie)',
-				color: '#8b5cf6',
+				color: '#9b98c8',
 				icon: 'Heart',
 				is_default: true,
 				created_by: null,
@@ -1403,7 +1403,7 @@ export async function seedDatabase() {
 			{
 				name: 'Entertainment',
 				description: 'Films, streaming, games, entertainmentabonnementen.',
-				color: '#f9a8d4',
+				color: '#f37b2b',
 				icon: 'Film',
 				is_default: true,
 				created_by: null,
@@ -1438,7 +1438,7 @@ export async function seedDatabase() {
 			{
 				name: 'Sport',
 				description: 'Sportschoolabonnementen, fitness, sportartikelen',
-				color: '#fbcfe8',
+				color: '#f7a873',
 				icon: 'Dumbbell',
 				is_default: true,
 				created_by: null,
@@ -1471,7 +1471,7 @@ export async function seedDatabase() {
 			{
 				name: 'Boeken/tijdschriften/games',
 				description: 'Boeken, tijdschriften en tijdschrift abonnementen, e-books, audioboeken, games',
-				color: '#ec4899',
+				color: '#fac39f',
 				icon: 'BookOpen',
 				is_default: true,
 				created_by: null,
@@ -1507,7 +1507,7 @@ export async function seedDatabase() {
 			{
 				name: 'Hobby',
 				description: 'Hobby\'s, contributies zoals toneel of muziekverenigingen NIET: sportverenigingen (gebruik Sport), entertainment abonnementen (gebruik Entertainment)',
-				color: '#f472b6',
+				color: '#f7a873',
 				icon: 'Palette',
 				is_default: true,
 				created_by: null,
@@ -1564,7 +1564,7 @@ export async function seedDatabase() {
 			{
 				name: 'Uitjes & activiteiten',
 				description: 'Uitjes, dagjes uit, attracties, musea, theaters, concerten, festivals en andere activiteiten',
-				color: '#f9a8d4',
+				color: '#f7a873',
 				icon: 'Ticket',
 				is_default: true,
 				created_by: null,
@@ -1603,7 +1603,7 @@ export async function seedDatabase() {
 			{
 				name: 'Onderwijs',
 				description: 'Cursussen, collegegeld, educatieve abonnementen NIET: algemene boeken of entertainment',
-				color: '#fbcfe8',
+				color: '#fac39f',
 				icon: 'GraduationCap',
 				is_default: true,
 				created_by: null,
@@ -1657,7 +1657,7 @@ export async function seedDatabase() {
 			{
 				name: 'Reizen',
 				description: 'Hotels, vluchten, campings, zaken in andere landen dan nederland (behalve als je een specifiekere categorie kunt vinden)',
-				color: '#ec4899',
+				color: '#f7a873',
 				icon: 'Plane',
 				is_default: true,
 				created_by: null,
@@ -1715,7 +1715,7 @@ export async function seedDatabase() {
 			{
 				name: 'Verzekering',
 				description: 'Zorg auto inboedel reisverzekering etc.',
-				color: '#a78bfa',
+				color: '#8d8d8d',
 				icon: 'Shield',
 				is_default: true,
 				created_by: null,
@@ -1750,7 +1750,7 @@ export async function seedDatabase() {
 			{
 				name: 'Belastingen & boetes',
 				description: 'Belastingen en boetes die je moet betalen (alleen negatieve bedragen, anders bij categorie belastingteruggaven)',
-				color: '#c4b5fd',
+				color: '#a28977',
 				icon: 'FileText',
 				is_default: true,
 				created_by: null,
@@ -1780,7 +1780,7 @@ export async function seedDatabase() {
 			{
 				name: 'Kosten & vergoedingen',
 				description: 'Voornamelijk bankkosten, deze categorie komt weinig voor',
-				color: '#eab308',
+				color: '#947965',
 				icon: 'CreditCard',
 				is_default: true,
 				created_by: null,
@@ -1822,7 +1822,7 @@ export async function seedDatabase() {
 			{
 				name: 'Geldopnames',
 				description: 'Geldopnames bij pinautomaten en geldautomaten',
-				color: '#facc15',
+				color: '#a28977',
 				icon: 'Wallet',
 				is_default: true,
 				created_by: null,
@@ -1837,7 +1837,7 @@ export async function seedDatabase() {
 			{
 				name: 'Goede doelen & donaties',
 				description: 'Goede doelen bijdragen, gebruik hier voornamelijk de bekendere organisaties of als de beschrijving duidelijk is',
-				color: '#f472b6',
+				color: '#b9b7d8',
 				icon: 'HeartHandshake',
 				is_default: true,
 				created_by: null,
@@ -1890,7 +1890,7 @@ export async function seedDatabase() {
 			{
 				name: 'Persoonlijke verzorging',
 				description: 'Kappers, cosmetica, persoonlijke artikelen en drogisterijen als kruidvat of etos',
-				color: '#f9a8d4',
+				color: '#b9b7d8',
 				icon: 'Sparkles',
 				is_default: true,
 				created_by: null,
@@ -1950,7 +1950,7 @@ export async function seedDatabase() {
 			{
 				name: 'Leningen & schuldaflossing',
 				description: 'Leningen en aflossingen (NIET: creditcard betalingen - gebruik Creditcard betalingen categorie)',
-				color: '#7c3aed',
+				color: '#947965',
 				icon: 'CreditCard',
 				is_default: true,
 				created_by: null,
@@ -2005,7 +2005,7 @@ export async function seedDatabase() {
 			{
 				name: 'Sparen & beleggen',
 				description: 'Overboekingen naar spaar, beleggings en crypto rekeningen of wallets.',
-				color: '#fde047',
+				color: '#a28977',
 				icon: 'PiggyBank',
 				is_default: true,
 				created_by: null,
@@ -2069,7 +2069,7 @@ export async function seedDatabase() {
 			{
 				name: 'Huisdierenverzorging',
 				description: 'Voer, dierenarts, uitlaatservice',
-				color: '#fbcfe8',
+				color: '#cdcce4',
 				icon: 'Heart',
 				is_default: true,
 				created_by: null,
@@ -2085,7 +2085,7 @@ export async function seedDatabase() {
 			{
 				name: 'Kinderopvang & zorg',
 				description: 'Kinderopvang, oppasdiensten, ouderenzorg, ook positieve bedragen zoals kinderopvang toeslag, kindergeld, etc.',
-				color: '#8b5cf6',
+				color: '#9b98c8',
 				icon: 'Baby',
 				is_default: true,
 				created_by: null,
@@ -2158,7 +2158,7 @@ export async function seedDatabase() {
 			{
 				name: 'Betaalverzoeken',
 				description: 'Betaalverzoeken en betaallinks zoals Tikkie, betaalverzoek, LET OP: als er uit de beschrijving een echte categorie op te maken is gebruik die dan, LET OP: als het niet heel duidelijk een betaalverzoek is dan deze categorie niet gebruiken.',
-				color: '#fef08a',
+				color: '#ac9686',
 				icon: 'Send',
 				is_default: true,
 				created_by: null,
@@ -2189,7 +2189,7 @@ export async function seedDatabase() {
 			{
 				name: 'Creditcard betalingen',
 				description: 'Creditcard betalingen en afschriften (NIET: leningen - gebruik Leningen & schuldaflossing categorie)',
-				color: '#eab308',
+				color: '#947965',
 				icon: 'CreditCard',
 				is_default: true,
 				created_by: null,
@@ -2220,7 +2220,7 @@ export async function seedDatabase() {
 			{
 				name: 'Overboekingen eigen rekeningen',
 				description: 'Overboekingen tussen je eigen bankrekeningen, spaarrekeningen, beleggingsrekeningen',
-				color: '#facc15',
+				color: '#ac9686',
 				icon: 'ArrowLeftRight',
 				is_default: true,
 				created_by: null,
@@ -2239,7 +2239,7 @@ export async function seedDatabase() {
 			{
 				name: 'Niet gecategoriseerd',
 				description: 'Systeemcategorie voor transacties die niet automatisch zijn gecategoriseerd',
-				color: '#64748b',
+				color: '#7b77b6',
 				icon: 'HelpCircle',
 				is_default: true,
 				created_by: null,
@@ -2254,7 +2254,7 @@ export async function seedDatabase() {
 			{
 				name: 'Overig',
 				description: 'Diverse uitgaven die niet in andere categorieën passen (gebruiker selecteerbaar)',
-				color: '#94a3b8',
+				color: '#8c88bf',
 				icon: 'MoreHorizontal',
 				is_default: true,
 				created_by: null,

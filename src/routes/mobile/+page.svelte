@@ -1,57 +1,49 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import Card from '$lib/components/mobile/Card.svelte';
 	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
-	import MoneyChart from '$lib/components/mobile/MoneyChart.svelte';
 	import InsightsCarousel from '$lib/components/mobile/InsightsCarousel.svelte';
-	import AccountCard from '$lib/components/mobile/AccountCard.svelte';
-	import Amount from '$lib/components/mobile/Amount.svelte';
 	import {
 		QrCode,
 		Settings2,
-		MoreVertical,
-		CreditCard,
-		RefreshCw,
-		Smartphone,
-		ArrowRight,
-		ChevronRight,
+		Menu,
 		ArrowUp,
-		ArrowDown,
-		Users,
-		User,
-		PiggyBank,
-		TrendingUp
+		ArrowDown
 	} from 'lucide-svelte';
 	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
-	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
-	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import ExpectedWidget from '$lib/components/mobile/ExpectedWidget.svelte';
+
+	// New design system components
+	import { ProductWidget, ListItemGroup } from '$lib/components/mobile/organisms';
+	import { mobileTheme } from '$lib/stores/mobileTheme';
 
 	// Data from server
 	let { data } = $props();
 
-	const widgetStyleParam = $derived($page.url.searchParams.get('widgetStyle'));
-	let widgetStyle = $state<'default' | 'list'>('default');
+	// Get current theme config
+	const theme = $derived($mobileTheme);
+
+	const layoutParam = $derived($page.url.searchParams.get('layout'));
+	let layout = $state<'default' | 'A' | 'B' | 'C'>('default');
 
 	$effect(() => {
-		if (widgetStyleParam) {
-			widgetStyle = widgetStyleParam as 'default' | 'list';
-			localStorage.setItem('widgetStyle', widgetStyle);
+		if (layoutParam) {
+			layout = layoutParam as 'default' | 'A' | 'B' | 'C';
+			localStorage.setItem('productLayout', layout);
 		} else {
-			const stored = localStorage.getItem('widgetStyle') as 'default' | 'list';
+			const stored = localStorage.getItem('productLayout') as 'default' | 'A' | 'B' | 'C';
 			if (stored) {
-				widgetStyle = stored;
+				layout = stored;
 			}
 		}
 	});
 
-	// Placeholder accounts for the list view
-	const accounts = [
-		{ id: 1, name: 'Gezamenlijke rekening', balance: 1200.0, type: 'checking' as const },
-		{ id: 2, name: 'Internetsparen', balance: 7000.0, type: 'savings' as const },
-		{ id: 3, name: 'Beleggingsrekening', balance: 12847.53, type: 'investment' as const }
-	];
+	// Use shared product mock data (storage-aware)
+	import { productsStore, type Product } from '$lib/mock/products';
+
+	// Products (mocked) - reactive store
+	const accounts = $derived($productsStore.filter((p) => p.enabled !== false));
+
 	// Random emoticon for header
 	const emoticons = ['👋', '😎', '😀', '😊', '✌️', '✨'];
 	let emoticon = $state('👋');
@@ -59,167 +51,84 @@
 	$effect(() => {
 		emoticon = emoticons[Math.floor(Math.random() * emoticons.length)];
 	});
+
+	// Header title - theme aware (NN Original shows "Home", improved shows greeting)
+	const headerTitle = $derived(
+		theme.header.homeTitle ?? `Hi, ${data.userName} ${emoticon}`
+	);
+
+	// Action buttons for products (theme-aware labels)
+	const productActions = $derived(
+		theme.productWidget.actionsPosition === 'classic'
+			? [
+					{ label: 'Overmaken', icon: ArrowUp, primary: true },
+					{ label: 'Betaalverzoek', icon: ArrowDown }
+				]
+			: [
+					{ label: 'Betalen', icon: ArrowUp, primary: true },
+					{ label: 'Verzoek', icon: ArrowDown },
+					{ label: 'Meer', icon: Menu, tertiary: true }
+				]
+	);
 </script>
 
 <svelte:head>
 	<title>Reflect Mobile</title>
 </svelte:head>
 
-<!-- Header -->
-<MobileHeader class="flex items-center justify-between px-4 pb-3">
-	<button
-		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
+<div class="dashboard-layout px-0 pt-0 pb-4 font-nn">
+	<!-- Header (Now at top level for full-width landscape) -->
+	<MobileHeader
+		class="mobile-header-component home-header flex items-center justify-between px-4 pb-3 landscape:col-span-full landscape:px-0"
 	>
-		<QrCode class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
-	</button>
-	<h1 class="font-heading text-xl font-bold text-black dark:text-white">
-		Hi, {data.userName}
-		{emoticon}
-	</h1>
-	<button
-		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
-	>
-		<Settings2 class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
-	</button>
-</MobileHeader>
-
-<div class="space-y-6 px-4 pt-0 pb-4 font-nn">
-	<!-- Betaalsaldo -->
-	<!-- Betaalsaldo -->
-	<!-- Betaalsaldo -->
-	<section>
-		<WidgetHeader title="Vermogen" class="mb-3" />
-		{#if widgetStyle === 'default'}
-			<Card padding="p-0">
-				<div class="p-4">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div class="relative">
-								<CreditCard class="h-8 w-8 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
-								<div
-									class="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-mediumOrange-500 text-[10px] font-bold text-white ring-2 ring-white"
-								>
-									N
-								</div>
-							</div>
-							<div>
-								<div class="font-bold dark:text-white">P. de Vries</div>
-								<div class="text-sm font-normal text-gray-600 dark:text-gray-400">
-									NL31 NNBA 1000 0006 45
-								</div>
-							</div>
-						</div>
-						<div class="text-lg font-bold dark:text-white">€ 50,00</div>
-					</div>
+		<div
+			class="header-inner flex w-full items-center justify-between landscape:relative landscape:pt-0"
+		>
+			<button
+				class="header-btn-left dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
+			>
+				<QrCode class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
+			</button>
+			<div class="flex-1 text-center">
+				<div class="truncate font-heading text-[20px] font-bold text-gray-900 dark:text-white">
+					{headerTitle}
 				</div>
-				<div class="px-4 py-3">
-					<div class="flex gap-2">
-						<button
-							class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-						>
-							<RefreshCw class="h-4 w-4 text-mediumOrange-600" strokeWidth={2} />
-							<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-								>Overmaken</span
-							>
-						</button>
-						<button
-							class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-						>
-							<Smartphone class="h-4 w-4 text-mediumOrange-600" strokeWidth={2} />
-							<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-								>Verzoek</span
-							>
-						</button>
-					</div>
-				</div>
-			</Card>
-		{:else}
-			<Card padding="p-0">
-				<!-- Accounts List -->
-				<div class="flex flex-col pt-2">
-					{#each accounts as account, i}
-						<MobileLink
-							href="/mobile/transactions?accountIndex={i}"
-							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
-						>
-							<div class="flex items-center gap-3">
-								<div class="relative">
-									{#if account.type === 'savings'}
-										<PiggyBank class="h-5 w-5 text-gray-800 dark:text-gray-200" strokeWidth={1.5} />
-									{:else if account.type === 'investment'}
-										<TrendingUp
-											class="h-5 w-5 text-gray-800 dark:text-gray-200"
-											strokeWidth={1.5}
-										/>
-									{:else}
-										<CreditCard
-											class="h-5 w-5 text-gray-800 dark:text-gray-200"
-											strokeWidth={1.5}
-										/>
-									{/if}
-								</div>
-								<div>
-									<div class="text-sm font-normal text-gray-600 dark:text-gray-400">
-										{account.name}
-									</div>
-								</div>
-							</div>
-							<div class="flex items-center gap-1">
-								<Amount
-									amount={account.balance}
-									size="sm"
-									class="font-heading font-semibold !text-gray-900 dark:!text-gray-200"
-									showSign={false}
-									showSymbol={true}
-								/>
-								<ChevronRight class="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
-							</div>
-						</MobileLink>
-					{/each}
-				</div>
+			</div>
+			<button
+				class="header-btn-right dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
+			>
+				<Settings2 class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
+			</button>
+		</div>
+	</MobileHeader>
 
-				<!-- Action Buttons Footer -->
-				<div class="p-4 pt-2">
-					<div class="flex gap-2">
-						<button
-							class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-						>
-							<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-							<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-								>Betalen</span
-							>
-						</button>
-						<button
-							class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-						>
-							<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-							<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-								>Verzoek</span
-							>
-						</button>
-						<button
-							class="dark:bg-gray-1100 flex h-9 w-9 items-center justify-center rounded-full bg-sand-100 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-						>
-							<MoreVertical class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-						</button>
-					</div>
-				</div>
-			</Card>
-		{/if}
-	</section>
+	<div class="dashboard-sidebar px-4 landscape:px-0">
+		<!-- Product Widget - theme aware (classic for NN, integrated for improved) -->
+		<ProductWidget
+			title={theme.productWidget.actionsPosition === 'classic' ? 'Betaalsaldo' : 'Vermogen'}
+			products={accounts}
+			actions={productActions}
+			linkBase="/mobile/transactions"
+			layoutParam={layout}
+		/>
+	</div>
 
-	<!-- Inzichten Carousel -->
-	<InsightsCarousel />
+	<div class="dashboard-main mt-6 space-y-6 px-4 landscape:mt-0 landscape:px-0">
+		<!-- Inzichten Carousel -->
+		<div class="InsightsCarousel-wrapper">
+			<InsightsCarousel />
+		</div>
 
-	<!-- Transacties -->
-	<section>
-		<WidgetHeader title="Betalingen" class="mb-3">
-			<WidgetAction label="Bekijk alles" href="/mobile/transactions" />
-		</WidgetHeader>
-
-		<Card padding="p-0">
-			<div class="dark:divide-gray-1100 divide-y divide-gray-100">
-				{#each data.transactions as t}
+		<!-- Transacties - Using ListItemGroup with theme awareness -->
+		<ListItemGroup
+			title="Betalingen"
+			action={{ label: 'Bekijk alles', href: `/mobile/transactions${layout !== 'default' ? `?layout=${layout}` : ''}` }}
+		>
+			{#each data.transactions as t}
+				<MobileLink
+					href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
+					class="dark:active:bg-gray-1100 block px-4 py-3 active:bg-gray-50"
+				>
 					<TransactionItem
 						merchant={t.merchant}
 						subtitle={t.subline}
@@ -229,17 +138,16 @@
 						compact={true}
 						showSubtitle={false}
 						showChevron={true}
-						class="dark:active:bg-gray-1100 px-4 py-3 active:bg-gray-50"
 					/>
-				{:else}
-					<div class="p-4 text-center text-sm text-gray-600 dark:text-gray-400">
-						Geen transacties
-					</div>
-				{/each}
-			</div>
-		</Card>
-	</section>
+				</MobileLink>
+			{:else}
+				<div class="p-4 text-center text-sm text-gray-600 dark:text-gray-400">
+					Geen transacties
+				</div>
+			{/each}
+		</ListItemGroup>
 
-	<!-- Verwacht Widget -->
-	<ExpectedWidget items={data.upcomingPayments} />
+		<!-- Verwacht Widget -->
+		<ExpectedWidget items={data.upcomingPayments} />
+	</div>
 </div>

@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
+	import { mobileScrollY } from '$lib/stores/mobileScroll';
 
 	interface Props {
 		href: string;
@@ -35,6 +36,9 @@
 		const toDepth = getDepth(toPath);
 		const direction = toDepth < fromDepth ? 'back' : 'forward';
 		mobileNavDirection.set(direction);
+
+		// Reset scroll store BEFORE navigating so new page sees 0
+		mobileScrollY.set(0);
 
 		goto(href);
 	}

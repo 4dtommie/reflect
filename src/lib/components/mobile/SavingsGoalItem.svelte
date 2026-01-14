@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script lang="ts" module>
 	// Module-level cache to track animation times across instances
 	const animationCache: Record<string, number> = {};
 </script>
@@ -6,18 +6,36 @@
 <script lang="ts">
 	import { ChevronRight } from 'lucide-svelte';
 	import Amount from '$lib/components/mobile/Amount.svelte';
+	import type { Component } from 'svelte';
+
+	// Use a permissive type for icons to support Lucide components
+	type IconComponent = Component<any> | (new (...args: any[]) => any) | ((...args: any[]) => any);
 
 	interface Props {
 		title: string;
 		saved: number;
 		target: number;
-		icon: any; // visual icon component
+		icon: IconComponent; // visual icon component
 		color?: string; // hex or tailwind class for bar
+		onclick?: () => void;
+		href?: string;
+		showChevron?: boolean;
+		class?: string;
 	}
 
-	let { title, saved, target, icon: Icon, color = 'bg-blue-500' }: Props = $props();
+	let { 
+		title, 
+		saved, 
+		target, 
+		icon: Icon, 
+		color = 'bg-blue-500',
+		onclick,
+		href,
+		showChevron = true,
+		class: className = ''
+	}: Props = $props();
 
-	const percentage = Math.min(Math.round((saved / target) * 100), 100);
+	const percentage = $derived(Math.min(Math.round((saved / target) * 100), 100));
 	let visible = $state(false);
 	let shouldAnimate = $state(true);
 
@@ -40,18 +58,24 @@
 	});
 </script>
 
+<!--
+	SavingsGoalItem - displays a savings goal with progress bar
+	This is a presentation component that can be wrapped for interactivity
+-->
 <div
-	class="block w-full px-4 py-3 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
+	class="block w-full px-4 py-3 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800 {className}"
 >
 	<!-- Header -->
 	<div class="mb-3 flex items-center justify-between">
 		<div class="flex items-center gap-3">
 			<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-sand-100 dark:bg-gray-800">
-				<Icon class="h-5 w-5 text-gray-700 dark:text-gray-300" strokeWidth={1.5} />
+				<Icon class="h-5 w-5 text-gray-1000 dark:text-gray-300" strokeWidth={1.5} />
 			</div>
-			<span class="font-heading font-medium text-gray-900 dark:text-white">{title}</span>
+			<span class="font-heading font-medium text-gray-1000 dark:text-white">{title}</span>
 		</div>
-		<ChevronRight class="h-4 w-4 text-gray-400" />
+		{#if showChevron}
+			<ChevronRight class="h-4 w-4 text-gray-400" />
+		{/if}
 	</div>
 
 	<!-- Progress Bar -->
@@ -74,7 +98,7 @@
 				showSign={false}
 				showSymbol={true}
 			/>
-			<span class="text-gray-500 dark:text-gray-400">gespaard</span>
+			<span class="text-gray-800 dark:text-gray-400">gespaard</span>
 		</div>
 		<Amount
 			amount={target}

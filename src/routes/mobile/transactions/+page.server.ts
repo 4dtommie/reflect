@@ -185,14 +185,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
         return {
             id: t.id,
+            recurringId: t.recurring_transaction_id,
             merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName,
             amount: Number(t.amount),
             isDebit: t.is_debit,
             category: t.categories?.name || 'Overig',
             categoryIcon: t.categories?.icon || null,
+            categoryColor: t.categories?.color || null,
             interval: t.recurring_transaction?.interval || 'Maandelijks',
+            status: t.recurring_transaction?.status || 'active',
             daysUntil: diffDays,
-            daysLabel: diffDays === 1 ? 'morgen' : `over ${diffDays} dagen`
+            daysLabel: diffDays === 1 ? 'morgen' : `over ${diffDays} dagen`,
+            nextDate: dDate.toISOString()
         };
     }).reverse();
 

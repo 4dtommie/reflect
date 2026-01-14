@@ -245,7 +245,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         confirmedPayments: currentPeriod,
         nextPeriodPayments: nextPeriod,
         nextPeriodStartDate,
-        predictedPayments: [],
+        predictedPayments: [] as typeof currentPeriod,
         missedPayments: missedPayments
     };
 };

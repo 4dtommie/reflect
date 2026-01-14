@@ -149,7 +149,75 @@ export default {
 			fontFamily: {
 				nn: ['"Nitti Grotesk"', 'sans-serif'],
 				heading: ['"Nitti Grotesk Heading"', 'sans-serif']
+			},
+			borderRadius: {
+				// Additional radius options for theme variants
+				'2xl': '1rem',
+				'3xl': '1.5rem',
+				'4xl': '2rem'
 			}
 		}
+	},
+	daisyui: {
+		themes: [
+			{
+				// NN Original theme - matches current NN banking app
+				'nn-theme': {
+					'primary': '#f37b2b',           // mediumOrange-500
+					'primary-content': '#ffffff',
+					'secondary': '#f3efed',         // sand-100
+					'secondary-content': '#1a1a1a', // gray-1200
+					'accent': '#f37b2b',            // mediumOrange-500
+					'accent-content': '#ffffff',
+					'neutral': '#565656',           // gray-900
+					'neutral-content': '#ffffff',
+					'base-100': '#faf9f8',          // sand-50
+					'base-200': '#f3efed',          // sand-100
+					'base-300': '#e6dfda',          // sand-200
+					'base-content': '#1a1a1a',      // gray-1200
+					'info': '#75a0ce',              // blue-500
+					'info-content': '#ffffff',
+					'success': '#6dab65',           // green-500
+					'success-content': '#ffffff',
+					'warning': '#ee7f00',           // lightOrange-500
+					'warning-content': '#ffffff',
+					'error': '#f07b5b',             // darkOrange-500
+					'error-content': '#ffffff',
+					'--rounded-box': '1rem',
+					'--rounded-btn': '9999px',      // pill buttons
+					'--rounded-badge': '9999px',
+					'--tab-radius': '0.5rem'
+				}
+			},
+			{
+				// Improved design theme - modern, cleaner aesthetic
+				'nn-improved': {
+					'primary': '#ea650d',           // mediumOrange-600 (slightly deeper)
+					'primary-content': '#ffffff',
+					'secondary': '#ffffff',         // pure white
+					'secondary-content': '#1a1a1a',
+					'accent': '#ea650d',
+					'accent-content': '#ffffff',
+					'neutral': '#404040',           // gray-1000
+					'neutral-content': '#ffffff',
+					'base-100': '#faf9f8',          // sand-50
+					'base-200': '#ffffff',          // white for cards
+					'base-300': '#f3efed',          // sand-100
+					'base-content': '#1a1a1a',
+					'info': '#4881be',              // blue-700
+					'info-content': '#ffffff',
+					'success': '#538b4c',           // green-700
+					'success-content': '#ffffff',
+					'warning': '#d87300',           // lightOrange-600
+					'warning-content': '#ffffff',
+					'error': '#e64415',             // darkOrange-700
+					'error-content': '#ffffff',
+					'--rounded-box': '1.25rem',     // larger radius
+					'--rounded-btn': '0.75rem',     // square-ish buttons
+					'--rounded-badge': '0.5rem',
+					'--tab-radius': '0.75rem'
+				}
+			}
+		]
 	}
 };

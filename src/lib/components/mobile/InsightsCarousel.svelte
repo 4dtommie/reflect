@@ -21,7 +21,7 @@
 					href="/mobile/insights/1"
 					class="relative block h-full p-4 transition-all active:scale-[0.98] active:bg-gray-50 dark:active:bg-gray-800"
 				>
-					<span class="absolute top-4 right-4 text-sm font-normal text-gray-600 dark:text-gray-400">
+					<span class="absolute top-4 right-4 text-sm font-normal text-gray-800 dark:text-gray-400">
 						17 april
 					</span>
 					<div class="flex h-full gap-4">
@@ -30,7 +30,7 @@
 								Wat is NN Inzicht?
 							</h3>
 							<p
-								class="mb-3 line-clamp-2 overflow-hidden text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+								class="mb-3 line-clamp-2 overflow-hidden text-sm leading-relaxed text-gray-1000 dark:text-gray-300"
 							>
 								Meer uit je geld halen met je nieuwe NN betaalrekening
 							</p>
@@ -73,12 +73,12 @@
 					href="/mobile/insights/2"
 					class="relative block h-full p-4 transition-all active:scale-[0.98] active:bg-gray-50 dark:active:bg-gray-800"
 				>
-					<span class="absolute top-4 right-4 text-sm font-normal text-gray-600 dark:text-gray-400">
+					<span class="absolute top-4 right-4 text-sm font-normal text-gray-800 dark:text-gray-400">
 						10%
 					</span>
 					<div class="flex h-full flex-col">
 						<h3 class="mb-1 font-heading font-bold dark:text-white">Normaal</h3>
-						<p class="mb-3 text-sm text-gray-700 dark:text-gray-300">€ 75 spaarrente</p>
+						<p class="mb-3 text-sm text-gray-1000 dark:text-gray-300">€ 75 spaarrente</p>
 						<div class="mt-auto flex items-center text-sm font-medium text-mediumOrange-600">
 							Lees meer <ArrowRight class="ml-2 h-4 w-4" strokeWidth={1.5} />
 						</div>

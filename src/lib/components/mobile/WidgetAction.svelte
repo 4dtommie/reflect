@@ -17,7 +17,7 @@
 	<MobileLink
 		{href}
 		{animate}
-		class="flex items-center font-heading text-base font-medium text-gray-600 dark:text-white {className}"
+		class="flex items-center font-heading text-base font-medium text-gray-800 dark:text-white {className}"
 	>
 		{label}
 		<ArrowRight class="ml-1 h-5 w-5 text-mediumOrange-600" strokeWidth={2} />
@@ -25,7 +25,7 @@
 {:else}
 	<button
 		{onclick}
-		class="flex items-center font-heading text-base font-medium text-gray-600 dark:text-white {className}"
+		class="flex items-center font-heading text-base font-medium text-gray-800 dark:text-white {className}"
 	>
 		{label}
 		<ArrowRight class="ml-1 h-5 w-5 text-mediumOrange-600" strokeWidth={2} />

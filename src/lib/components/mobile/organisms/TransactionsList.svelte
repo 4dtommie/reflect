@@ -1,0 +1,152 @@
+<script lang="ts">
+	import { page } from '$app/stores';
+	import Card from '$lib/components/mobile/Card.svelte';
+	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
+	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
+	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
+	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
+	import { TransactionListSkeleton, TransactionGroup } from '$lib/components/mobile/organisms';
+
+	interface UpcomingTransaction {
+		id?: string;
+		merchant: string;
+		amount: number;
+		isDebit: boolean;
+		categoryIcon?: string;
+		interval?: string;
+		daysUntil?: number;
+		category?: string;
+		categoryColor?: string;
+		nextDate?: string;
+		daysLabel?: string;
+	}
+
+	interface GroupedTransaction {
+		id: string;
+		merchant: string;
+		amount: number;
+		isDebit: boolean;
+		categoryIcon?: string;
+		category?: string;
+	}
+
+	interface TransactionGroupData {
+		dateLabel: string;
+		formattedIncoming?: string;
+		formattedOutgoing?: string;
+		incomingCount?: number;
+		outgoingCount?: number;
+		transactions: GroupedTransaction[];
+	}
+
+	interface Props {
+		isLoading?: boolean;
+		upcomingTransactions?: UpcomingTransaction[];
+		groupedTransactions?: TransactionGroupData[];
+		kijkVooruitLink?: string;
+		onUpcomingClick?: (transaction: UpcomingTransaction) => void;
+		formatRecurringSubtitle?: (interval?: string, daysUntil?: number) => string;
+		showUpcomingChevron?: boolean;
+		class?: string;
+	}
+
+	let {
+		isLoading = false,
+		upcomingTransactions = [],
+		groupedTransactions = [],
+		kijkVooruitLink = '/mobile/kijk-vooruit',
+		onUpcomingClick,
+		formatRecurringSubtitle = (interval?: string, daysUntil?: number) => {
+			if (!interval || daysUntil === undefined) return '';
+			if (daysUntil === 0) return 'Vandaag';
+			if (daysUntil === 1) return 'Morgen';
+			return `Over ${daysUntil} dagen`;
+		},
+		showUpcomingChevron = false,
+		class: className = ''
+	}: Props = $props();
+</script>
+
+<div class={className}>
+	{#if isLoading}
+		<TransactionListSkeleton title="Verwacht" itemCount={2} />
+	{:else}
+		<!-- Section Header -->
+		<WidgetHeader title="Verwacht" class="mb-4">
+			<WidgetAction label="Kijk vooruit" href={kijkVooruitLink} />
+		</WidgetHeader>
+
+		<!-- Upcoming Transactions -->
+		{#if upcomingTransactions.length > 0}
+			<div class="mb-6">
+				<Card padding="p-0">
+					<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						{#each upcomingTransactions as t}
+							{#if onUpcomingClick}
+								<button
+									onclick={() => onUpcomingClick(t)}
+									class="block w-full bg-white p-4 text-left first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50 dark:bg-gray-900 dark:active:bg-gray-800"
+								>
+									<TransactionItem
+										merchant={t.merchant}
+										subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
+										amount={t.isDebit ? -t.amount : t.amount}
+										isDebit={t.isDebit}
+										categoryIcon={t.categoryIcon ?? null}
+										compact={false}
+										fontHeading={true}
+										useLogo={true}
+										showChevron={showUpcomingChevron}
+									/>
+								</button>
+							{:else}
+								<div
+									class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50 dark:bg-gray-900 dark:active:bg-gray-800"
+								>
+									<TransactionItem
+										merchant={t.merchant}
+										subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
+										amount={t.isDebit ? -t.amount : t.amount}
+										isDebit={t.isDebit}
+										categoryIcon={t.categoryIcon ?? null}
+										compact={false}
+										fontHeading={true}
+										useLogo={true}
+									/>
+								</div>
+							{/if}
+						{/each}
+					</div>
+				</Card>
+			</div>
+		{/if}
+
+		<!-- Transaction Groups -->
+		<div class="space-y-6">
+			{#each groupedTransactions as group}
+				<TransactionGroup {group}>
+					{#each group.transactions as t}
+						<MobileLink
+							href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
+							class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50 dark:bg-gray-900 dark:active:bg-gray-800"
+						>
+							<TransactionItem
+								merchant={t.merchant}
+								subtitle={t.category ?? ''}
+								amount={t.isDebit ? -t.amount : t.amount}
+								isDebit={t.isDebit}
+								categoryIcon={t.categoryIcon ?? null}
+								compact={false}
+								showChevron={true}
+							/>
+						</MobileLink>
+					{/each}
+				</TransactionGroup>
+			{:else}
+				<div class="mt-8 text-center text-sm text-gray-800 dark:text-gray-400">
+					Geen transacties gevonden
+				</div>
+			{/each}
+		</div>
+	{/if}
+</div>

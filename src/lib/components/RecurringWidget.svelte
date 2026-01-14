@@ -86,11 +86,11 @@
 							>
 						</div>
 					</div>
-					<div class="flex-shrink-0 text-right">
+					<div class="flex-shrink-0">
 						<p
 							class={isIncome
-								? 'inline-block rounded-lg bg-success/10 px-2 py-0.5 text-sm font-semibold text-success'
-								: 'text-sm font-semibold'}
+								? 'rounded-lg bg-success/10 px-2 py-0.5 text-sm font-semibold text-success text-right'
+								: 'text-sm font-semibold text-right'}
 						>
 							{isIncome ? '+' : '-'}€ {Math.abs(Number(tx.amount)).toFixed(2).replace('.', ',')}
 						</p>

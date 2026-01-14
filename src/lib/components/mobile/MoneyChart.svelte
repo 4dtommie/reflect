@@ -26,7 +26,7 @@
 			>
 				<div class="flex items-center gap-2">
 					<div class="h-3 w-3 rounded-full bg-green-500"></div>
-					<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Inkomsten</span>
+					<span class="text-sm font-medium text-gray-1000 dark:text-gray-300">Inkomsten</span>
 				</div>
 				<div class="flex items-center gap-1">
 					<span class="font-bold dark:text-white">€ 3.500</span>
@@ -40,7 +40,7 @@
 			>
 				<div class="flex items-center gap-2">
 					<div class="h-3 w-3 rounded-full bg-purple-500"></div>
-					<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Uitgaven</span>
+					<span class="text-sm font-medium text-gray-1000 dark:text-gray-300">Uitgaven</span>
 				</div>
 				<div class="flex items-center gap-1">
 					<span class="font-bold dark:text-white">€ 3.000</span>

@@ -208,4 +208,15 @@
 		scroll-snap-type: none !important;
 		scroll-behavior: auto !important;
 	}
+
+	/* Force-strip spacing in landscape but leave room for shadows */
+	@media (orientation: landscape) {
+		.carousel-scroll {
+			padding-left: 1rem !important; /* Give shadow room to bleed */
+			margin-left: -1rem !important; /* Pull container back to keep content flush */
+			padding-right: 1.25rem !important;
+			margin-right: -1.25rem !important;
+			scroll-padding-left: 1rem !important;
+		}
+	}
 </style>

@@ -8,6 +8,8 @@
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
 	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
+	import { getThemeConfig, type ThemeName } from '$lib/theme/themeConfig';
 	import { Battery, Signal, Wifi } from 'lucide-svelte';
 	import { tick } from 'svelte';
 
@@ -45,6 +47,9 @@
 
 	// Reset animation flag after navigation completes
 	afterNavigate(async () => {
+		// Reset scroll position store immediately on navigation
+		$mobileScrollY = 0;
+		
 		// Small delay to ensure transition has started
 		setTimeout(() => {
 			shouldAnimateNavigation.set(false);
@@ -55,7 +60,7 @@
 		checkScroll();
 	});
 
-	// Sync theme from URL
+	// Sync light/dark theme from URL
 	$effect(() => {
 		const theme = $page.url.searchParams.get('theme');
 		if (theme === 'nn-night') {
@@ -64,6 +69,17 @@
 		} else {
 			document.documentElement.setAttribute('data-theme', 'nn-theme');
 			document.documentElement.classList.remove('dark');
+		}
+	});
+
+	// Sync design theme from URL to store
+	$effect(() => {
+		const designTheme = $page.url.searchParams.get('designTheme') as ThemeName | null;
+		if (designTheme === 'nn-original' || designTheme === 'improved') {
+			mobileThemeName.set(designTheme);
+			// Also set the DaisyUI theme for components
+			const config = getThemeConfig(designTheme);
+			document.documentElement.setAttribute('data-daisyui-theme', config.daisyTheme);
 		}
 	});
 
@@ -105,8 +121,13 @@
 		{/key}
 	</div>
 
-	<div class="absolute right-0 bottom-0 left-0 z-50">
+	<div class="bottom-nav-wrapper">
 		<BottomNav {isAtBottom} />
+	</div>
+
+	<!-- iOS Home Indicator - stays at bottom center in both orientations -->
+	<div class="home-indicator-fixed">
+		<div class="home-indicator-bar"></div>
 	</div>
 </div>
 

@@ -6,7 +6,7 @@
 		merchantName: string;
 		categoryIcon?: string | null;
 		categoryColor?: string | null;
-		size?: 'xs' | 'sm' | 'md' | 'lg';
+		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 	}
 
 	let { merchantName, categoryIcon = null, categoryColor = null, size = 'md' }: Props = $props();
@@ -16,7 +16,8 @@
 		xs: { container: 'w-6 h-6', icon: 12, text: 'text-[8px]' },
 		sm: { container: 'w-8 h-8', icon: 14, text: 'text-[10px]' },
 		md: { container: 'w-10 h-10', icon: 18, text: 'text-xs' },
-		lg: { container: 'w-12 h-12', icon: 24, text: 'text-sm' }
+		lg: { container: 'w-12 h-12', icon: 24, text: 'text-sm' },
+		xl: { container: 'w-16 h-16', icon: 32, text: 'text-base' }
 	};
 
 	const logoUrl = $derived.by(() => {
@@ -73,8 +74,7 @@
 
 {#if logoUrl && !logoError}
 	<div
-		class="flex flex-shrink-0 items-center justify-center overflow-hidden rounded {config.container}"
-		style="background-color: {backgroundColor}20"
+		class="flex-shrink-0 overflow-hidden rounded {config.container}"
 	>
 		<img
 			src={logoUrl}

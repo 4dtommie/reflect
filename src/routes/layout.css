@@ -25,6 +25,16 @@
   font-style: normal;
 }
 
+/* Provide a medium weight for the heading family by pointing to the
+	 medium text file. This ensures `font-heading` + `font-medium` uses
+	 an actual 500 font instead of falling back to 700. */
+@font-face {
+	font-family: 'NN Nitti Grotesk Heading';
+	src: url('/fonts/NNNittiGrotesk-TextMedium.woff2') format('woff2');
+	font-weight: 500;
+	font-style: normal;
+}
+
 @plugin "daisyui" {
   themes: nord --default, night --prefersdark, nn-theme;
 }

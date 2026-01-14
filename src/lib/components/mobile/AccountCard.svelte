@@ -18,79 +18,57 @@
 		/** Optional class */
 		class?: string;
 		/** Account type for icon selection */
-		type?: 'checking' | 'savings';
+		type?: 'checking' | 'savings' | 'investment';
+		/** Joint account badge */
+		isJoint?: boolean;
+		/** Compact mode for sidebar selection */
+		compact?: boolean;
+		/** Show buttons even in compact mode */
+		showButtons?: boolean;
 	}
 
-	let { name, balance, class: className = '', type = 'checking' }: Props = $props();
+	let {
+		name,
+		balance,
+		class: className = '',
+		type = 'checking',
+		compact = false,
+		showButtons = false,
+		isJoint = false
+	}: Props = $props();
 </script>
 
-<div class="dark:bg-gray-1200 rounded-xl bg-white px-3 py-2.5 shadow-sm {className}">
+<div
+	class="dark:bg-gray-1200 rounded-xl {compact
+		? 'bg-transparent'
+		: 'bg-white px-3 py-2.5 shadow-sm'} {compact ? 'px-3 py-1.5' : ''} {className}"
+>
 	<!-- Account type header -->
 	<div class="mb-0 flex min-h-8 items-center justify-between">
-		<span class="font-heading text-sm font-medium text-gray-600 dark:text-gray-400">{name}</span>
-		<div class="flex items-center gap-2">
-			{#if type === 'savings'}
-				<User class="h-5 w-5 text-gray-800 dark:text-white" strokeWidth={1.5} />
-				<PiggyBank class="h-6 w-6 text-gray-800 dark:text-white" strokeWidth={1} />
-			{:else}
-				<Users class="h-5 w-5 text-gray-800 dark:text-white" strokeWidth={1.5} />
-				<CreditCard class="h-8 w-8 text-gray-800 dark:text-white" strokeWidth={1} />
-			{/if}
-		</div>
+		<span
+			class="font-heading {compact
+				? 'text-xs'
+				: 'text-sm'} font-medium text-gray-800 dark:text-gray-400">{name}</span
+		>
+		{#if isJoint}
+			<span class="rounded-full bg-sand-100 px-2 py-0.5 text-xs font-semibold text-gray-1000">Gezamenlijk</span>
+		{/if}
 	</div>
 
 	<!-- Balance using Amount component -->
-	<div class="-mt-1 mb-2 flex items-baseline gap-2">
-		<span class="font-heading text-3xl font-bold text-gray-900 dark:text-white">€</span>
+	<div class="{compact ? 'mt-0.5 mb-1' : '-mt-1 mb-2'} flex items-baseline gap-1.5">
+		<span
+			class="font-heading {compact
+				? 'text-sm'
+				: 'text-3xl'} font-bold text-gray-1000 dark:text-white">€</span
+		>
 		<Amount
 			amount={balance}
-			size="xl"
+			size={compact ? 'sm' : 'xl'}
 			showSign={false}
-			class="font-heading !text-3xl !text-gray-900 dark:!text-white"
+			class="font-heading {compact ? '!text-base' : '!text-3xl'} !text-gray-1000 dark:!text-white"
 		/>
 	</div>
 
-	<!-- Action buttons - modern pill style -->
-	<div class="flex gap-2 pt-2">
-		{#if type === 'savings'}
-			<button
-				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-			>
-				<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-					>Opnemen</span
-				>
-			</button>
-			<button
-				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-			>
-				<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-					>Storten</span
-				>
-			</button>
-		{:else}
-			<button
-				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-			>
-				<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-					>Betalen</span
-				>
-			</button>
-			<button
-				class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-4 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-			>
-				<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-				<span class="font-heading text-sm font-semibold text-gray-700 dark:text-gray-200"
-					>Verzoek</span
-				>
-			</button>
-		{/if}
-		<button
-			class="dark:bg-gray-1100 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-sand-100 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-		>
-			<MoreVertical class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-		</button>
-	</div>
+<!-- Action buttons removed: they are rendered externally by the page -->
 </div>
