@@ -15,7 +15,7 @@
 
 	// New design system components
 	import { ProductWidget, ListItemGroup } from '$lib/components/mobile/organisms';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
 
 	// Data from server
 	let { data } = $props();
@@ -136,8 +136,11 @@
 						isDebit={t.isDebit}
 						categoryIcon={t.categoryIcon}
 						compact={true}
-						showSubtitle={false}
+						showSubtitle={$mobileThemeName === 'nn-original'}
 						showChevron={true}
+						designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+						date={t.date}
+						description={t.description ?? t.subline}
 					/>
 				</MobileLink>
 			{:else}

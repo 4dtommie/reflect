@@ -1,9 +1,9 @@
 /**
  * Theme configuration for mobile design system
- * Supports switching between "NN Original" and "Improved Design" themes
+ * Supports switching between "NN Original", "Improved Design", and "Extreme" themes
  */
 
-export type ThemeName = 'nn-original' | 'improved';
+export type ThemeName = 'nn-original' | 'improved' | 'extreme';
 
 export interface ListItemConfig {
 	/** 'block' = individual card background, 'flat' = plain white */
@@ -136,6 +136,9 @@ export function getThemeConfig(name: ThemeName): ThemeConfig {
 	switch (name) {
 		case 'improved':
 			return improvedTheme;
+		case 'extreme':
+			// For now, extreme uses improved as a base - can be customized later
+			return { ...improvedTheme, name: 'extreme', displayName: 'Extreme' };
 		case 'nn-original':
 		default:
 			return nnOriginalTheme;
@@ -145,4 +148,8 @@ export function getThemeConfig(name: ThemeName): ThemeConfig {
 /**
  * All available themes
  */
-export const themes: ThemeConfig[] = [nnOriginalTheme, improvedTheme];
+export const themes: ThemeConfig[] = [
+	nnOriginalTheme,
+	improvedTheme,
+	{ ...improvedTheme, name: 'extreme', displayName: 'Extreme' } as ThemeConfig
+];

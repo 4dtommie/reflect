@@ -39,9 +39,10 @@
 </script>
 
 <div
-	class="dark:bg-gray-1200 rounded-xl {compact
+	class="dark:bg-gray-1200 rounded-xl border border-sand-200 dark:border-gray-800 {compact
 		? 'bg-transparent'
 		: 'bg-white px-3 py-2.5 shadow-sm'} {compact ? 'px-3 py-1.5' : ''} {className}"
+	style="border-width:1px"
 >
 	<!-- Account type header -->
 	<div class="mb-0 flex min-h-8 items-center justify-between">
@@ -64,9 +65,9 @@
 		>
 		<Amount
 			amount={balance}
-			size={compact ? 'sm' : 'xl'}
+			size={compact ? 'sm' : 'md'}
 			showSign={false}
-			class="font-heading {compact ? '!text-base' : '!text-3xl'} !text-gray-1000 dark:!text-white"
+			class="font-heading {compact ? '!text-base' : ''} !text-gray-1000 dark:!text-white"
 		/>
 	</div>
 

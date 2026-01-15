@@ -101,15 +101,15 @@
 	const sizeClasses = {
 		small: {
 			main: 'text-sm',
-			decimals: 'text-sm'
+			decimals: 'text-xs'
 		},
 		medium: {
 			main: 'text-base',
-			decimals: 'text-base'
+			decimals: 'text-sm'
 		},
 		large: {
 			main: 'text-2xl',
-			decimals: 'text-2xl'
+			decimals: 'text-lg'
 		},
 		custom: {
 			main: '',
@@ -126,7 +126,12 @@
 	</span>
 {:else}
 	<!-- Small/Medium version or without decimals -->
-	<span class="font-medium {sizeClasses[size].main} {colorClass}">
-		{formatted.main}{formatted.decimals}
-	</span>
+	{#if showDecimals && formatted.decimals}
+		<span class="inline-flex items-baseline gap-0.5 {colorClass}">
+			<span class="font-medium {sizeClasses[size].main}">{formatted.main}</span>
+			<span class="font-medium {sizeClasses[size].decimals}">{formatted.decimals}</span>
+		</span>
+	{:else}
+		<span class="font-medium {sizeClasses[size].main} {colorClass}">{formatted.main}</span>
+	{/if}
 {/if}

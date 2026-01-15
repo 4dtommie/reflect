@@ -134,7 +134,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
                 isDebit: t.is_debit,
                 category: t.categories?.name || null,
                 categoryIcon: t.categories?.icon || null,
-                subline: time ? `${dateStr} • ${time}` : dateStr
+                subline: time ? `${dateStr} • ${time}` : dateStr,
+                date: shiftedDate.toISOString(),
+                description: t.description
             };
         })
     };

@@ -195,7 +195,7 @@
 								<div class="mt-2 text-sm opacity-70">{transaction.description}</div>
 							</div>
 							<div class="pl-4 text-right whitespace-nowrap">
-								<Amount value={parseFloat(transaction.amount)} class="text-2xl font-bold" />
+								<Amount value={parseFloat(transaction.amount)} size="lg" class="font-bold" />
 							</div>
 						</div>
 					</div>

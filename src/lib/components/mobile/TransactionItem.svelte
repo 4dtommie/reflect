@@ -50,6 +50,13 @@
 		showSubtitle?: boolean; // If false, hides the subtitle
 		showChevron?: boolean; // If true, shows a chevron at the end
 		class?: string;
+		// Mobile design variant: 'original' shows date + time subline, 'redesign' shows category/subtitle
+		designVariant?: 'original' | 'redesign';
+		// Optional extra data used for original variant
+		date?: string;
+		description?: string;
+		// Badge text for expected items (e.g., "3 dagen")
+		expectedBadge?: string;
 	}
 
 	let {
@@ -63,7 +70,11 @@
 		useLogo = false,
 		showSubtitle = true,
 		showChevron = false,
-		class: className = ''
+		class: className = '',
+		designVariant = 'redesign',
+		date = undefined,
+		description = undefined,
+		expectedBadge = undefined
 	}: Props = $props();
 
 	// Icon mapping - shared across design system
@@ -107,6 +118,19 @@
 		if (!iconName) return CreditCard;
 		return categoryIconMap[iconName] || CreditCard;
 	}
+
+	// Extract time (HH:MM) from text (description or subtitle). Fallback to date.
+	function extractTimeFromText(desc?: string, d?: string) {
+		if (desc) {
+			const match = desc.match(/(\b[0-2]?\d:[0-5]\d\b)/);
+			if (match) return match[1];
+		}
+		if (d) {
+			const dt = new Date(d);
+			if (!isNaN(dt.getTime())) return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+		return '';
+	}
 </script>
 
 <!--
@@ -126,16 +150,29 @@
 		{/if}
 		<div class="flex min-w-0 flex-col pr-4">
 			<div
-				class="truncate font-normal text-gray-1000 dark:text-white {compact
+				class="flex items-center gap-2 {compact
 					? 'text-sm'
 					: 'text-base'}"
 			>
-				{merchant}
+				<span class="truncate font-normal text-gray-1000 dark:text-white">{merchant}</span>
+				{#if expectedBadge}
+					<span class="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">{expectedBadge}</span>
+				{/if}
 			</div>
 			{#if showSubtitle}
-				<div class="truncate text-sm font-normal text-gray-800 dark:text-gray-400">
-					{subtitle}
-				</div>
+				{#if designVariant === 'original'}
+					<div class="truncate text-xs font-normal text-gray-800 dark:text-gray-400">
+						{date ? new Date(date).toLocaleDateString() : ''}
+						{#if extractTimeFromText(description, date)}
+							<span class="mx-1">·</span>
+							<span>{extractTimeFromText(description, date)}</span>
+						{/if}
+					</div>
+				{:else}
+					<div class="truncate text-sm font-normal text-gray-800 dark:text-gray-400">
+						{subtitle}
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>

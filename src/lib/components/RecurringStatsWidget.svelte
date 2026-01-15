@@ -29,10 +29,10 @@
 		<div class="text-center">
 			<span class="text-xs uppercase tracking-wide opacity-50">Total monthly</span>
 			<div class="text-3xl font-bold text-error">
-				<Amount value={totalMonthly} size="large" showDecimals={false} isDebit={true} />
+				<Amount value={totalMonthly} size="lg" showDecimals={false} isDebit={true} />
 			</div>
 			<span class="text-sm opacity-50">
-				<Amount value={totalYearly} size="small" showDecimals={false} isDebit={true} /> / year
+				<Amount value={totalYearly} size="sm" showDecimals={false} isDebit={true} /> / year
 			</span>
 		</div>
 
@@ -60,7 +60,7 @@
 				<div class="h-3 w-3 rounded-full bg-error"></div>
 				<div class="flex flex-col">
 					<span class="font-semibold">
-						<Amount value={fixedMonthly} size="small" showDecimals={false} isDebit={true} />
+						<Amount value={fixedMonthly} size="sm" showDecimals={false} isDebit={true} />
 					</span>
 					<span class="text-xs opacity-50">{subscriptionCount} subscriptions</span>
 				</div>
@@ -69,7 +69,7 @@
 				<div class="h-3 w-3 rounded-full bg-warning"></div>
 				<div class="flex flex-col">
 					<span class="font-semibold">
-						<Amount value={variableMonthly} size="small" showDecimals={false} isDebit={true} />
+						<Amount value={variableMonthly} size="sm" showDecimals={false} isDebit={true} />
 					</span>
 					<span class="text-xs opacity-50">{variableCategoryCount} categories</span>
 				</div>

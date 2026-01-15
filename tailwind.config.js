@@ -9,7 +9,9 @@ export default {
 		'bg-sand-100',
 		'bg-sand-50',
 		'text-gray-600',
+		'text-gray-800',
 		'text-gray-900',
+		'text-gray-1000',
 	],
 	theme: {
 		extend: {

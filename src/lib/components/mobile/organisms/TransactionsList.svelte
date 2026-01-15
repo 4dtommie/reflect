@@ -6,6 +6,7 @@
 	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import { TransactionListSkeleton, TransactionGroup } from '$lib/components/mobile/organisms';
+	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface UpcomingTransaction {
 		id?: string;
@@ -65,6 +66,9 @@
 		showUpcomingChevron = false,
 		class: className = ''
 	}: Props = $props();
+
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 </script>
 
 <div class={className}>
@@ -80,7 +84,7 @@
 		{#if upcomingTransactions.length > 0}
 			<div class="mb-6">
 				<Card padding="p-0">
-					<div class="divide-y divide-gray-100 dark:divide-gray-800">
+					<div class={dividerClasses}>
 						{#each upcomingTransactions as t}
 							{#if onUpcomingClick}
 								<button
@@ -97,6 +101,9 @@
 										fontHeading={true}
 										useLogo={true}
 										showChevron={showUpcomingChevron}
+										designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+										date={t.nextDate ?? t.date}
+										description={t.subtitle}
 									/>
 								</button>
 							{:else}
@@ -138,6 +145,9 @@
 								categoryIcon={t.categoryIcon ?? null}
 								compact={false}
 								showChevron={true}
+								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								date={t.nextDate ?? t.date}
+								description={t.description ?? t.note ?? t.category}
 							/>
 						</MobileLink>
 					{/each}

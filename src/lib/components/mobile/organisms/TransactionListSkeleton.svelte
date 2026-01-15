@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Card from '$lib/components/mobile/Card.svelte';
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
+	import { mobileTheme } from '$lib/stores/mobileTheme';
 
 	interface Props {
 		title?: string;
@@ -15,6 +16,9 @@
 		showAction = true,
 		class: className = '' 
 	}: Props = $props();
+
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 </script>
 
 <div class="animate-pulse {className}">
@@ -24,7 +28,7 @@
 		{/if}
 	</WidgetHeader>
 	<Card padding="p-0" class="mb-6">
-		<div class="divide-y divide-gray-100 dark:divide-gray-800">
+		<div class={dividerClasses}>
 			{#each Array(itemCount) as _}
 				<div class="flex items-center gap-3 p-4">
 					<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>

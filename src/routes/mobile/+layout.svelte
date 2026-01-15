@@ -19,6 +19,14 @@
 
 	const currentPath = $derived($page.url.pathname);
 
+	// Determine header background color based on route
+	// Homepage uses sand-50 (lighter), other pages use sand-100 (darker)
+	const isHomepage = $derived(currentPath === '/mobile' || currentPath === '/mobile/');
+	const statusBarBg = $derived(isHomepage 
+		? 'rgba(250, 249, 248, 0.85)' // sand-50
+		: 'rgba(243, 239, 237, 0.85)' // sand-100
+	);
+
 	let isAtBottom = $state(true);
 	let contentEl: HTMLElement | undefined = $state();
 
@@ -92,7 +100,7 @@
 
 <TouchSimulator />
 <div class="mobile-viewport">
-	<div class="mobile-status-bar {device}">
+	<div class="mobile-status-bar {device}" style="background: {statusBarBg};">
 		{#if device === 'iphone'}
 			<div class="flex flex-1 justify-start pl-4 font-bold tracking-wide">9:41</div>
 			<div class="flex items-center gap-1.5 pr-2">

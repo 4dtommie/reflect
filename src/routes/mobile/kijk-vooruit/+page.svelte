@@ -10,6 +10,7 @@
 	import { ArrowLeft, Menu, Plus, Calendar, Repeat, Tag, ChevronRight, Pause, Trash2 } from 'lucide-svelte';
 	import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
 	import { page } from '$app/stores';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	let { data } = $props();
 
@@ -153,16 +154,19 @@
 			<div class="divide-y divide-gray-100 dark:divide-gray-800">
 				{#each data.confirmedPayments as item}
 					<button class="w-full text-left" onclick={() => openSheet(item)}>
-						<TransactionItem
-							merchant={item.merchant}
-							subtitle={formatRecurringSubtitle(item.interval, item.daysUntil)}
-							amount={item.isDebit ? -item.amount : item.amount}
-							isDebit={item.isDebit}
-							categoryIcon={item.icon ?? null}
-							useLogo={true}
-							showChevron={true}
-							class="dark:active:bg-gray-1200 px-4 py-3 active:bg-gray-50"
-						/>
+							<TransactionItem
+								merchant={item.merchant}
+								subtitle={formatRecurringSubtitle(item.interval, item.daysUntil)}
+								amount={item.isDebit ? -item.amount : item.amount}
+								isDebit={item.isDebit}
+								categoryIcon={item.icon ?? null}
+								useLogo={true}
+								showChevron={true}
+								class="dark:active:bg-gray-1200 px-4 py-3 active:bg-gray-50"
+								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								date={item.date}
+								description={item.subtitle}
+							/>
 					</button>
 				{:else}
 					<div class="p-8 text-center text-sm text-gray-500">

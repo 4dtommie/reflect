@@ -17,6 +17,7 @@
 		Plus
 	} from 'lucide-svelte';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
+	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import Amount from '$lib/components/mobile/Amount.svelte';
@@ -46,6 +47,10 @@
 	const b = $derived(Math.round(237 + (248 - 237) * scrollProgress));
 	const blurAmount = $derived(scrollProgress * 12); // 0 to 12px blur
 	const bgOpacity = $derived(1 - scrollProgress * 0.15); // 1 to 0.85 opacity for frosted effect
+
+	// Theme-aware dividers
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 
 	import { productsStore, type Product } from '$lib/mock/products';
 
@@ -245,7 +250,7 @@
 						</WidgetHeader>
 						<Card padding="p-0" class="mb-6">
 							<!-- ... existing skeleton content ... -->
-							<div class="divide-y divide-gray-100 dark:divide-gray-800">
+							<div class={dividerClasses}>
 								<div class="flex items-center gap-3 px-4 py-3">
 									<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
 									<div class="flex-1 space-y-2">
@@ -264,7 +269,7 @@
 					</WidgetHeader>
 
 					<Card padding="p-0" class="mb-6">
-						<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						<div class={dividerClasses}>
 							<TransactionItem
 								merchant="Spaaropdracht"
 								subtitle="Automatische overboeking"
@@ -274,6 +279,9 @@
 								showSubtitle={true}
 								categoryIcon="savings"
 								class="px-4 py-3"
+								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								date={new Date().toISOString()}
+								description="Automatische overboeking 08:30"
 							/>
 							<TransactionItem
 								merchant="Vakantie potje"
@@ -284,6 +292,9 @@
 								showSubtitle={true}
 								categoryIcon="holiday"
 								class="px-4 py-3"
+								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								date={new Date().toISOString()}
+								description="Eenmalige inleg 09:15"
 							/>
 						</div>
 					</Card>
@@ -295,7 +306,7 @@
 					<WidgetHeader title="Spaardoelen" class="mb-3" />
 
 					<Card padding="p-0" class="mb-6">
-						<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						<div class={dividerClasses}>
 							<SavingsGoalItem
 								title="Nieuwe fiets"
 								saved={1500}
@@ -328,7 +339,7 @@
 					</WidgetHeader>
 					<!-- ... existing payments skeleton ... -->
 					<Card padding="p-0" class="mb-6">
-						<div class="divide-y divide-gray-100">
+						<div class={dividerClasses}>
 							{#each Array(2) as _}
 								<div class="p-4">
 									<div class="flex items-center justify-between">
@@ -359,7 +370,7 @@
 				<div class="mb-6">
 					{#if data.upcomingTransactions && data.upcomingTransactions.length > 0}
 						<Card padding="p-0">
-							<div class="divide-y divide-gray-100">
+							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
 									<div
 										class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
@@ -373,6 +384,9 @@
 											compact={false}
 											fontHeading={true}
 											useLogo={true}
+											designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+											date={t.date}
+											description={t.subtitle}
 										/>
 									</div>
 								{/each}
@@ -401,7 +415,7 @@
 								{/if}
 							</div>
 							<Card padding="p-0">
-								<div class="divide-y divide-gray-100">
+								<div class={dividerClasses}>
 									{#each group.transactions as t}
 										<MobileLink
 											href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
@@ -415,6 +429,9 @@
 												categoryIcon={t.categoryIcon}
 												compact={false}
 												showChevron={true}
+												designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+												date={t.date}
+												description={t.description ?? t.note ?? t.category}
 											/>
 										</MobileLink>
 									{/each}

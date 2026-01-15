@@ -8,6 +8,7 @@
 	import SavingsGoalItem from '$lib/components/mobile/SavingsGoalItem.svelte';
 	import { TransactionListSkeleton } from '$lib/components/mobile/organisms';
 	import { Bike, GraduationCap, Plus } from 'lucide-svelte';
+	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface SavingsGoal {
 		title: string;
@@ -43,6 +44,9 @@
 		onAddGoal,
 		class: className = ''
 	}: Props = $props();
+
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 </script>
 
 <div class={className}>
@@ -55,7 +59,7 @@
 		</WidgetHeader>
 
 		<Card padding="p-0" class="mb-6">
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class={dividerClasses}>
 				<TransactionItem
 					merchant="Spaaropdracht"
 					subtitle="Automatische overboeking"
@@ -65,6 +69,9 @@
 					showSubtitle={true}
 					categoryIcon="savings"
 					class="px-4 py-3"
+					designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+					date={new Date().toISOString()}
+					description="Automatische overboeking 08:30"
 				/>
 				<TransactionItem
 					merchant="Vakantie potje"
@@ -75,6 +82,9 @@
 					showSubtitle={true}
 					categoryIcon="holiday"
 					class="px-4 py-3"
+					designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+					date={new Date().toISOString()}
+					description="Eenmalige inleg 09:15"
 				/>
 			</div>
 		</Card>
@@ -86,7 +96,7 @@
 		<WidgetHeader title="Spaardoelen" class="mb-3" />
 
 		<Card padding="p-0" class="mb-6">
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class={dividerClasses}>
 				{#each savingsGoals as goal}
 					<SavingsGoalItem
 						title={goal.title}

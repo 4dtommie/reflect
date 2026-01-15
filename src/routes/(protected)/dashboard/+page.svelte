@@ -26,7 +26,7 @@
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
 			<!-- Left sub-column -->
 			<div class="space-y-8">
-				<RecentTransactionsWidget transactions={data.recentTransactions.slice(0, 2)} />
+				<RecentTransactionsWidget transactions={data.recentTransactions.slice(0, 2)} variant={data.designVariant ?? 'redesign'} />
 
 				{#if data.stats.categorizedCount > 0}
 					<RecurringWidget recurringTransactions={data.recurringTransactions} />

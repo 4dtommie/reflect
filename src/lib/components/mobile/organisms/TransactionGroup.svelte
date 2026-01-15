@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import Card from '$lib/components/mobile/Card.svelte';
 	import { Badge } from '$lib/components/mobile/atoms';
+	import { mobileTheme } from '$lib/stores/mobileTheme';
 
 	interface TransactionGroupData {
 		dateLabel: string;
@@ -18,6 +19,9 @@
 	}
 
 	let { group, children, class: className = '' }: Props = $props();
+
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 </script>
 
 <section class={className}>
@@ -37,7 +41,7 @@
 		{/if}
 	</div>
 	<Card padding="p-0">
-		<div class="divide-y divide-gray-100 dark:divide-gray-800">
+		<div class={dividerClasses}>
 			{@render children()}
 		</div>
 	</Card>

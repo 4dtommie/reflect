@@ -87,6 +87,22 @@
 	--gradient-primary: linear-gradient(to bottom right, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3));
 	--gradient-primary-animated: linear-gradient(90deg, var(--gradient-color-1), var(--gradient-color-2), var(--gradient-color-3), var(--gradient-color-1));
 
+	/* Custom Gray Scale - includes extended values for design system */
+	--color-gray-50: #f9f9f9;
+	--color-gray-100: #f0f0f0;
+	--color-gray-200: #e1e1e1;
+	--color-gray-300: #cecece;
+	--color-gray-400: #bababa;
+	--color-gray-500: #9c9c9c;
+	--color-gray-600: #8d8d8d;
+	--color-gray-700: #7e7e7e;
+	--color-gray-800: #6d6d6d; /* subtle text */
+	--color-gray-900: #565656;
+	--color-gray-1000: #404040; /* default text */
+	--color-gray-1100: #2b2b2b;
+	--color-gray-1200: #1a1a1a;
+	--color-gray-1300: #0a0a0a;
+
 	/* Custom NN Brand Colors - Tailwind v4 CSS-first config */
 	--color-mediumOrange-50: #fef8f4;
 	--color-mediumOrange-100: #fdede2;

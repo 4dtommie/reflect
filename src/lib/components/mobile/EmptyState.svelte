@@ -23,7 +23,7 @@
 	<h3 class="mb-2 font-heading text-lg font-bold text-gray-900 dark:text-white">
 		{title}
 	</h3>
-	<p class="max-w-[250px] text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+	<p class="max-w-[250px] text-sm leading-relaxed text-gray-800 dark:text-gray-400">
 		{description}
 	</p>
 </div>

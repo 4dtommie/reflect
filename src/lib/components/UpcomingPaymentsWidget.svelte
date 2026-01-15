@@ -87,7 +87,7 @@
 						</div>
 					</div>
 					<div class="flex-shrink-0 text-right">
-						<Amount value={payment.amount} size="small" showDecimals={true} isDebit={true} />
+						<Amount value={payment.amount} size="sm" showDecimals={true} isDebit={true} />
 					</div>
 				</button>
 			{/each}

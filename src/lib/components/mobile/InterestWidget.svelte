@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Card from './Card.svelte';
 	import WidgetHeader from './WidgetHeader.svelte';
+	import { mobileTheme } from '$lib/stores/mobileTheme';
 	import Amount from './Amount.svelte';
 	import { PiggyBank, Sparkles } from 'lucide-svelte';
 
@@ -17,6 +18,9 @@
 		interestAmount = 14.5,
 		bonusAmount = 5.25
 	}: Props = $props();
+
+	const theme = $derived($mobileTheme);
+	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
 </script>
 
 <section class="mt-6 mb-6">
@@ -40,7 +44,7 @@
 	</WidgetHeader>
 
 	<Card padding="p-0">
-		<div class="divide-y divide-gray-100 dark:divide-gray-800">
+		<div class={dividerClasses}>
 			<!-- Regular Interest -->
 			<div class="flex items-center justify-between px-4 py-4">
 				<div class="flex items-center gap-3">

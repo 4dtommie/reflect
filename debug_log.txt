@@ -26515,3 +26515,10 @@
 [2026-01-14T14:31:24.646Z] lastInsightMsg: spending_down
 [2026-01-14T14:31:24.648Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
 [2026-01-14T14:31:24.650Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-14T21:29:53.149Z] Load function started
+[2026-01-14T21:29:53.175Z] Promise.all completed - chatInsight: check_recurring
+[2026-01-14T21:29:53.179Z] Entering transition logic - currentInsight: check_recurring
+[2026-01-14T21:29:53.185Z] Conversation found: true, messages: 4
+[2026-01-14T21:29:53.188Z] lastInsightMsg: spending_down
+[2026-01-14T21:29:53.190Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-14T21:29:53.192Z] 🔍 DEBUG: currentInsight ID: check_recurring

@@ -3,9 +3,6 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import {
-		Sun,
-		Moon,
-		Monitor,
 		Smartphone,
 		Play,
 		Square,
@@ -19,13 +16,13 @@
 		RotateCw
 	} from 'lucide-svelte';
 	import { toggleProductEnabledAndRefresh, resetProducts, productsStore } from '$lib/mock/products';
-	import { themes, type ThemeName } from '$lib/theme/themeConfig';
+	import type { ThemeName } from '$lib/theme/themeConfig';
 
 	// Handle current theme (light/dark)
 	let currentTheme = $state<'nord' | 'nn-night'>('nord');
 	let currentDevice = $state<'iphone' | 'pixel'>('iphone');
 	let currentOrientation = $state<'portrait' | 'landscape'>('portrait');
-	let productLayout = $state<'default' | 'A' | 'B' | 'C'>('default');
+	let productLayout = $state<'A' | 'B' | 'C'>('A');
 	// Design theme (component styling)
 	let designTheme = $state<ThemeName>('nn-original');
 
@@ -50,7 +47,7 @@
 		}
 
 		// Initialize productLayout from localStorage
-		const storedProductLayout = localStorage.getItem('productLayout') as 'default' | 'A' | 'B' | 'C';
+		const storedProductLayout = localStorage.getItem('productLayout') as 'A' | 'B' | 'C';
 		if (storedProductLayout) {
 			productLayout = storedProductLayout;
 		}
@@ -81,11 +78,6 @@
 	onDestroy(() => {
 		stopAutoPlay();
 	});
-
-	function toggleTheme() {
-		currentTheme = currentTheme === 'nord' ? 'nn-night' : 'nord';
-		localStorage.setItem('theme', currentTheme);
-	}
 
 	function updateIframeUrl() {
 		// Update URL state of parent (wrapper)
@@ -225,57 +217,92 @@
 							<Smartphone size={18} />
 						{/if}
 					</button>
-
-					<!-- Appearance Switch -->
-					<button
-						class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 transition-colors {currentTheme ===
-						'nn-night'
-							? 'bg-slate-600 text-white'
-							: 'bg-slate-800 text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
-						onclick={toggleTheme}
-						title={currentTheme === 'nord' ? 'Switch to Dark' : 'Switch to Light'}
-					>
-						{#if currentTheme === 'nord'}
-							<Sun size={18} />
-						{:else}
-							<Moon size={18} />
-						{/if}
-					</button>
-
-	
 				</div>
 
-				<!-- Design Theme Row -->
-				<div class="flex items-center gap-2">
-					<select
-						class="select-bordered select h-9 w-full border-none bg-slate-800 select-sm text-slate-200 focus:ring-0"
-						bind:value={designTheme}
-						onchange={() => {
-							localStorage.setItem('designTheme', designTheme);
-							updateIframeUrl();
-						}}
-					>
-						{#each themes as theme}
-							<option value={theme.name}>{theme.displayName}</option>
-						{/each}
-					</select>
+				<!-- Design Theme Row - Segmented Button Bar -->
+				<div class="control-group">
+					<div class="control-label">Design</div>
+					<div class="mt-1.5 flex rounded-lg bg-slate-800 p-1">
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'nn-original'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								designTheme = 'nn-original';
+								localStorage.setItem('designTheme', designTheme);
+								updateIframeUrl();
+							}}
+						>
+							Original
+						</button>
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'improved'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								designTheme = 'improved';
+								localStorage.setItem('designTheme', designTheme);
+								updateIframeUrl();
+							}}
+						>
+							Redesign
+						</button>
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'extreme'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								designTheme = 'extreme';
+								localStorage.setItem('designTheme', designTheme);
+								updateIframeUrl();
+							}}
+						>
+							Extreme
+						</button>
+					</div>
 				</div>
 
-				<!-- Product Layout Row -->
-				<div class="flex items-center gap-2">
-					<select
-						class="select-bordered select h-9 w-full border-none bg-slate-800 select-sm text-slate-200 focus:ring-0"
-						bind:value={productLayout}
-						onchange={() => {
-							localStorage.setItem('productLayout', productLayout);
-							updateIframeUrl();
-						}}
-					>
-						<option value="default">Pick product layout</option>
-						<option value="A">Product carousel</option>
-						<option value="B">Separate product pages</option>
-						<option value="C">Product slidedown</option>
-					</select>
+				<!-- Product Layout Row - Segmented Button Bar -->
+				<div class="control-group">
+					<div class="control-label">Product layout</div>
+					<div class="mt-1.5 flex rounded-lg bg-slate-800 p-1">
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'A'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								productLayout = 'A';
+								localStorage.setItem('productLayout', productLayout);
+								updateIframeUrl();
+							}}
+						>
+							Carousel
+						</button>
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'B'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								productLayout = 'B';
+								localStorage.setItem('productLayout', productLayout);
+								updateIframeUrl();
+							}}
+						>
+							Individual PDP
+						</button>
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'C'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								productLayout = 'C';
+								localStorage.setItem('productLayout', productLayout);
+								updateIframeUrl();
+							}}
+						>
+							Slidedown
+						</button>
+					</div>
 				</div>
 
 				<!-- Products toggles for prototype -->
@@ -474,7 +501,7 @@
 	.landscape-mode .controls-panel {
 		width: auto;
 		flex-direction: row;
-		align-items: center;
+		align-items: flex-start;
 		gap: 2rem;
 	}
 
@@ -483,18 +510,20 @@
 	}
 
 	.landscape-mode .controls-grid {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 1.5rem;
+		display: grid;
+		grid-template-columns: repeat(3, auto);
+		grid-template-rows: auto auto;
+		align-items: start;
+		gap: 1rem 1.5rem;
 	}
 
 	.landscape-mode .control-group {
-		min-width: 140px;
+		min-width: 160px;
 	}
 
 	.landscape-mode .time-machine {
-		min-width: 200px;
+		min-width: 220px;
+		grid-column: span 1;
 	}
 
 	/* Flash transition for orientation change */

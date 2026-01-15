@@ -1,7 +1,7 @@
 <script lang="ts">
 	interface Props {
 		amount: number;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
+		size?: 'sm' | 'md' | 'lg' | 'small' | 'large' | 'xl';
 		showSign?: boolean;
 		showSymbol?: boolean;
 		flat?: boolean;
@@ -27,35 +27,33 @@
 			.padStart(2, '0')
 	);
 
-	// Size configurations
+	// Normalize size aliases to logical sizes and size configurations using semantic Tailwind sizes
 	const sizes = {
 		sm: {
 			wrap: 'text-sm',
 			signMargin: 'mr-0.5',
 			supMargin: '',
-			supSize: 'text-sm'
+			supSize: '!text-xs'
 		},
 		md: {
-			wrap: 'text-[19px]', // Increased size
+			wrap: 'text-base',
 			signMargin: 'mr-0.5',
-			supMargin: 'ml-[2px] mt-[3px]', // Slightly increased (was 1px)
-			supSize: 'text-sm' // Standardized to 14px
+			supMargin: 'ml-[2px] mt-[3px]',
+			supSize: '!text-xs'
 		},
 		lg: {
-			wrap: 'text-lg',
+			wrap: 'text-xl',
 			signMargin: 'mr-0.5',
-			supMargin: 'ml-[0.5px] mt-[2px]', // Slightly increased (was 1px)
-			supSize: 'text-[13px]'
-		},
-		xl: {
-			wrap: 'text-2xl',
-			signMargin: 'mr-0.5',
-			supMargin: 'ml-[1px] mt-[3px]', // Slightly increased (was 2px)
-			supSize: 'text-sm'
+			supMargin: 'ml-[1px] mt-[3px]',
+			supSize: '!text-sm'
 		}
 	};
 
-	const s = $derived(sizes[size]);
+	// Compute `s` directly so classes are plain strings in the DOM
+	const s = (() => {
+		const norm = size === 'small' || size === 'sm' ? 'sm' : size === 'large' || size === 'xl' ? 'lg' : 'md';
+		return sizes[norm];
+	})();
 	// Only apply color when showing sign (for transactions), otherwise inherit from parent
 	const colorClass = $derived(showSign ? (isDebit ? 'text-gray-1000' : 'text-green-600') : '');
 </script>
@@ -71,7 +69,8 @@
 		<span>{whole},{cents}</span>
 	{:else}
 		<div class="flex {size === 'sm' ? 'items-baseline' : 'items-start'}">
-			{whole}<span class="{s.supMargin} {s.supSize} leading-none">,{cents}</span>
+			{whole}
+			<span class="{s.supMargin} {s.supSize} leading-none" style="font-size: {s.supSize === '!text-xs' || s.supSize === 'text-xs' ? '12px' : s.supSize === '!text-sm' || s.supSize === 'text-sm' ? '14px' : '12px'}">,{cents}</span>
 		</div>
 	{/if}
 </div>

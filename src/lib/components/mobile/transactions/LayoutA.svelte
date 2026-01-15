@@ -277,7 +277,7 @@
 								{/if}
 							</div>
 							<div class="flex min-w-0 flex-1 flex-col overflow-hidden text-left">
-								<div class="truncate text-sm font-normal text-gray-600 dark:text-gray-400">
+								<div class="truncate text-sm font-normal text-gray-800 dark:text-gray-400">
 									{account.name}
 								</div>
 								<div class="account-amount-landscape">
@@ -421,7 +421,7 @@
 					</Card>
 				</section>
 			{:else}
-				<div class="mt-8 text-center text-sm text-gray-600">Geen transacties gevonden</div>
+				<div class="mt-8 text-center text-sm text-gray-800">Geen transacties gevonden</div>
 			{/each}
 		</div>
 	{/if}

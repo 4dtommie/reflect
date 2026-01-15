@@ -123,7 +123,7 @@
 					{:else}
 						<CreditCard class="h-6 w-6 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 					{/if}
-					<span class="text-sm text-gray-600 dark:text-gray-400">{currentProduct.iban}</span>
+					<span class="text-sm text-gray-800 dark:text-gray-400">{currentProduct.iban}</span>
 				</div>
 				<div class="flex items-center gap-1">
 					{#if currentProduct.holders === 1}
@@ -139,19 +139,19 @@
 				<span class="font-heading text-3xl font-bold text-gray-900 dark:text-white">€</span>
 				<Amount
 					amount={currentProduct.balance}
-					size="xl"
+					size="lg"
 					showSign={false}
-					class="font-heading !text-3xl !text-gray-900 dark:!text-white"
+					class="font-heading !text-gray-900 dark:!text-white"
 				/>
 			</div>
 
 			<!-- Extra Info -->
 			{#if currentProduct.type === 'savings' && currentProduct.interestRate}
-				<div class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+				<div class="mb-3 text-sm text-gray-800 dark:text-gray-400">
 					<span class="font-semibold text-green-600">{currentProduct.interestRate}%</span> rente per jaar
 				</div>
 			{:else if currentProduct.type === 'investment' && currentProduct.performance}
-				<div class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+				<div class="mb-3 text-sm text-gray-800 dark:text-gray-400">
 					Rendement dit jaar: <span class="font-semibold text-green-600">{currentProduct.performance}</span>
 				</div>
 			{/if}

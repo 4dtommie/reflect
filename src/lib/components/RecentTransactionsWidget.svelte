@@ -5,7 +5,19 @@
 	import { Clock } from 'lucide-svelte';
 	import { transactionModalStore } from '$lib/stores/transactionModalStore';
 
-	let { transactions }: { transactions: any[] } = $props();
+	let { transactions, variant = 'redesign' }: { transactions: any[]; variant?: 'original' | 'redesign' } = $props();
+
+	// Try to extract time (HH:MM) from description text like "... 14:30 ..." or fallback to transaction.date
+	function extractTime(transaction: any) {
+		const desc = transaction.description ?? '';
+		const timeMatch = desc.match(/(\b[0-2]?\d:[0-5]\d\b)/);
+		if (timeMatch) return timeMatch[1];
+		if (transaction.date) {
+			const d = new Date(transaction.date);
+			return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+		return '';
+	}
 
 	function handleTransactionClick(transaction: any) {
 		// Dashboard provides category as a string (name), not an object
@@ -65,10 +77,14 @@
 						/>
 						<div class="flex min-w-0 flex-1 flex-col">
 							<span class="truncate text-sm font-medium">{transaction.merchant}</span>
-							<span class="text-xs text-base-content/60">{transaction.category}</span>
+							{#if variant === 'original'}
+								<span class="text-xs text-base-content/60">{transaction.date ? new Date(transaction.date).toLocaleDateString() : ''} {extractTime(transaction) ? '· ' + extractTime(transaction) : ''}</span>
+							{:else}
+								<span class="text-xs text-base-content/60">{transaction.category}</span>
+							{/if}
 						</div>
 						<div class="flex-shrink-0 text-right">
-							<Amount value={transaction.amount} size="small" isDebit={transaction.isDebit} />
+							<Amount value={transaction.amount} size="sm" isDebit={transaction.isDebit} />
 						</div>
 					</button>
 				{/each}

@@ -200,9 +200,9 @@
 						<span class="font-heading text-3xl font-bold text-gray-900 dark:text-white">€</span>
 						<Amount
 							amount={currentProduct.balance}
-							size="xl"
+							size="lg"
 							showSign={false}
-							class="font-heading !text-3xl !text-gray-900 dark:!text-white"
+							class="font-heading !text-gray-900 dark:!text-white"
 						/>
 					</div>
 					<div class="flex items-center gap-2 text-sm text-gray-500">
