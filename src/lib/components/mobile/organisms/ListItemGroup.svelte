@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 	import Card from '../Card.svelte';
 	import WidgetHeader from '../WidgetHeader.svelte';
 	import WidgetAction from '../WidgetAction.svelte';
@@ -39,22 +39,8 @@
 		emptyText
 	}: Props = $props();
 
-	// Get theme config
-	const theme = $derived($mobileTheme);
-	const listGroupConfig = $derived(theme.listGroup);
-	const listItemConfig = $derived(theme.listItem);
-
-	// Compute divider classes based on theme
-	const dividerClasses = $derived.by(() => {
-		if (listItemConfig.variant === 'block') {
-			// No dividers in block mode - items have their own separation
-			return '';
-		}
-		if (listItemConfig.showDividers) {
-			return 'divide-y divide-gray-100 dark:divide-gray-800';
-		}
-		return '';
-	});
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
 </script>
 
 <section class={className}>
@@ -66,16 +52,19 @@
 		</WidgetHeader>
 	{/if}
 
-	{#if listGroupConfig.variant === 'card'}
+	{#if isOriginal}
+		<!-- NN Original: card wrapper, no dividers -->
 		<Card {padding} class={contentClass}>
-			<div class={dividerClasses}>
+			<div>
 				{@render children()}
 			</div>
 		</Card>
 	{:else}
-		<!-- Flat variant - no card wrapper -->
-		<div class="{listItemConfig.variant === 'flat' ? dividerClasses : ''} {contentClass}">
-			{@render children()}
-		</div>
+		<!-- Improved: card wrapper with dividers -->
+		<Card {padding} class={contentClass}>
+			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				{@render children()}
+			</div>
+		</Card>
 	{/if}
 </section>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
+	import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import Card from '$lib/components/mobile/Card.svelte';
 	import Amount from '$lib/components/mobile/Amount.svelte';
@@ -60,12 +61,28 @@
 		Bike,
 		type Icon
 	} from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	let { data } = $props();
 
 	// Transaction data
 	const tx = $derived(data.transaction);
+
+	// Theme check for conditional styling
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+
+	// Helper for icon wrapper classes - no circle in original theme
+	const iconWrapperClass = $derived(
+		isOriginal 
+			? '' 
+			: 'flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800'
+	);
+	const iconWrapperClassLg = $derived(
+		isOriginal 
+			? '' 
+			: 'flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800'
+	);
 
 	// Icon mapping for category icons
 	const iconMap: Record<string, typeof Icon> = {
@@ -122,10 +139,10 @@
 		const g = parseInt(hex.substring(2, 4), 16);
 		const b = parseInt(hex.substring(4, 6), 16);
 
-		// Create a light tint (mix with white at 70%)
-		const lightR = Math.round(r + (255 - r) * 0.70);
-		const lightG = Math.round(g + (255 - g) * 0.70);
-		const lightB = Math.round(b + (255 - b) * 0.70);
+		// Create a light tint (mix with white at 55% - less light than before)
+		const lightR = Math.round(r + (255 - r) * 0.55);
+		const lightG = Math.round(g + (255 - g) * 0.55);
+		const lightB = Math.round(b + (255 - b) * 0.55);
 
 		return { r: lightR, g: lightG, b: lightB };
 	});
@@ -139,21 +156,32 @@
 		hasMounted = true;
 	});
 
+	// Set status bar color to match the header category color
+	$effect(() => {
+		const { r, g, b } = categoryHeaderColor;
+		mobileStatusBarColor.set(`rgba(${r}, ${g}, ${b}, 0.85)`);
+	});
+
+	// Reset status bar color on unmount
+	onDestroy(() => {
+		mobileStatusBarColor.set(null);
+	});
+
 	// Header styling based on scroll - ensure starts at category color (not white)
 	// Use 0 if not mounted yet to guarantee colored header initially
 	const effectiveScrollY = $derived(hasMounted ? Math.max($mobileScrollY, 0) : 0);
 	const headerShadowOpacity = $derived(Math.min(effectiveScrollY / 50, 1) * 0.1);
 	const scrollProgress = $derived(Math.min(effectiveScrollY / 60, 1));
 	const blurAmount = $derived(scrollProgress * 12);
-	// Start with category color, transition to white as user scrolls
-	const r = $derived(Math.round(categoryHeaderColor.r + (255 - categoryHeaderColor.r) * scrollProgress));
-	const g = $derived(Math.round(categoryHeaderColor.g + (255 - categoryHeaderColor.g) * scrollProgress));
-	const b = $derived(Math.round(categoryHeaderColor.b + (255 - categoryHeaderColor.b) * scrollProgress));
+	// Keep category color throughout scroll (no transition to sand)
+	const r = $derived(categoryHeaderColor.r);
+	const g = $derived(categoryHeaderColor.g);
+	const b = $derived(categoryHeaderColor.b);
 	const bgOpacity = $derived(1 - scrollProgress * 0.1);
 
 	// Build back link from `from` query param when present
 	const rawFrom = $page.url.searchParams.get('from');
-	let backLink = $state('/mobile/transactions');
+	let backLink = $state('/mobile/product-details');
 	if (rawFrom) {
 		try {
 			backLink = decodeURIComponent(rawFrom);
@@ -165,27 +193,9 @@
 	// Bottom sheet state
 	let detailsSheetOpen = $state(false);
 
-	// Mock map - use a data URI that looks like a map
-	const mapFallback = `data:image/svg+xml,${encodeURIComponent(`<svg width="400" height="180" xmlns="http://www.w3.org/2000/svg">
-		<rect fill="#e5e7eb" width="100%" height="100%"/>
-		<rect fill="#d1d5db" x="20" y="0" width="8" height="180"/>
-		<rect fill="#d1d5db" x="80" y="0" width="12" height="180"/>
-		<rect fill="#d1d5db" x="150" y="0" width="6" height="180"/>
-		<rect fill="#d1d5db" x="220" y="0" width="10" height="180"/>
-		<rect fill="#d1d5db" x="300" y="0" width="8" height="180"/>
-		<rect fill="#d1d5db" x="360" y="0" width="14" height="180"/>
-		<rect fill="#d1d5db" x="0" y="30" width="400" height="6"/>
-		<rect fill="#d1d5db" x="0" y="70" width="400" height="10"/>
-		<rect fill="#d1d5db" x="0" y="110" width="400" height="8"/>
-		<rect fill="#d1d5db" x="0" y="150" width="400" height="12"/>
-		<rect fill="#fbbf24" x="50" y="40" width="60" height="40" rx="4"/>
-		<rect fill="#93c5fd" x="180" y="20" width="80" height="60" rx="4"/>
-		<rect fill="#86efac" x="290" y="50" width="50" height="35" rx="4"/>
-		<rect fill="#fca5a5" x="100" y="100" width="70" height="45" rx="4"/>
-		<rect fill="#c4b5fd" x="230" y="95" width="55" height="50" rx="4"/>
-		<circle fill="#ef4444" cx="200" cy="90" r="12"/>
-		<circle fill="#fff" cx="200" cy="87" r="5"/>
-	</svg>`)}`;
+	// Map location coordinates (Amsterdam Centrum for demo)
+	const mapLat = 52.3676;
+	const mapLon = 4.9041;
 
 	// Insight cards data - now with period context and amounts
 	const insightCards = $derived.by(() => {
@@ -217,28 +227,18 @@
 			});
 		}
 
-		if (data.merchantStats.totalTransactions > 1) {
+		// Category insight - only show if not recurring (recurring has its own card now)
+		if (!tx.isRecurring) {
 			cards.push({
-				id: 'visits',
-				title: `${data.merchantStats.totalTransactions}x bezocht`,
-				subtitle: `Totaal € ${data.merchantStats.totalSpent.toFixed(0)}`,
-				period: `in ${currentMonth}`,
-				icon: 'shopping-bag',
-				iconBg: 'bg-blue-100',
-				iconColor: 'text-blue-600'
+				id: 'category',
+				title: tx.category,
+				subtitle: 'Eenmalig',
+				period: '',
+				icon: 'calendar',
+				iconBg: tx.categoryColor ? '' : 'bg-purple-100',
+				iconColor: tx.categoryColor || 'text-purple-600'
 			});
 		}
-
-		// Category insight
-		cards.push({
-			id: 'category',
-			title: tx.category,
-			subtitle: tx.isRecurring ? 'Terugkerend' : 'Eenmalig',
-			period: tx.isRecurring ? tx.recurringInterval || '' : '',
-			icon: 'calendar',
-			iconBg: tx.categoryColor ? '' : 'bg-purple-100',
-			iconColor: tx.categoryColor || 'text-purple-600'
-		});
 
 		return cards;
 	});
@@ -246,6 +246,7 @@
 
 <svelte:head>
 	<title>{tx.merchant} - Transactie</title>
+	<meta name="theme-color" content="{tx.categoryColor || 'rgb(243, 239, 237)'}" />
 </svelte:head>
 
 <!-- Header with back/share -->
@@ -264,6 +265,13 @@
 			<ArrowLeft class="h-6 w-6 text-black dark:text-white" />
 		</MobileLink>
 
+		<!-- Title always visible -->
+		<h1 
+			class="absolute left-1/2 -translate-x-1/2 font-heading text-lg font-bold text-gray-900"
+		>
+			Transactie
+		</h1>
+
 		<div class="flex-1"></div>
 
 		<button class="rounded-full p-2 hover:bg-black/5 active:bg-black/10">
@@ -272,31 +280,16 @@
 	</div>
 </header>
 
-<!-- Hero section - centered logo above, then transaction card -->
+<!-- Hero section - transaction card with logo inside -->
 <div
 	class="px-4 pb-4"
 	style="background-color: rgb({categoryHeaderColor.r}, {categoryHeaderColor.g}, {categoryHeaderColor.b})"
 >
-	<!-- Centered merchant logo -->
-	<div class="flex justify-center pb-4">
-		<div class="overflow-hidden rounded-xl shadow-lg">
-			<MerchantLogo merchantName={tx.merchant} categoryIcon={tx.categoryIcon} size="lg" />
-		</div>
-	</div>
-
 	<Card padding="p-0" class="overflow-hidden">
-		<!-- Transaction row - now with category icon instead of merchant logo -->
+		<!-- Transaction row with logo inside -->
 		<div class="flex items-center gap-3 px-4 py-3">
-			<!-- Category icon instead of merchant logo -->
-			<div 
-				class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-				style="background-color: {tx.categoryColor ? tx.categoryColor + '20' : 'rgb(243, 239, 237)'}"
-			>
-				<CategoryIconComponent 
-					class="h-5 w-5"
-					style="color: {tx.categoryColor || 'rgb(107, 114, 128)'}"
-					strokeWidth={1.5}
-				/>
+			<div class="flex-shrink-0 overflow-hidden rounded-xl shadow-sm">
+				<MerchantLogo merchantName={tx.merchant} categoryIcon={tx.categoryIcon} size="lg" />
 			</div>
 			<div class="min-w-0 flex-1">
 				<h1 class="truncate font-heading text-lg font-bold text-gray-900 dark:text-white">{tx.merchant}</h1>
@@ -309,7 +302,7 @@
 					<div class="rounded-[10px] bg-green-100 px-2 py-1 dark:bg-green-900/30">
 						<Amount
 							amount={tx.amount}
-							size="md"
+							size="lg"
 							showSign={false}
 							class="font-heading !text-green-800 dark:!text-green-400"
 						/>
@@ -317,7 +310,7 @@
 				{:else}
 					<Amount
 						amount={-tx.amount}
-						size="md"
+						size="lg"
 						class="font-heading !text-gray-900 dark:!text-white"
 					/>
 				{/if}
@@ -325,38 +318,128 @@
 			</div>
 		</div>
 
-		<!-- Category row -->
+		<!-- Category row - now with icon in badge -->
 		<div class="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 dark:border-gray-800">
 			<div class="flex items-center gap-2">
 				<div
-					class="flex h-7 items-center rounded-full px-2.5"
+					class="flex h-7 items-center gap-1.5 rounded-full px-2.5"
 					style="background-color: {tx.categoryColor
 						? tx.categoryColor + '20'
 						: 'rgb(243, 239, 237)'}"
 				>
+					<CategoryIconComponent 
+						class="h-3.5 w-3.5"
+						style="color: {tx.categoryColor || 'rgb(107, 114, 128)'}"
+						strokeWidth={2}
+					/>
 					<span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{tx.category}</span>
 				</div>
-				{#if tx.isRecurring}
-					<div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-						<Repeat class="h-3.5 w-3.5 text-blue-500" strokeWidth={2} />
-						{tx.recurringInterval}
-					</div>
-				{/if}
 			</div>
-			<button class="flex items-center gap-1 text-xs font-medium text-mediumOrange-600 hover:underline">
+			<button class="flex items-center gap-1 text-xs font-medium hover:underline {isOriginal ? 'text-gray-900' : 'text-mediumOrange-600'}">
 				Wijzig categorie
-				<ChevronRight class="h-3.5 w-3.5" strokeWidth={2} />
+				<ChevronRight class="h-3.5 w-3.5 text-mediumOrange-600" strokeWidth={2} />
 			</button>
 		</div>
 	</Card>
 </div>
 
 <!-- Insights Carousel Section -->
-{#if insightCards.length > 0}
+{#if insightCards.length > 0 || tx.isRecurring || (data.merchantStats.totalTransactions >= 3 && data.merchantStats.lastMonthStats)}
+	{@const fakeCities = ['Amsterdam', 'Den Haag', 'Rotterdam', 'Utrecht', 'Eindhoven']}
+	{@const fakeCity = fakeCities[tx.id % fakeCities.length]}
+	{@const isPaymentType = tx.description?.toLowerCase().includes('betaling') || tx.description?.toLowerCase().includes('pin') || (!tx.description?.toLowerCase().includes('overboeking') && !tx.description?.toLowerCase().includes('storting') && !tx.description?.toLowerCase().includes('salaris'))}
+	{@const lastMonthStats = data.merchantStats.lastMonthStats}
+	{@const currentSpent = data.merchantStats.totalSpent}
+	{@const lastSpent = lastMonthStats?.totalSpent || 0}
+	{@const spendingDiff = lastSpent > 0 ? Math.round(((currentSpent - lastSpent) / lastSpent) * 100) : 0}
 	<div class="mt-4">
 		<WidgetHeader title="Inzichten" class="mb-3 px-4" />
 		<div class="-mx-0">
 			<HorizontalCarousel cardWidth={150} gap={12}>
+				<!-- Location map card - only show for payment type transactions -->
+				{#if isPaymentType}
+					<Card padding="p-0" class="min-w-[150px] flex-shrink-0 overflow-hidden">
+						<button 
+							class="relative block h-full w-full active:opacity-90" 
+							onclick={() => window.open(`https://maps.google.com/?q=${mapLat},${mapLon}`, '_blank')}
+						>
+							<!-- Static map background -->
+							<div class="absolute inset-0">
+								<img 
+									src="https://static.vecteezy.com/system/resources/thumbnails/010/801/642/small/aerial-clean-top-view-of-the-night-time-city-map-with-street-and-river-001-vector.jpg"
+									alt="Map"
+									class="h-full w-full object-cover opacity-60"
+								/>
+							</div>
+							<!-- Content overlay at bottom left -->
+									<div class="p-3 text-left">
+										<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-100">
+											<MapPin class="h-4 w-4 text-red-700 opacity-95" strokeWidth={2} />
+										</div>
+										<h3 class="font-heading text-base font-bold text-gray-900 text-left">
+											{fakeCity}
+										</h3>
+										<p class="text-sm text-gray-500 text-left">
+											Locatie
+										</p>
+									</div>
+						</button>
+					</Card>
+				{/if}
+
+				<!-- Merchant visit comparison card - only show if visited 3+ times this month -->
+				{#if data.merchantStats.totalTransactions >= 3}
+					<Card padding="p-0" class="min-w-[150px] flex-shrink-0">
+						<div class="p-3">
+							<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-purple-100">
+								<ShoppingBag class="h-4 w-4 text-purple-600" strokeWidth={2} />
+							</div>
+							<h3 class="font-heading text-base font-bold text-gray-900 dark:text-white">
+								{data.merchantStats.totalTransactions}x bezocht
+							</h3>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								€ {currentSpent.toFixed(0)} deze maand
+							</p>
+							{#if lastMonthStats && spendingDiff !== 0}
+								<p class="flex items-center gap-1 text-xs {spendingDiff > 0 ? 'text-red-600' : 'text-green-600'}">
+									{#if spendingDiff > 0}
+										<TrendingUp class="h-3 w-3" strokeWidth={2.5} />
+									{:else}
+										<TrendingDown class="h-3 w-3" strokeWidth={2.5} />
+									{/if}
+									{Math.abs(spendingDiff)}% vs vorige maand
+								</p>
+							{/if}
+						</div>
+					</Card>
+				{/if}
+
+				<!-- Recurring card - only for recurring transactions -->
+				{#if tx.isRecurring}
+					{@const intervalLabels = {
+						monthly: 'Maandelijks',
+						weekly: 'Wekelijks',
+						yearly: 'Jaarlijks',
+						quarterly: 'Per kwartaal',
+						'4-weekly': '4-wekelijks'
+					}}
+					{@const intervalLabel = intervalLabels[tx.recurringInterval as keyof typeof intervalLabels] || tx.recurringInterval}
+					{@const yearlyAmount = (tx.amount * (tx.recurringInterval === 'monthly' ? 12 : tx.recurringInterval === 'weekly' ? 52 : tx.recurringInterval === 'quarterly' ? 4 : tx.recurringInterval === '4-weekly' ? 13 : 1)).toFixed(0)}
+					<Card padding="p-0" class="min-w-[150px] flex-shrink-0">
+						<div class="p-3">
+							<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-blue-100">
+								<Repeat class="h-4 w-4 text-blue-600" strokeWidth={2} />
+							</div>
+							<h3 class="font-heading text-base font-bold text-gray-900 dark:text-white">
+								{intervalLabel}
+							</h3>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Jaarlijks € {yearlyAmount}
+							</p>
+						</div>
+					</Card>
+				{/if}
+				
 				{#each insightCards as card (card.id)}
 					<Card padding="p-0" class="min-w-[150px] flex-shrink-0">
 						<div class="p-3">
@@ -409,55 +492,43 @@
 				onclick={() => (detailsSheetOpen = true)}
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<FileText class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<FileText class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bekijk pasbetaling details</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<Search class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<Search class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Zoek vergelijkbare transacties</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<Users class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<Users class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Deel kosten met betaalverzoek</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
 		</div>
-	</Card>
-</div>
-
-<!-- Map Section - now after actions, clickable card without button -->
-<div class="mt-4 px-4">
-	<WidgetHeader title="Locatie" class="mb-3" />
-	<Card padding="p-0" class="overflow-hidden">
-		<button class="relative w-full active:opacity-90" onclick={() => window.open('https://maps.google.com/?q=Amsterdam+Centrum', '_blank')}>
-			<img
-				src={mapFallback}
-				alt="Locatie van transactie"
-				class="h-32 w-full object-cover"
-				loading="lazy"
-			/>
-			<!-- Gradient overlay -->
-			<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-			<!-- Location info overlay -->
-			<div class="absolute bottom-0 left-0 right-0 p-3">
-				<div class="flex items-center gap-2 text-white">
-					<MapPin class="h-4 w-4" strokeWidth={2} />
-					<span class="text-base font-medium">Amsterdam Centrum</span>
-				</div>
-			</div>
-		</button>
 	</Card>
 </div>
 
@@ -469,27 +540,39 @@
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<Phone class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<Phone class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bel de klantenservice</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<Globe class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<Globe class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bezoek website</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
-				<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+				{#if isOriginal}
 					<MessageSquare class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-				</div>
+				{:else}
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						<MessageSquare class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					</div>
+				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Overige contactinformatie</span>
 				<ChevronRight class="h-4 w-4 text-gray-400" strokeWidth={2} />
 			</button>
@@ -504,9 +587,13 @@
 		<Card padding="p-4">
 			<div class="space-y-4">
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+					{#if isOriginal}
 						<CreditCard class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-					</div>
+					{:else}
+						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+							<CreditCard class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+						</div>
+					{/if}
 					<div>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Betaalmethode</p>
 						<p class="font-medium text-gray-900 dark:text-white">Pinpas</p>
@@ -515,9 +602,13 @@
 
 				{#if tx.iban}
 					<div class="flex items-center gap-3">
-						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						{#if isOriginal}
 							<Hash class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-						</div>
+						{:else}
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+								<Hash class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+							</div>
+						{/if}
 						<div>
 							<p class="text-xs text-gray-500 dark:text-gray-400">IBAN</p>
 							<p class="font-mono text-sm text-gray-900 dark:text-white">{tx.iban}</p>
@@ -526,9 +617,13 @@
 				{/if}
 
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+					{#if isOriginal}
 						<Calendar class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-					</div>
+					{:else}
+						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+							<Calendar class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+						</div>
+					{/if}
 					<div>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Datum</p>
 						<p class="text-gray-900 dark:text-white">{tx.date}</p>
@@ -537,9 +632,13 @@
 
 				{#if tx.time}
 					<div class="flex items-center gap-3">
-						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+						{#if isOriginal}
 							<Clock class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-						</div>
+						{:else}
+							<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+								<Clock class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+							</div>
+						{/if}
 						<div>
 							<p class="text-xs text-gray-500 dark:text-gray-400">Tijd</p>
 							<p class="text-gray-900 dark:text-white">{tx.time}</p>
@@ -548,9 +647,13 @@
 				{/if}
 
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+					{#if isOriginal}
 						<Receipt class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-					</div>
+					{:else}
+						<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+							<Receipt class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+						</div>
+					{/if}
 					<div>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Type</p>
 						<p class="text-gray-900 dark:text-white">{tx.isDebit ? 'Uitgave' : 'Inkomst'}</p>
@@ -563,9 +666,13 @@
 		{#if tx.description}
 			<Card padding="p-4">
 				<div class="flex items-start gap-3">
-					<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<Info class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-					</div>
+					{#if isOriginal}
+						<Info class="h-5 w-5 flex-shrink-0 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					{:else}
+						<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+							<Info class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+						</div>
+					{/if}
 					<div class="min-w-0 flex-1">
 						<p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Omschrijving</p>
 						<p class="break-words font-mono text-xs leading-relaxed text-gray-700 dark:text-gray-300">

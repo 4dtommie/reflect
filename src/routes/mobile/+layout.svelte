@@ -8,8 +8,8 @@
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
 	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
-	import { mobileThemeName } from '$lib/stores/mobileTheme';
-	import { getThemeConfig, type ThemeName } from '$lib/theme/themeConfig';
+	import { mobileThemeName, type ThemeName } from '$lib/stores/mobileTheme';
+	import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
 	import { Battery, Signal, Wifi } from 'lucide-svelte';
 	import { tick } from 'svelte';
 
@@ -19,13 +19,15 @@
 
 	const currentPath = $derived($page.url.pathname);
 
-	// Determine header background color based on route
+	// Determine header background color based on route or store override
 	// Homepage uses sand-50 (lighter), other pages use sand-100 (darker)
 	const isHomepage = $derived(currentPath === '/mobile' || currentPath === '/mobile/');
-	const statusBarBg = $derived(isHomepage 
+	const defaultStatusBarBg = $derived(isHomepage 
 		? 'rgba(250, 249, 248, 0.85)' // sand-50
 		: 'rgba(243, 239, 237, 0.85)' // sand-100
 	);
+	// Use store override if set, otherwise use default
+	const statusBarBg = $derived($mobileStatusBarColor || defaultStatusBarBg);
 
 	let isAtBottom = $state(true);
 	let contentEl: HTMLElement | undefined = $state();
@@ -85,9 +87,9 @@
 		const designTheme = $page.url.searchParams.get('designTheme') as ThemeName | null;
 		if (designTheme === 'nn-original' || designTheme === 'improved') {
 			mobileThemeName.set(designTheme);
-			// Also set the DaisyUI theme for components
-			const config = getThemeConfig(designTheme);
-			document.documentElement.setAttribute('data-daisyui-theme', config.daisyTheme);
+			// Set DaisyUI theme based on design theme
+			const daisyTheme = designTheme === 'nn-original' ? 'nn-theme' : 'nn-improved';
+			document.documentElement.setAttribute('data-daisyui-theme', daisyTheme);
 		}
 	});
 

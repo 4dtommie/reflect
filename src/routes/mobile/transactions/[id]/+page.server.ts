@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
 	
 	const dayName = days[displayDate.getDay()];
-	const dateFormatted = `${displayDate.getDate()} ${months[displayDate.getMonth()]} ${displayDate.getFullYear()}`;
+	const dateFormatted = `${displayDate.getDate()} ${months[displayDate.getMonth()]}`;
 	
 	// Extract time from description if available (format: "22:29" pattern)
 	let timeFormatted = '';
@@ -75,6 +75,10 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const now = new Date();
 	const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 	const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+	// Calculate last month boundaries
+	const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+	const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
 	// Get similar transactions (same merchant, different dates)
 	const similarTransactions = await db.transactions.findMany({
@@ -91,19 +95,34 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	});
 
 	// Calculate average amount for this merchant (current month only)
-	const merchantStats = await db.transactions.aggregate({
-		where: {
-			user_id: userId,
-			merchant_id: transaction.merchant_id,
-			date: {
-				gte: currentMonthStart,
-				lte: currentMonthEnd
-			}
-		},
-		_avg: { amount: true },
-		_count: true,
-		_sum: { amount: true }
-	});
+	const [merchantStats, lastMonthStats] = await Promise.all([
+		db.transactions.aggregate({
+			where: {
+				user_id: userId,
+				merchant_id: transaction.merchant_id,
+				date: {
+					gte: currentMonthStart,
+					lte: currentMonthEnd
+				}
+			},
+			_avg: { amount: true },
+			_count: true,
+			_sum: { amount: true }
+		}),
+		db.transactions.aggregate({
+			where: {
+				user_id: userId,
+				merchant_id: transaction.merchant_id,
+				date: {
+					gte: lastMonthStart,
+					lte: lastMonthEnd
+				}
+			},
+			_avg: { amount: true },
+			_count: true,
+			_sum: { amount: true }
+		})
+	]);
 
 	// Get spending comparison insight
 	let insight = null;
@@ -152,7 +171,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		}),
 		merchantStats: {
 			totalTransactions: merchantStats._count,
-			totalSpent: Number(merchantStats._sum.amount || 0)
+			totalSpent: Number(merchantStats._sum.amount || 0),
+			lastMonthStats: lastMonthStats._count > 0 ? {
+				totalTransactions: lastMonthStats._count,
+				totalSpent: Number(lastMonthStats._sum.amount || 0)
+			} : null
 		},
 		baseOffset
 	};

@@ -1,15 +1,14 @@
-import { writable, derived } from 'svelte/store';
-import { getThemeConfig, type ThemeName, type ThemeConfig } from '$lib/theme/themeConfig';
+import { writable } from 'svelte/store';
+
+/**
+ * Theme name type - 'nn-original' or 'improved'
+ */
+export type ThemeName = 'nn-original' | 'improved';
 
 /**
  * Current design theme name
  */
 export const mobileThemeName = writable<ThemeName>('nn-original');
-
-/**
- * Current theme configuration (derived from theme name)
- */
-export const mobileTheme = derived(mobileThemeName, ($name) => getThemeConfig($name));
 
 /**
  * Helper to set theme from URL parameter

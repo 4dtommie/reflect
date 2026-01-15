@@ -48,12 +48,7 @@ Each category has:
 - **Group:** `income`
 
 ### 4. Tax Returns & Subsidies
-- **Description:** Tax refunds and government subsidies (Belastingdienst, RVO, etc.)
-- **Color:** `#06b6d4` (cyan)
-- **Icon:** `FileText`
-- **Keywords:** `["tax return", "belastingdienst", "belasting", "teruggave", "aangifte", "belastingteruggave", "voorlopige teruggave", "advance tax", "voorlopige aanslag", "belasting voorlopig", "rvo", "subsidie", "subsidy", "rijksdienst", "ondernemend nederland", "kinderopvangtoeslag", "childcare allowance", "kinderopvang", "huurtoeslag", "rent allowance", "huur", "toeslag", "woningtoeslag"]`
-- **Parent:** None
-- **Group:** `income`
+ **Keywords:** `["tax return", "belastingdienst", "belasting", "teruggave", "aangifte", "belastingteruggave", "voorlopige teruggave", "advance tax", "voorlopige aanslag", "belasting voorlopig", "rvo", "subsidie", "subsidy", "rijksdienst", "ondernemend nederland", "kinderopvangtoeslag", "childcare allowance", "kinderopvang", "huurtoeslag", "rent allowance", "huur", "toeslag", "woningtoeslag"]`
 
 ### 5. Refund
 - **Description:** Money returned from purchases

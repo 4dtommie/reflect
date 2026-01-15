@@ -14,6 +14,9 @@
 
 	let { data } = $props();
 
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+
 	// Bottom sheet state
 	let sheetOpen = $state(false);
 	let selectedItem = $state<any>(null);
@@ -163,7 +166,7 @@
 								useLogo={true}
 								showChevron={true}
 								class="dark:active:bg-gray-1200 px-4 py-3 active:bg-gray-50"
-								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								designVariant={isOriginal ? 'original' : 'redesign'}
 								date={item.date}
 								description={item.subtitle}
 							/>

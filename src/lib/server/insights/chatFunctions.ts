@@ -197,7 +197,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
     'restaurants': 'Uit eten',
     'salary': 'Salaris',
     'income': 'Salaris',
-    'tax': 'Belastingteruggave & toeslagen'
+    'tax': 'Belasting & toeslagen'
 };
 
 /**

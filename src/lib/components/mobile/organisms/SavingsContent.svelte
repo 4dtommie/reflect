@@ -8,7 +8,7 @@
 	import SavingsGoalItem from '$lib/components/mobile/SavingsGoalItem.svelte';
 	import { TransactionListSkeleton } from '$lib/components/mobile/organisms';
 	import { Bike, GraduationCap, Plus } from 'lucide-svelte';
-	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface SavingsGoal {
 		title: string;
@@ -45,8 +45,9 @@
 		class: className = ''
 	}: Props = $props();
 
-	const theme = $derived($mobileTheme);
-	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 </script>
 
 <div class={className}>
@@ -65,7 +66,7 @@
 					subtitle="Automatische overboeking"
 					amount={150.0}
 					isDebit={false}
-					compact={true}
+					size="sm"
 					showSubtitle={true}
 					categoryIcon="savings"
 					class="px-4 py-3"
@@ -78,7 +79,7 @@
 					subtitle="Eenmalige inleg"
 					amount={50.0}
 					isDebit={false}
-					compact={true}
+					size="sm"
 					showSubtitle={true}
 					categoryIcon="holiday"
 					class="px-4 py-3"

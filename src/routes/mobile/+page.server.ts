@@ -9,9 +9,9 @@ function extractTimeFromDescription(description: string | null): string | null {
     return timeMatch ? timeMatch[1] : null;
 }
 
-// Format date as "14 april"
+// Format date as "14 januari"
 function formatDate(date: Date): string {
-    const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+    const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
     return `${date.getDate()} ${months[date.getMonth()]}`;
 }
 
@@ -62,7 +62,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     simulatedToday.setDate(simulatedToday.getDate() - baseOffset + 30 + manualOffset);
     simulatedToday.setHours(0, 0, 0, 0);
 
-    const [recentTransactions, rawAankomend] = await Promise.all([
+    const [recentTransactions, rawAankomend, upcomingTransactionLinks] = await Promise.all([
         db.transactions.findMany({
             where: {
                 user_id: userId,
@@ -86,8 +86,29 @@ export const load: PageServerLoad = async ({ locals, url }) => {
                 merchants: true,
                 categories: true
             }
+        }),
+        // Get the most recent transaction for each recurring transaction for linking
+        db.transactions.findMany({
+            where: {
+                user_id: userId,
+                recurring_transaction_id: { not: null }
+            },
+            orderBy: { date: 'desc' },
+            distinct: ['recurring_transaction_id'],
+            select: {
+                id: true,
+                recurring_transaction_id: true
+            }
         })
     ]);
+
+    // Create a map of recurring transaction ID to actual transaction ID
+    const recurringToTransactionMap = new Map<number, number>();
+    for (const t of upcomingTransactionLinks) {
+        if (t.recurring_transaction_id) {
+            recurringToTransactionMap.set(t.recurring_transaction_id, t.id);
+        }
+    }
 
     // Map and filter upcoming until first salary
     const upcomingPayments = [];
@@ -99,12 +120,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         nextDate.setHours(0, 0, 0, 0);
         const daysUntil = Math.floor((nextDate.getTime() - simulatedToday.getTime()) / (1000 * 60 * 60 * 24));
 
+        // Skip payments that are in the past (negative days)
+        if (daysUntil < 0) continue;
+
         const daysLabel = daysUntil === 0 ? 'vandaag' :
             daysUntil === 1 ? 'morgen' :
                 `over ${daysUntil} dagen`;
 
         upcomingPayments.push({
             id: rt.id,
+            transactionId: recurringToTransactionMap.get(rt.id) || null,
             merchant: rt.merchants?.name || rt.name,
             subtitle: daysLabel,
             amount: Number(rt.amount),

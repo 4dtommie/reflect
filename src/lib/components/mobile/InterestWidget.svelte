@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Card from './Card.svelte';
 	import WidgetHeader from './WidgetHeader.svelte';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 	import Amount from './Amount.svelte';
 	import { PiggyBank, Sparkles } from 'lucide-svelte';
 
@@ -19,8 +19,10 @@
 		bonusAmount = 5.25
 	}: Props = $props();
 
-	const theme = $derived($mobileTheme);
-	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 </script>
 
 <section class="mt-6 mb-6">

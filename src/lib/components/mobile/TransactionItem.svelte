@@ -44,7 +44,8 @@
 		amount: number;
 		isDebit: boolean;
 		categoryIcon: string | null;
-		compact?: boolean; // If true, subtitle is smaller (text-xs) vs text-sm
+		/** Size variant: sm (compact list), md (standard), lg (featured) */
+		size?: 'sm' | 'md' | 'lg';
 		fontHeading?: boolean; // If true, amount uses heading font
 		useLogo?: boolean; // If true, attempts to show merchant logo
 		showSubtitle?: boolean; // If false, hides the subtitle
@@ -65,7 +66,7 @@
 		amount,
 		isDebit,
 		categoryIcon,
-		compact = false,
+		size = 'md',
 		fontHeading = false,
 		useLogo = false,
 		showSubtitle = true,
@@ -120,16 +121,36 @@
 	}
 
 	// Extract time (HH:MM) from text (description or subtitle). Fallback to date.
+	// Returns empty string if time is 00:00 or not found
 	function extractTimeFromText(desc?: string, d?: string) {
+		let time = '';
 		if (desc) {
 			const match = desc.match(/(\b[0-2]?\d:[0-5]\d\b)/);
-			if (match) return match[1];
+			if (match) time = match[1];
 		}
-		if (d) {
+		if (!time && d) {
 			const dt = new Date(d);
-			if (!isNaN(dt.getTime())) return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			if (!isNaN(dt.getTime())) time = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 		}
-		return '';
+		// Skip if time is empty or midnight (00:00)
+		if (!time || time === '00:00') return '';
+		return time;
+	}
+
+	// Format date as "vandaag", "gisteren", or "3 feb" etc.
+	function formatDateLabel(d?: string) {
+		if (!d) return '';
+		const dt = new Date(d);
+		if (isNaN(dt.getTime())) return '';
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const dateOnly = new Date(dt);
+		dateOnly.setHours(0, 0, 0, 0);
+		const diffDays = Math.round((today.getTime() - dateOnly.getTime()) / (1000 * 60 * 60 * 24));
+		if (diffDays === 0) return 'vandaag';
+		if (diffDays === 1) return 'gisteren';
+		const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+		return `${dt.getDate()} ${months[dt.getMonth()]}`;
 	}
 </script>
 
@@ -150,7 +171,7 @@
 		{/if}
 		<div class="flex min-w-0 flex-col pr-4">
 			<div
-				class="flex items-center gap-2 {compact
+				class="flex items-center gap-2 {size === 'sm'
 					? 'text-sm'
 					: 'text-base'}"
 			>
@@ -161,11 +182,15 @@
 			</div>
 			{#if showSubtitle}
 				{#if designVariant === 'original'}
-					<div class="truncate text-xs font-normal text-gray-800 dark:text-gray-400">
-						{date ? new Date(date).toLocaleDateString() : ''}
-						{#if extractTimeFromText(description, date)}
-							<span class="mx-1">·</span>
-							<span>{extractTimeFromText(description, date)}</span>
+					<div class="truncate text-sm font-normal text-gray-800 dark:text-gray-400">
+						{#if date && formatDateLabel(date)}
+							{formatDateLabel(date)}
+							{#if extractTimeFromText(description, date)}
+								<span class="mx-1">·</span>
+								<span>{extractTimeFromText(description, date)}</span>
+							{/if}
+						{:else}
+							{subtitle}
 						{/if}
 					</div>
 				{:else}
@@ -184,8 +209,7 @@
 		>
 			<Amount
 				{amount}
-				size={compact ? 'sm' : 'md'}
-				flat={compact}
+				{size}
 				class={fontHeading
 					? 'font-heading'
 					: '' + (isDebit === false ? ' !text-green-800 dark:!text-green-400' : '')}

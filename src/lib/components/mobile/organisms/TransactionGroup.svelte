@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import Card from '$lib/components/mobile/Card.svelte';
 	import { Badge } from '$lib/components/mobile/atoms';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface TransactionGroupData {
 		dateLabel: string;
@@ -20,8 +20,10 @@
 
 	let { group, children, class: className = '' }: Props = $props();
 
-	const theme = $derived($mobileTheme);
-	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 </script>
 
 <section class={className}>

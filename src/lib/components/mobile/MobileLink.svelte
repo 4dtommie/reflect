@@ -16,7 +16,7 @@
 
 	const mobileDepthMap: Record<string, number> = {
 		'/mobile': 0,
-		'/mobile/transactions': 1
+		'/mobile/product-details': 1
 	};
 
 	function getDepth(path: string): number {

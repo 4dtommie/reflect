@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	// Use a permissive type for icons to support Lucide components
 	type IconComponent = Component<any> | (new (...args: any[]) => any) | ((...args: any[]) => any);
@@ -27,76 +27,48 @@
 
 	let { actions, class: className = '' }: Props = $props();
 
-	// Get theme config
-	const theme = $derived($mobileTheme);
-	const buttonConfig = $derived(theme.actionButtons);
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
 
-	// Compute button classes based on theme
-	const getButtonClasses = $derived.by(() => {
-		return (action: ActionButton) => {
-			const classes = ['flex items-center justify-center gap-2 transition-all active:scale-95'];
+	// Compute button classes based on theme and action type
+	function getButtonClasses(action: ActionButton): string {
+		const classes = ['flex items-center justify-center gap-2 transition-all active:scale-95'];
 
-			// Shape
-			if (buttonConfig.shape === 'pill') {
-				classes.push('rounded-full');
-			} else {
-				classes.push('rounded-xl');
-			}
+		if (isOriginal) {
+			// NN Original: pill buttons, md size
+			classes.push('rounded-full');
+			classes.push('h-9 px-4');
+		} else {
+			// Improved: square buttons, sm size
+			classes.push('rounded-xl');
+			classes.push('h-10 px-4');
+		}
 
-			// Size
-			if (buttonConfig.size === 'sm') {
-				classes.push('h-10 px-4');
-			} else {
-				classes.push('h-9 px-4');
-			}
+		// Primary vs secondary vs tertiary styling
+		if (action.primary) {
+			classes.push('bg-mediumOrange-600 text-white shadow-sm');
+		} else if (action.tertiary) {
+			classes.push('bg-white dark:bg-gray-1100 shadow-sm');
+			classes.push(isOriginal ? 'w-9 !px-0' : 'w-10 !px-0');
+		} else {
+			classes.push('bg-white dark:bg-gray-1100 shadow-sm');
+		}
 
-			// Primary vs secondary vs tertiary styling
-			if (action.primary) {
-				classes.push('bg-mediumOrange-600 text-white shadow-sm');
-			} else if (action.tertiary) {
-				classes.push('bg-white dark:bg-gray-1100 shadow-sm');
-				if (buttonConfig.size === 'sm') {
-					classes.push('w-10 !px-0'); // Square for tertiary
-				} else {
-					classes.push('w-9 !px-0');
-				}
-			} else {
-				classes.push('bg-white dark:bg-gray-1100 shadow-sm');
-			}
+		return classes.join(' ');
+	}
 
-			return classes.join(' ');
-		};
-	});
+	function getIconClasses(action: ActionButton): string {
+		return action.primary ? 'h-4 w-4 text-white' : 'h-4 w-4 text-mediumOrange-600';
+	}
 
-	const getIconClasses = $derived.by(() => {
-		return (action: ActionButton) => {
-			const classes = ['h-4 w-4'];
-
-			if (action.primary) {
-				classes.push('text-white');
-			} else {
-				classes.push('text-mediumOrange-600');
-			}
-
-			return classes.join(' ');
-		};
-	});
-
-	const getLabelClasses = $derived.by(() => {
-		return (action: ActionButton) => {
-			const classes = ['font-heading text-sm font-semibold'];
-
-			if (action.primary) {
-				classes.push('text-white');
-			} else if (action.tertiary) {
-				classes.push('text-gray-500');
-			} else {
-				classes.push('text-gray-1000 dark:text-gray-200');
-			}
-
-			return classes.join(' ');
-		};
-	});
+	function getLabelClasses(action: ActionButton): string {
+		if (action.primary) {
+			return 'font-heading text-sm font-semibold text-white';
+		} else if (action.tertiary) {
+			return 'font-heading text-sm font-semibold text-gray-500';
+		}
+		return 'font-heading text-sm font-semibold text-gray-1000 dark:text-gray-200';
+	}
 </script>
 
 <div class="flex gap-2 {className}">

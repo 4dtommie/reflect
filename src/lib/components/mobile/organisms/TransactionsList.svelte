@@ -6,7 +6,7 @@
 	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import { TransactionListSkeleton, TransactionGroup } from '$lib/components/mobile/organisms';
-	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface UpcomingTransaction {
 		id?: string;
@@ -67,8 +67,10 @@
 		class: className = ''
 	}: Props = $props();
 
-	const theme = $derived($mobileTheme);
-	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 </script>
 
 <div class={className}>
@@ -97,11 +99,11 @@
 										amount={t.isDebit ? -t.amount : t.amount}
 										isDebit={t.isDebit}
 										categoryIcon={t.categoryIcon ?? null}
-										compact={false}
+										size="md"
 										fontHeading={true}
 										useLogo={true}
 										showChevron={showUpcomingChevron}
-										designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+										designVariant={isOriginal ? 'original' : 'redesign'}
 										date={t.nextDate ?? t.date}
 										description={t.subtitle}
 									/>
@@ -116,7 +118,7 @@
 										amount={t.isDebit ? -t.amount : t.amount}
 										isDebit={t.isDebit}
 										categoryIcon={t.categoryIcon ?? null}
-										compact={false}
+										size="md"
 										fontHeading={true}
 										useLogo={true}
 									/>
@@ -143,9 +145,9 @@
 								amount={t.isDebit ? -t.amount : t.amount}
 								isDebit={t.isDebit}
 								categoryIcon={t.categoryIcon ?? null}
-								compact={false}
+								size="md"
 								showChevron={true}
-								designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+								designVariant={isOriginal ? 'original' : 'redesign'}
 								date={t.nextDate ?? t.date}
 								description={t.description ?? t.note ?? t.category}
 							/>

@@ -39,14 +39,12 @@
 	// Scroll progress for glassy transition (0 = at top, 1 = scrolled down)
 	const scrollProgress = $derived(Math.min($mobileScrollY / 60, 1));
 
-	// Interpolate color from sand-100 (#f3efed / rgb 243,239,237) at top to sand-50 (#faf9f8 / rgb 250,249,248) on scroll
-	// At top (scrollProgress=0): rgb(243,239,237) = sand-100 (darker)
-	// Scrolled (scrollProgress=1): rgb(250,249,248) = sand-50 (lighter)
+	// Interpolate color from sand-100 to sand-50 on scroll
 	const r = $derived(Math.round(243 + (250 - 243) * scrollProgress));
 	const g = $derived(Math.round(239 + (249 - 239) * scrollProgress));
 	const b = $derived(Math.round(237 + (248 - 237) * scrollProgress));
-	const blurAmount = $derived(scrollProgress * 12); // 0 to 12px blur
-	const bgOpacity = $derived(1 - scrollProgress * 0.15); // 1 to 0.85 opacity for frosted effect
+	const blurAmount = $derived(scrollProgress * 12);
+	const bgOpacity = $derived(1 - scrollProgress * 0.15);
 
 	// Simple theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
@@ -72,7 +70,6 @@
 		}
 	});
 
-	// Persist widgetStyle when navigating back
 	const backLink = '/mobile';
 
 	// Loading state for skeleton
@@ -80,17 +77,13 @@
 	let lastLoaded = $state<Record<number, number>>({});
 
 	$effect(() => {
-		// Check if we loaded this index recently (last 60s)
 		const lastTime = lastLoaded[carouselIndex];
 		const now = Date.now();
 
 		if (lastTime && now - lastTime < 60000) {
-			// Recently loaded, show immediately
 			isLoading = false;
 		} else {
-			// Not loaded recently, show skeleton
 			isLoading = true;
-			// Random delay between 300ms and 1000ms
 			const delay = Math.floor(Math.random() * 700) + 300;
 			setTimeout(() => {
 				isLoading = false;
@@ -113,7 +106,7 @@
 	{:else if currentLayout === 'C'}
 		<LayoutC {data} />
 	{:else}
-		<!-- Header (Now at top level for full-width landscape) -->
+		<!-- Header -->
 		<header
 			class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
 			style="
@@ -124,9 +117,7 @@
 				transform: translateZ(0);
 			"
 		>
-			<div
-				class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0"
-			>
+			<div class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0">
 				<MobileLink
 					href={backLink}
 					class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
@@ -143,75 +134,9 @@
 		<div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
 			<!-- Account Cards Section (Portrait Only) -->
 			{#if isOriginal}
-				<!-- Original Theme: Single product card with IBAN and action buttons -->
-				{@const currentAccount = accounts[carouselIndex]}
-				<div class="w-full rounded-b-3xl bg-sand-100 px-4 pt-0 pb-4 landscape:hidden">
-					<Card padding="p-0">
-						<!-- Account info row -->
-						<div class="flex items-center gap-3 px-4 py-4">
-							<div class="relative flex h-11 w-11 shrink-0 items-center justify-center">
-								{#if currentAccount?.type === 'savings'}
-									<PiggyBank class="h-7 w-7 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-								{:else}
-									<CreditCard class="h-7 w-7 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
-								{/if}
-								<div class="absolute -right-0.5 -bottom-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-mediumOrange-500 text-[9px] font-bold text-white ring-[1.5px] ring-white dark:ring-gray-900">
-									N
-								</div>
-							</div>
-							<div class="flex min-w-0 flex-1 flex-col gap-0.5">
-								<div class="text-base font-normal text-gray-1000 dark:text-white">
-									{currentAccount?.name || 'Rekening'}
-								</div>
-								<div class="text-[14px] font-normal text-gray-800 dark:text-gray-400">
-									NL31 NNBA 1000 0006 45
-								</div>
-							</div>
-							<Amount
-								amount={currentAccount?.balance || 0}
-								size="sm"
-								class="text-base !font-bold !text-gray-1000 dark:!text-white"
-								showSign={false}
-								showSymbol={true}
-							/>
-						</div>
-
-						<!-- Action buttons bar -->
-						<div class="flex items-stretch border-t border-gray-100 px-2 dark:border-gray-800 !bg-white rounded-b-[4px]">
-							<button
-								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
-							>
-								<ArrowUpRight class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Overmaken</span>
-							</button>
-							<div class="flex items-center py-3">
-								<div class="h-full w-px bg-gray-100 dark:bg-gray-700"></div>
-							</div>
-							<button
-								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
-							>
-								<ArrowDownLeft class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Betaalverzoek</span>
-							</button>
-							<div class="flex items-center py-3">
-								<div class="h-full w-px bg-gray-100 dark:bg-gray-700"></div>
-							</div>
-							<button
-								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
-							>
-								<Menu class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Meer</span>
-							</button>
-						</div>
-					</Card>
-				</div>
-			{:else}
-				<!-- Improved Theme: Carousel of account cards -->
+				<!-- Original Theme: Carousel of cards with buttons inside (matches homepage betaalsaldo) -->
 				<div
-					class="w-full bg-sand-100 pt-0 pb-3 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
+					class="w-full bg-sand-100 pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
 					accounts.length - 1
 						? 'rounded-br-3xl'
 						: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
@@ -224,9 +149,54 @@
 						gap={12}
 					>
 						{#each accounts as account (account.id)}
-							<AccountCard name={account.name} balance={account.balance} type={account.type} />
+							<AccountCard name={account.name} balance={account.balance} type={account.type} variant="original" />
 						{/each}
 					</HorizontalCarousel>
+				</div>
+			{:else}
+				<!-- Improved Theme: Carousel of account cards with huge amount and buttons outside -->
+				<div
+					class="w-full bg-sand-100 pt-0 pb-0 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
+					accounts.length - 1
+						? 'rounded-br-3xl'
+						: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
+				>
+					<HorizontalCarousel
+						bind:currentIndex={carouselIndex}
+						showIndicators={false}
+						itemCount={accounts.length}
+						cardWidth={310}
+						gap={12}
+					>
+						{#each accounts as account (account.id)}
+							<AccountCard name={account.name} balance={account.balance} type={account.type} variant="redesign-huge" />
+						{/each}
+					</HorizontalCarousel>
+				</div>
+				
+				<!-- Action buttons outside the card for redesign -->
+				<div class="flex gap-2 px-4 pt-3 pb-5">
+					<button
+						class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-mediumOrange-600 px-4 text-white shadow-sm transition-all active:scale-95"
+						aria-label="Primary action"
+					>
+						<ArrowUp class="h-4 w-4 text-white" strokeWidth={2.2} />
+						<span class="font-heading text-sm font-semibold">{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span>
+					</button>
+					<button
+						class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-white px-4 shadow-sm transition-all active:scale-95"
+						aria-label="Secondary action"
+					>
+						<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.2} />
+						<span class="font-heading text-sm font-semibold text-gray-700">{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span>
+					</button>
+					<button
+						class="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white px-3 shadow-sm transition-all active:scale-95"
+						aria-label="More actions"
+					>
+						<Menu class="h-4 w-4 text-gray-500" strokeWidth={2} />
+						<span class="font-heading text-sm font-semibold text-gray-500">Meer</span>
+					</button>
 				</div>
 			{/if}
 
@@ -234,28 +204,18 @@
 			<div class="sidebar-account-list hidden landscape:block">
 				<WidgetHeader title="Vermogen" class="mb-3" />
 				<Card padding="p-0">
-					<!-- Accounts List -->
 					<div class="flex flex-col">
 						{#each accounts as account, i}
 							<button
 								onclick={() => (carouselIndex = i)}
-								class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {carouselIndex ===
-								i
-									? 'active-account-row bg-black/5 dark:bg-white/10'
-									: ''}"
+								class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {carouselIndex === i ? 'active-account-row bg-black/5 dark:bg-white/10' : ''}"
 							>
 								<div class="flex min-w-0 flex-1 items-center gap-3">
 									<div class="relative shrink-0">
 										{#if account.type === 'savings'}
-											<PiggyBank
-												class="h-5 w-5 text-gray-800 dark:text-gray-200"
-												strokeWidth={1.5}
-											/>
+											<PiggyBank class="h-5 w-5 text-gray-800 dark:text-gray-200" strokeWidth={1.5} />
 										{:else}
-											<CreditCard
-												class="h-5 w-5 text-gray-800 dark:text-gray-200"
-												strokeWidth={1.5}
-											/>
+											<CreditCard class="h-5 w-5 text-gray-800 dark:text-gray-200" strokeWidth={1.5} />
 										{/if}
 									</div>
 									<div class="flex min-w-0 flex-1 flex-col overflow-hidden text-left">
@@ -276,29 +236,17 @@
 							</button>
 						{/each}
 					</div>
-
-					<!-- Action Buttons Footer -->
 					<div class="p-4 pt-2">
 						<div class="flex gap-2">
-							<button
-								class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-3 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-							>
+							<button class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-3 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900">
 								<ArrowUp class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-								<span class="font-heading text-xs font-semibold text-gray-700 dark:text-gray-200"
-															>{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span
-								>
+								<span class="font-heading text-xs font-semibold text-gray-700 dark:text-gray-200">{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span>
 							</button>
-							<button
-								class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-3 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-							>
+							<button class="dark:bg-gray-1100 flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-sand-100 px-3 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900">
 								<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
-								<span class="font-heading text-xs font-semibold text-gray-700 dark:text-gray-200"
-									>{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span
-								>
+								<span class="font-heading text-xs font-semibold text-gray-700 dark:text-gray-200">{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span>
 							</button>
-							<button
-								class="dark:bg-gray-1100 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-sand-100 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900"
-							>
+							<button class="dark:bg-gray-1100 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-sand-100 transition-all active:scale-95 active:bg-sand-200 dark:active:bg-gray-900">
 								<Menu class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.5} />
 							</button>
 						</div>
@@ -308,18 +256,14 @@
 		</div>
 
 		<!-- Content: Transactions List -->
-		<div
-			class="dashboard-main bg-sand-50 px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8"
-		>
+		<div class="dashboard-main bg-sand-50 px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8">
 			{#if accounts[carouselIndex]?.name === 'Internetsparen'}
 				{#if isLoading}
-					<!-- [Skeleton code...] -->
 					<div class="animate-pulse">
 						<WidgetHeader title="Betalingen" class="mb-3">
 							<div class="h-4 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
 						</WidgetHeader>
 						<Card padding="p-0" class="mb-6">
-							<!-- ... existing skeleton content ... -->
 							<div class={dividerClasses}>
 								<div class="flex items-center gap-3 px-4 py-3">
 									<div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-800"></div>
@@ -333,7 +277,6 @@
 						</Card>
 					</div>
 				{:else}
-					<!-- Savings Transactions -->
 					<WidgetHeader title="Betalingen" class="mb-3">
 						<WidgetAction label="Bekijk alles" />
 					</WidgetHeader>
@@ -369,45 +312,27 @@
 						</div>
 					</Card>
 
-					<!-- Interest Overview -->
 					<InterestWidget interestRate={2.1} interestAmount={14.5} bonusAmount={5.25} />
 
-					<!-- Savings Goals -->
 					<WidgetHeader title="Spaardoelen" class="mb-3" />
 
 					<Card padding="p-0" class="mb-6">
 						<div class={dividerClasses}>
-							<SavingsGoalItem
-								title="Nieuwe fiets"
-								saved={1500}
-								target={2000}
-								icon={Bike}
-								color="bg-blue-800"
-							/>
-							<SavingsGoalItem
-								title="Studie Jip"
-								saved={5500}
-								target={12000}
-								icon={GraduationCap}
-								color="bg-blue-800"
-							/>
+							<SavingsGoalItem title="Nieuwe fiets" saved={1500} target={2000} icon={Bike} color="bg-blue-800" />
+							<SavingsGoalItem title="Studie Jip" saved={5500} target={12000} icon={GraduationCap} color="bg-blue-800" />
 						</div>
 					</Card>
 
-					<button
-						class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-transparent py-4 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-50 active:scale-[0.99] dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-					>
+					<button class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-transparent py-4 text-sm font-semibold text-gray-600 transition-all hover:bg-gray-50 active:scale-[0.99] dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
 						<Plus class="h-5 w-5" />
 						Spaardoel toevoegen
 					</button>
 				{/if}
 			{:else if isLoading}
-				<!-- Payments Skeleton -->
 				<div class="animate-pulse">
 					<WidgetHeader title="Verwacht" class="mb-4">
 						<div class="h-4 w-20 rounded bg-gray-200 dark:bg-gray-800"></div>
 					</WidgetHeader>
-					<!-- ... existing payments skeleton ... -->
 					<Card padding="p-0" class="mb-6">
 						<div class={dividerClasses}>
 							{#each Array(2) as _}
@@ -428,30 +353,26 @@
 					</Card>
 				</div>
 			{:else}
-				<!-- Section Header -->
 				<WidgetHeader title="Verwacht" class="mb-4">
 					<WidgetAction
 						label="Kijk vooruit"
-						href="/mobile/kijk-vooruit?from=/mobile/transactions?accountIndex={carouselIndex}"
+						href="/mobile/kijk-vooruit?from=/mobile/product-details?accountIndex={carouselIndex}"
 					/>
 				</WidgetHeader>
 
-				<!-- Upcoming Transactions -->
 				<div class="mb-6">
 					{#if data.upcomingTransactions && data.upcomingTransactions.length > 0}
 						<Card padding="p-0">
 							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
-									<div
-										class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
-									>
+									<div class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50">
 										<TransactionItem
 											merchant={t.merchant}
 											subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
 											amount={t.isDebit ? -t.amount : t.amount}
 											isDebit={t.isDebit}
 											categoryIcon={t.categoryIcon}
-										size="md"
+											size="md"
 											fontHeading={true}
 											useLogo={true}
 											designVariant={isOriginal ? 'original' : 'redesign'}
@@ -464,7 +385,6 @@
 					{/if}
 				</div>
 
-				<!-- Transaction Groups -->
 				<div class="space-y-6">
 					{#each data.groupedTransactions as group}
 						<section>
@@ -476,9 +396,7 @@
 									</div>
 								{/if}
 								{#if group.outgoingCount > 1}
-									<div
-										class="rounded-md bg-gray-200/60 px-2 py-0.5 text-sm font-bold text-gray-700"
-									>
+									<div class="rounded-md bg-gray-200/60 px-2 py-0.5 text-sm font-bold text-gray-700">
 										{group.formattedOutgoing}
 									</div>
 								{/if}
@@ -496,7 +414,7 @@
 												amount={t.isDebit ? -t.amount : t.amount}
 												isDebit={t.isDebit}
 												categoryIcon={t.categoryIcon}
-											size="md"
+												size="md"
 												showChevron={true}
 												designVariant={isOriginal ? 'original' : 'redesign'}
 												date={t.date}

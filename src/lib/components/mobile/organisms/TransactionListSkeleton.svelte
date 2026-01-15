@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Card from '$lib/components/mobile/Card.svelte';
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	interface Props {
 		title?: string;
@@ -17,8 +17,10 @@
 		class: className = '' 
 	}: Props = $props();
 
-	const theme = $derived($mobileTheme);
-	const dividerClasses = $derived(theme.listItem.showDividers ? 'divide-y divide-gray-100 dark:divide-gray-800' : '');
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 </script>
 
 <div class="animate-pulse {className}">

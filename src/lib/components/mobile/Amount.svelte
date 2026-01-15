@@ -1,10 +1,15 @@
 <script lang="ts">
 	interface Props {
 		amount: number;
-		size?: 'sm' | 'md' | 'lg' | 'small' | 'large' | 'xl';
+		/** 
+		 * sm: 16px inline (no superscript decimals)
+		 * md: 16px main + 12px superscript decimals (for transaction lists)
+		 * lg: 20px main + 16px superscript decimals (for product cards)
+		 * huge: 24px main + 18px superscript decimals (for product detail headers)
+		 */
+		size?: 'sm' | 'md' | 'lg' | 'huge';
 		showSign?: boolean;
 		showSymbol?: boolean;
-		flat?: boolean;
 		class?: string;
 	}
 
@@ -13,64 +18,51 @@
 		size = 'md',
 		showSign = true,
 		showSymbol = false,
-		flat = false,
 		class: className = ''
 	}: Props = $props();
 
 	// Derived state
 	const isDebit = $derived(amount < 0);
 	const absAmount = $derived(Math.abs(amount));
-	const whole = $derived(Math.floor(absAmount).toLocaleString('nl-NL')); // Use locale for thousand separators
+	const whole = $derived(Math.floor(absAmount).toLocaleString('nl-NL'));
 	const cents = $derived(
 		Math.round((absAmount - Math.floor(absAmount)) * 100)
 			.toString()
 			.padStart(2, '0')
 	);
 
-	// Normalize size aliases to logical sizes and size configurations using semantic Tailwind sizes
-	const sizes = {
-		sm: {
-			wrap: 'text-sm',
-			signMargin: 'mr-0.5',
-			supMargin: '',
-			supSize: '!text-xs'
-		},
-		md: {
-			wrap: 'text-base',
-			signMargin: 'mr-0.5',
-			supMargin: 'ml-[2px] mt-[3px]',
-			supSize: '!text-xs'
-		},
-		lg: {
-			wrap: 'text-xl',
-			signMargin: 'mr-0.5',
-			supMargin: 'ml-[1px] mt-[3px]',
-			supSize: '!text-sm'
-		}
-	};
-
-	// Compute `s` directly so classes are plain strings in the DOM
-	const s = (() => {
-		const norm = size === 'small' || size === 'sm' ? 'sm' : size === 'large' || size === 'xl' ? 'lg' : 'md';
-		return sizes[norm];
-	})();
 	// Only apply color when showing sign (for transactions), otherwise inherit from parent
 	const colorClass = $derived(showSign ? (isDebit ? 'text-gray-1000' : 'text-green-600') : '');
 </script>
 
-<div class="inline-flex items-baseline font-bold {colorClass} {s.wrap} {className}">
+<div class="inline-flex items-baseline font-bold {colorClass} {className}">
 	{#if showSymbol}
 		<span class="mr-1">€</span>
 	{/if}
 	{#if showSign}
-		<span class={s.signMargin}>{isDebit ? '-' : '+'}</span>
+		<span class="mr-0.5">{isDebit ? '-' : '+'}</span>
 	{/if}
-	{#if flat}
-		<span>{whole},{cents}</span>
+	
+	{#if size === 'sm'}
+		<!-- Small size: 16px, all inline -->
+		<span style="font-size: 16px;">{whole},{cents}</span>
+	{:else if size === 'md'}
+		<!-- Medium size: 16px main + 12px superscript decimals -->
+		<div class="flex items-start">
+			<span style="font-size: 16px;">{whole}</span>
+			<span class="ml-[2px] mt-[3px] leading-none" style="font-size: 12px;">,{cents}</span>
+		</div>
+	{:else if size === 'lg'}
+		<!-- Large size: 20px main + 16px superscript decimals -->
+		<div class="flex items-start">
+			<span style="font-size: 20px;">{whole}</span>
+			<span class="ml-[1px] mt-[3px] leading-none" style="font-size: 16px;">,{cents}</span>
+		</div>
 	{:else}
-		<div class="flex {size === 'sm' ? 'items-baseline' : 'items-start'}">
-			{whole}
-			<span class="{s.supMargin} {s.supSize} leading-none" style="font-size: {s.supSize === '!text-xs' || s.supSize === 'text-xs' ? '12px' : s.supSize === '!text-sm' || s.supSize === 'text-sm' ? '14px' : '12px'}">,{cents}</span>
+		<!-- Huge size: 32px main + 20px superscript decimals (adjusted) -->
+		<div class="flex items-start">
+			<span style="font-size: 32px; line-height:1">{whole}</span>
+			<span class="ml-[1px] leading-none" style="font-size: 16px; line-height:1; align-self:flex-start">,{cents}</span>
 		</div>
 	{/if}
 </div>

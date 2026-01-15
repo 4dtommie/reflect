@@ -129,7 +129,7 @@ export async function seedDatabase() {
 			{
 				name: 'Salaris',
 				description: 'Loon uit dienstverband of als zelfstandige',
-				color: '#6dab65',
+				color: '#f7c948',
 				icon: 'Briefcase',
 				is_default: true,
 				created_by: null,
@@ -160,11 +160,11 @@ export async function seedDatabase() {
 			]
 		);
 
-		const taxReturns = await createCategoryWithKeywords(
+        const taxReturns = await createCategoryWithKeywords(
 			{
-				name: 'Belastingteruggave & toeslagen',
-				description: 'Alleen positieve bedragen mbt belasting en subsidies (NIET: kinderopvangtoeslag of huurtoeslag, die gaan naar Kinderopvang en woning categorie)',
-				color: '#9bc595',
+			name: 'Belasting & toeslagen',
+			description: 'Alleen positieve bedragen mbt belasting en subsidies (NIET: kinderopvangtoeslag of huurtoeslag, die gaan naar Kinderopvang en woning categorie)',
+			color: '#f7c948',
 				icon: 'FileText',
 				is_default: true,
 				created_by: null,
@@ -209,7 +209,7 @@ export async function seedDatabase() {
 			{
 				name: 'Overig inkomen',
 				description: 'Divers inkomen, dit zal bijna niet voorkomen. Probeer eerst te kijken of het bijvoorbeeld een teruggave is voor de kleding categorie of vergelijkbare situaties.',
-				color: '#bad7b6',
+				color: '#f7c948',
 				icon: 'DollarSign',
 				is_default: true,
 				created_by: null,

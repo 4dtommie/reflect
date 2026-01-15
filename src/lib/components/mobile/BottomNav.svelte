@@ -2,6 +2,10 @@
 	import { BarChart3, LayoutGrid, MessageCircleQuestion, CircleUser, Home } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import MobileLink from './MobileLink.svelte';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
+
+	// Theme check for tab labels
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
 
 	let { isAtBottom = true } = $props();
 
@@ -9,8 +13,9 @@
 
 	const activeTab = $derived.by(() => {
 		if (currentPath === '/mobile') return 'home';
+		if (currentPath.startsWith('/mobile/products')) return 'producten';
 		if (currentPath.startsWith('/mobile/kijk-vooruit')) return 'producten';
-		if (currentPath.startsWith('/mobile/transactions')) return 'producten';
+		if (currentPath.startsWith('/mobile/product-details')) return 'producten';
 		if (currentPath.startsWith('/mobile/help')) return 'hulp';
 		if (currentPath.startsWith('/mobile/profile')) return 'profiel';
 		return 'home';
@@ -23,24 +28,33 @@
 	style="transform: translateZ(0);"
 >
 	<div class="nav-items flex h-[64px] w-full items-stretch">
-		<!-- Home Tab -->
+		<!-- Home/Inzicht Tab -->
 		<MobileLink
 			href="/mobile"
 			class="nav-item relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 		>
-			<Home
-				class="h-6 w-6 {activeTab === 'home'
-					? 'text-mediumOrange-500'
-					: 'text-gray-600 dark:text-gray-400'}"
-				strokeWidth={1.5}
-			/>
+			{#if isOriginal}
+				<BarChart3
+					class="h-6 w-6 {activeTab === 'home'
+						? 'text-mediumOrange-500'
+						: 'text-gray-600 dark:text-gray-400'}"
+					strokeWidth={1.5}
+				/>
+			{:else}
+				<Home
+					class="h-6 w-6 {activeTab === 'home'
+						? 'text-mediumOrange-500'
+						: 'text-gray-600 dark:text-gray-400'}"
+					strokeWidth={1.5}
+				/>
+			{/if}
 			<div class="relative">
 				<span
 					class="text-[12px] {activeTab === 'home'
 					? 'font-medium text-gray-1000 dark:text-white'
 					: 'font-normal text-gray-1000 dark:text-gray-400'}"
 				>
-					Home
+					{isOriginal ? 'Inzicht' : 'Home'}
 				</span>
 				{#if activeTab === 'home'}
 					<div
@@ -52,7 +66,7 @@
 
 		<!-- Producten Tab -->
 		<MobileLink
-			href="/mobile/kijk-vooruit"
+			href="/mobile/products"
 			class="nav-item relative flex flex-1 cursor-none flex-col items-center justify-center gap-0 py-2"
 		>
 			<LayoutGrid

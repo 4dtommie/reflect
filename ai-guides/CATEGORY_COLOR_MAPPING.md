@@ -39,7 +39,7 @@ Here's every category and its proposed color based on its logical group:
 | Category | Hex |
 |----------|-----|
 | Salaris | `#22c55e` |
-| Belastingteruggave & toeslagen | `#4ade80` |
+| Belasting & toeslagen | `#f7c948` |
 | Overig inkomen | `#86efac` |
 
 ### Eten & drinken (green)

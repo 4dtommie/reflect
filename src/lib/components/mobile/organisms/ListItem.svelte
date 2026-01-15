@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { ChevronRight } from 'lucide-svelte';
-	import { mobileTheme } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 	import MobileLink from '../MobileLink.svelte';
 
 	interface Props {
@@ -43,28 +43,24 @@
 		padding = 'px-4 py-3'
 	}: Props = $props();
 
-	// Get theme config
-	const theme = $derived($mobileTheme);
-	const listItemConfig = $derived(theme.listItem);
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
 
 	// Compute classes based on theme
 	const baseClasses = $derived.by(() => {
 		const classes = [padding];
 
-		if (listItemConfig.variant === 'block') {
+		if (!isOriginal) {
+			// Improved: block variant with individual card styling
 			classes.push('bg-white dark:bg-gray-1200 rounded-xl mb-2 last:mb-0 shadow-sm');
 		} else {
-			// flat variant - handled by parent dividers
+			// NN Original: flat variant - handled by parent dividers
 			classes.push('bg-white dark:bg-gray-1200');
 		}
 
 		if (!disabled) {
 			classes.push('transition-all active:scale-[0.99]');
-			if (listItemConfig.variant === 'block') {
-				classes.push('active:bg-gray-50 dark:active:bg-gray-1100');
-			} else {
-				classes.push('active:bg-gray-50 dark:active:bg-gray-1100');
-			}
+			classes.push('active:bg-gray-50 dark:active:bg-gray-1100');
 		}
 
 		if (active) {

@@ -16,7 +16,7 @@
 		RotateCw
 	} from 'lucide-svelte';
 	import { toggleProductEnabledAndRefresh, resetProducts, productsStore } from '$lib/mock/products';
-	import type { ThemeName } from '$lib/theme/themeConfig';
+	import type { ThemeName } from '$lib/stores/mobileTheme';
 
 	// Handle current theme (light/dark)
 	let currentTheme = $state<'nord' | 'nn-night'>('nord');
@@ -247,18 +247,6 @@
 						>
 							Redesign
 						</button>
-						<button
-							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'extreme'
-								? 'bg-slate-600 text-white shadow-sm'
-								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
-							onclick={() => {
-								designTheme = 'extreme';
-								localStorage.setItem('designTheme', designTheme);
-								updateIframeUrl();
-							}}
-						>
-							Extreme
-						</button>
 					</div>
 				</div>
 
@@ -380,13 +368,18 @@
 						</div>
 
 						<div class="flex items-center gap-2 border-l border-slate-700 px-2">
-							<span
-								class="font-mono text-[10px] font-bold whitespace-nowrap {offset !== 0
-									? 'text-primary'
-									: 'text-slate-500'}"
-							>
-								{offset > 0 ? '+' : ''}{offset}d
-							</span>
+							<div class="flex flex-col items-center">
+								<span
+									class="font-mono text-[10px] font-bold whitespace-nowrap {offset !== 0
+										? 'text-primary'
+										: 'text-slate-500'}"
+								>
+									{offset > 0 ? '+' : ''}{offset}d
+								</span>
+								<span class="text-[8px] text-slate-500 whitespace-nowrap">
+									{new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
+								</span>
+							</div>
 							<button
 								class="flex h-7 w-7 items-center justify-center rounded-md transition-all {isAutoPlaying
 									? 'bg-red-500 text-white'

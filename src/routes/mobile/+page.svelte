@@ -15,13 +15,16 @@
 
 	// New design system components
 	import { ProductWidget, ListItemGroup } from '$lib/components/mobile/organisms';
-	import { mobileTheme, mobileThemeName } from '$lib/stores/mobileTheme';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
 	// Data from server
 	let { data } = $props();
 
-	// Get current theme config
-	const theme = $derived($mobileTheme);
+	// Simple theme check
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+
+	// Current path to conditionally render widgets
+	const currentPath = $derived($page.url.pathname);
 
 	const layoutParam = $derived($page.url.searchParams.get('layout'));
 	let layout = $state<'default' | 'A' | 'B' | 'C'>('default');
@@ -52,14 +55,14 @@
 		emoticon = emoticons[Math.floor(Math.random() * emoticons.length)];
 	});
 
-	// Header title - theme aware (NN Original shows "Home", improved shows greeting)
+	// Header title - theme aware (NN Original shows "Inzicht", improved shows greeting)
 	const headerTitle = $derived(
-		theme.header.homeTitle ?? `Hi, ${data.userName} ${emoticon}`
+		isOriginal ? 'Inzicht' : `Hi, ${data.userName} ${emoticon}`
 	);
 
 	// Action buttons for products (theme-aware labels)
 	const productActions = $derived(
-		theme.productWidget.actionsPosition === 'classic'
+		isOriginal
 			? [
 					{ label: 'Overmaken', icon: ArrowUp, primary: true },
 					{ label: 'Betaalverzoek', icon: ArrowDown }
@@ -102,16 +105,18 @@
 		</div>
 	</MobileHeader>
 
-	<div class="dashboard-sidebar px-4 landscape:px-0">
-		<!-- Product Widget - theme aware (classic for NN, integrated for improved) -->
-		<ProductWidget
-			title={theme.productWidget.actionsPosition === 'classic' ? 'Betaalsaldo' : 'Vermogen'}
-			products={accounts}
-			actions={productActions}
-			linkBase="/mobile/transactions"
-			layoutParam={layout}
-		/>
-	</div>
+	{#if currentPath === '/mobile' || currentPath === '/mobile/'}
+		<div class="dashboard-sidebar px-4 landscape:px-0">
+			<!-- Product Widget - theme aware (classic for NN, integrated for improved) -->
+			<ProductWidget
+				title={isOriginal ? 'Betaalsaldo' : 'Vermogen'}
+				products={accounts}
+				actions={productActions}
+				linkBase="/mobile/product-details"
+				layoutParam={layout}
+			/>
+		</div>
+	{/if}
 
 	<div class="dashboard-main mt-6 space-y-6 px-4 landscape:mt-0 landscape:px-0">
 		<!-- Inzichten Carousel -->
@@ -122,7 +127,7 @@
 		<!-- Transacties - Using ListItemGroup with theme awareness -->
 		<ListItemGroup
 			title="Betalingen"
-			action={{ label: 'Bekijk alles', href: `/mobile/transactions${layout !== 'default' ? `?layout=${layout}` : ''}` }}
+			action={{ label: 'Bekijk alles', href: `/mobile/product-details${layout !== 'default' ? `?layout=${layout}` : ''}` }}
 		>
 			{#each data.transactions as t}
 				<MobileLink
@@ -135,10 +140,10 @@
 						amount={t.isDebit ? -t.amount : t.amount}
 						isDebit={t.isDebit}
 						categoryIcon={t.categoryIcon}
-						compact={true}
-						showSubtitle={$mobileThemeName === 'nn-original'}
+						size="md"
+						showSubtitle={isOriginal}
 						showChevron={true}
-						designVariant={$mobileThemeName === 'nn-original' ? 'original' : 'redesign'}
+						designVariant={isOriginal ? 'original' : 'redesign'}
 						date={t.date}
 						description={t.description ?? t.subline}
 					/>

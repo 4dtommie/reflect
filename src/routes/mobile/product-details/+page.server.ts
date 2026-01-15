@@ -2,20 +2,12 @@ import { db } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
 import { applyDateOffset, getOffsetFromUrl } from '$lib/server/utils/dateShifter';
 
-// Extract time from description field (e.g., "22:29" pattern)
-// Kept for backward compatibility or if needed later, but usage is changing.
-function extractTimeFromDescription(description: string | null): string | null {
-    if (!description) return null;
-    const timeMatch = description.match(/\b(\d{1,2}:\d{2})\b/);
-    return timeMatch ? timeMatch[1] : null;
-}
-
 export const load: PageServerLoad = async ({ locals, url }) => {
     const userId = locals.user?.id;
-    const manualOffset = getOffsetFromUrl(url); // Additional offset from UI controls
+    const manualOffset = getOffsetFromUrl(url);
 
     if (!userId) {
-        return { groupedTransactions: [], baseOffset: 0 };
+        return { groupedTransactions: [], upcomingTransactions: [], baseOffset: 0 };
     }
 
     // Find the latest transaction date
@@ -34,16 +26,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         latestDate.setHours(0, 0, 0, 0);
 
         const diffDays = Math.floor((today.getTime() - latestDate.getTime()) / (1000 * 60 * 60 * 24));
-        baseOffset = diffDays + 26; // Shifted 4 days back so salaries appear on 24th
+        baseOffset = diffDays + 26;
     }
 
-    // cutoffDate calculation for "Moving Curtain" logic:
-    // OriginalDate <= RealToday - baseOffset + manualOffset
+    // cutoffDate calculation for "Moving Curtain" logic
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - baseOffset + manualOffset);
     cutoffDate.setHours(23, 59, 59, 999);
 
-    // Fetch transactions (limit to 100 to cover enough history)
+    // Fetch transactions
     const transactions = await db.transactions.findMany({
         where: {
             user_id: userId,
@@ -62,15 +53,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         dateLabel: string;
         dateObj: Date;
         totalAmount: number;
+        totalIncoming: number;
+        totalOutgoing: number;
+        incomingCount: number;
+        outgoingCount: number;
         transactions: any[];
     }>();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Simulated Today for labelling "Vandaag"/"Gisteren" correctly
-    // If ManualOffset = 0, SimulatedToday = RealToday.
-    // If ManualOffset = 1, SimulatedToday = RealToday + 1.
     const simulatedToday = new Date(today);
     simulatedToday.setDate(simulatedToday.getDate() + manualOffset);
 
@@ -80,24 +72,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 
     for (const t of transactions) {
-        // Apply ONLY base offset for display (Fixed World)
         const originalDate = new Date(t.date);
         const date = applyDateOffset(originalDate, baseOffset);
 
-        date.setHours(0, 0, 0, 0); // Normalize time for grouping
+        date.setHours(0, 0, 0, 0);
         const dateKey = date.toISOString().split('T')[0];
 
         let group = groupedMap.get(dateKey);
 
         if (!group) {
-            // Determine Label
             let label = '';
             if (date.getTime() === simulatedToday.getTime()) {
                 label = 'Vandaag';
             } else if (date.getTime() === simulatedYesterday.getTime()) {
                 label = 'Gisteren';
             } else {
-                // E.g., "14 april"
                 label = `${date.getDate()} ${months[date.getMonth()]}`;
             }
 
@@ -114,7 +103,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
             groupedMap.set(dateKey, group);
         }
 
-        // Add to group
         const amount = Number(t.amount);
         const signedAmount = t.is_debit ? -amount : amount;
         group.totalAmount += signedAmount;
@@ -128,7 +116,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
             group.outgoingCount++;
         }
 
-        // Map transaction data
         group.transactions.push({
             id: t.id,
             merchant: t.merchants?.name || t.cleaned_merchant_name || t.merchantName,
@@ -139,7 +126,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         });
     }
 
-    // Convert map to array and sort by date descending
     const groupedTransactions = Array.from(groupedMap.values())
         .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
         .map(g => ({
@@ -151,16 +137,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
             outgoingCount: g.outgoingCount
         }));
 
-    // --- Upcoming Transactions Logic ---
-    // Fetch upcoming recurring transactions (those masked by the "Time Curtain" as future)
-    // We look for actual transactions that are > cutoffDate and are recurring.
+    // Upcoming Transactions
     const rawUpcoming = await db.transactions.findMany({
         where: {
             user_id: userId,
-            date: { gt: cutoffDate }, // Strictly after simulated today
-            recurring_transaction_id: { not: null } // Only recurring ones
+            date: { gt: cutoffDate },
+            recurring_transaction_id: { not: null }
         },
-        orderBy: { date: 'asc' }, // Closest future date first
+        orderBy: { date: 'asc' },
         take: 2,
         include: {
             categories: true,
@@ -173,10 +157,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         const originalDate = new Date(t.date);
         const displayedCurrentDate = applyDateOffset(originalDate, baseOffset);
 
-        // Calculate "over X dagen"
-        // diff = displayedDate - simulatedToday
-        // Note: simulatedToday is normalized to 00:00:00. 
-        // We should normalize displayedCurrentDate to 00:00:00 for accurate day diff.
         const dDate = new Date(displayedCurrentDate);
         dDate.setHours(0, 0, 0, 0);
 

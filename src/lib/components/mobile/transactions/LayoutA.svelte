@@ -202,9 +202,9 @@
 </header>
 
 <div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
-	<!-- Account Cards Carousel (Portrait Only) -->
+	<!-- Account Cards Carousel (Portrait Only) - with buttons inside cards -->
 		<div
-			class="w-full bg-sand-100 pt-0 pb-3 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
+			class="w-full bg-sand-100 pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
 			accounts.length - 1
 				? 'rounded-br-3xl'
 				: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
@@ -216,42 +216,10 @@
 			cardWidth={310}
 			gap={12}
 		>
-			{#each accounts as account, i (account.id)}
-				<AccountCard name={account.name} balance={account.balance} type={account.type} isJoint={i === 0} />
-			{/each}
+				{#each accounts as account, i (account.id)}
+					<AccountCard name={account.name} balance={account.balance} type={account.type} isJoint={i === 0} variant="carousel-buttons" />
+				{/each}
 		</HorizontalCarousel>
-	</div>
-
-	<!-- Floating control bar: pills directly on background -->
-	<div class="flex gap-2 px-4 pt-3 pb-5">
-		<!-- Primary action: filled pill (Betalen / Opnemen) -->
-		<button
-			class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-mediumOrange-600 px-4 text-white shadow-sm transition-all active:scale-95"
-			onclick={() => { /* placeholder primary action */ }}
-			aria-label="Primary action"
-		>
-			<ArrowUp class="h-4 w-4 text-white" strokeWidth={2.2} />
-			<span class="font-heading text-sm font-semibold">{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span>
-		</button>
-
-		<!-- Secondary action: ghost pill (Verzoek / Storten) -->
-		<button
-			class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-white px-4 shadow-sm transition-all active:scale-95"
-			onclick={() => { /* placeholder secondary action */ }}
-			aria-label="Secondary action"
-		>
-			<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.2} />
-			<span class="font-heading text-sm font-semibold text-gray-700">{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span>
-		</button>
-
-		<!-- Tertiary: more / overflow with label -->
-		<button
-			class="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white px-3 shadow-sm transition-all active:scale-95"
-			aria-label="More actions"
-		>
-			<Menu class="h-4 w-4 text-gray-500" strokeWidth={2} />
-			<span class="font-heading text-sm font-semibold text-gray-500">Meer</span>
-		</button>
 	</div>
 
 	<!-- Interactive Vermogen Card (Landscape Only) -->
@@ -350,7 +318,7 @@
 		<WidgetHeader title="Verwacht" class="mb-4">
 			<WidgetAction
 				label="Kijk vooruit"
-				href="/mobile/kijk-vooruit?from=/mobile/transactions?accountIndex={carouselIndex}"
+				href="/mobile/kijk-vooruit?from=/mobile/product-details?accountIndex={carouselIndex}"
 			/>
 		</WidgetHeader>
 
@@ -370,7 +338,7 @@
 									amount={t.isDebit ? -t.amount : t.amount}
 									isDebit={t.isDebit}
 									categoryIcon={t.categoryIcon}
-									compact={false}
+									size="md"
 									fontHeading={true}
 									useLogo={true}
 									showChevron={true}
@@ -412,7 +380,7 @@
 										amount={t.isDebit ? -t.amount : t.amount}
 										isDebit={t.isDebit}
 										categoryIcon={t.categoryIcon}
-										compact={false}
+										size="md"
 										showChevron={true}
 									/>
 								</MobileLink>
