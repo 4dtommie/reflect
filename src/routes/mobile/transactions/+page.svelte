@@ -51,12 +51,8 @@
 	// Simple theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
 	const isRebrand = $derived($mobileThemeName === 'rebrand');
-	// Theme-aware dividers (original shows no dividers, rebrand uses white, improved uses gray)
-	const dividerClasses = $derived.by(() => {
-		if (isOriginal) return '';
-		if (isRebrand) return 'divide-y divide-white/30';
-		return 'divide-y divide-gray-100 dark:divide-gray-800';
-	});
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 
 	import { productsStore, type Product } from '$lib/mock/products';
 
@@ -122,7 +118,7 @@
 		<header
 			class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
 			style="
-				background-color: {isRebrand ? 'rgb(200, 225, 235)' : `rgba(${r}, ${g}, ${b}, ${bgOpacity})`} ;
+				background-color: rgba({r}, {g}, {b}, {bgOpacity});
 				backdrop-filter: blur({blurAmount}px);
 				-webkit-backdrop-filter: blur({blurAmount}px);
 				box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
@@ -447,7 +443,7 @@
 							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
 									<div
-										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
+										class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 									>
 										<TransactionItem
 											merchant={t.merchant}
@@ -492,7 +488,7 @@
 									{#each group.transactions as t}
 										<MobileLink
 											href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
+											class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 										>
 											<TransactionItem
 												merchant={t.merchant}

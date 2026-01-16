@@ -8,7 +8,6 @@
 	import HorizontalCarousel from '../HorizontalCarousel.svelte';
 	import ActionButtonGroup from './ActionButtonGroup.svelte';
 	import WidgetHeader from '../WidgetHeader.svelte';
-	import { getProductDisplayName } from '$lib/mock/products';
 
 	// Use a permissive type for icons to support Lucide components
 	type IconComponent = Component<any> | (new (...args: any[]) => any) | ((...args: any[]) => any);
@@ -62,11 +61,6 @@
 	// Theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
 	const isRebrand = $derived($mobileThemeName === 'rebrand');
-
-	// Get display name (custom or original)
-	function getDisplayName(product: Product): string {
-		return getProductDisplayName(product as any);
-	}
 
 	// Get icon for product type
 	function getProductIcon(type: Product['type']) {
@@ -122,7 +116,7 @@
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 						<div class="text-base font-normal text-gray-1000 dark:text-white">
-							{getDisplayName(product)}
+							{product.name}
 						</div>
 						<div class="text-[14px] font-normal text-gray-800 dark:text-gray-400">
 							NL31 NNBA 1000 0006 45
@@ -146,7 +140,7 @@
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 							<div class="text-base font-normal text-gray-1000 dark:text-white">
-								{getDisplayName(product)}
+								{product.name}
 							</div>
 							<div class="text-[14px] font-normal text-gray-800 dark:text-gray-400">
 								NL31 NNBA 1000 0006 45
@@ -199,23 +193,23 @@
 					{#if linkBase}
 						<MobileLink
 							href={buildLink(i)}
-							class="flex items-center justify-between px-4 py-2.5 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
+							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
 						>
 							<div class="flex items-center gap-3">
-								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {isRebrand ? 'bg-white/80' : 'bg-sand-100 dark:bg-gray-800'}">
+								<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sand-100 dark:bg-gray-800">
 									<ProductIcon
-										class="h-4 w-4 text-gray-600 dark:text-gray-400"
+										class="h-5 w-5 text-gray-600 dark:text-gray-400"
 										strokeWidth={1.5}
 									/>
 								</div>
 								<span class="truncate text-base font-normal text-gray-1000 dark:text-white">
-								{getDisplayName(product)}
+									{product.name}
 								</span>
 							</div>
 							<div class="flex shrink-0 items-center gap-1">
 								<Amount
 									amount={product.balance}
-									size="sm"
+									size="md"
 									class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
 									showSign={false}
 									showSymbol={true}
@@ -227,22 +221,22 @@
 						<button
 							type="button"
 							onclick={() => handleSelect(i)}
-							class="flex items-center justify-between px-4 py-2.5 transition-all active:scale-[0.99] {selectedIndex === i ? 'bg-black/5 dark:bg-white/10' : ''}"
+							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {selectedIndex === i ? 'bg-black/5 dark:bg-white/10' : ''}"
 						>
 							<div class="flex items-center gap-3 text-left">
-								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {isRebrand ? 'bg-white/80' : 'bg-sand-100 dark:bg-gray-800'}">
+								<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sand-100 dark:bg-gray-800">
 									<ProductIcon
-										class="h-4 w-4 text-gray-600 dark:text-gray-400"
+										class="h-5 w-5 text-gray-600 dark:text-gray-400"
 										strokeWidth={1.5}
 									/>
 								</div>
 								<span class="truncate text-base font-normal text-gray-1000 dark:text-white">
-									{getDisplayName(product)}
+									{product.name}
 								</span>
 							</div>
 							<Amount
 								amount={product.balance}
-								size="sm"
+								size="md"
 								class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
 								showSign={false}
 								showSymbol={true}

@@ -46,44 +46,4 @@
 	</div>
 {/if}
 
-<style>
-	.card-glassy {
-		position: relative;
-		background: rgba(255, 255, 255, 0.75);
-		backdrop-filter: blur(20px) saturate(1.8);
-		-webkit-backdrop-filter: blur(20px) saturate(1.8);
-		border: 1px solid rgba(255, 255, 255, 0.6);
-		box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
-	}
-
-	.card-glassy.glassy-enabled {
-		background: rgba(255, 255, 255, 0.7);
-	}
-
-	/* SVG filter noise distortion overlay */
-	.noise-overlay {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		opacity: 0.15;
-		pointer-events: none;
-		z-index: 2;
-		background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-		background-repeat: repeat;
-		background-size: 150px 150px;
-		mix-blend-mode: overlay;
-	}
-
-	/* Dark mode adjustments */
-	:global(.dark) .card-glassy {
-		background: rgba(30, 30, 30, 0.5);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
-	}
-
-	:global(.dark) .noise-overlay {
-		opacity: 0.1;
-	}
-</style>
+<!-- Styles are centralized in mobile.css -->

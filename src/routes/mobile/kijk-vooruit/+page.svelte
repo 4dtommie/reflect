@@ -4,9 +4,9 @@ import Card from '$lib/components/mobile/Card.svelte';
 import Amount from '$lib/components/mobile/Amount.svelte';
 import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
-import PeriodChart from '$lib/components/mobile/PeriodChart.svelte';
 import BottomSheet from '$lib/components/mobile/BottomSheet.svelte';
 import MerchantLogo from '$lib/components/MerchantLogo.svelte';
+import PeriodChart from '$lib/components/mobile/PeriodChart.svelte';
 import { ArrowLeft, Menu, Plus, Calendar, Repeat, Tag, ChevronRight, Pause, Trash2 } from 'lucide-svelte';
 import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
 import { page } from '$app/stores';
@@ -16,16 +16,6 @@ import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
 import { onDestroy } from 'svelte';
 
 let { data } = $props();
-
-// Client selected range (default from URL)
-let selectedRange = ($page.url.searchParams.get('range') || 'this-period');
-
-function selectRange(key: string) {
-	selectedRange = key;
-	const u = new URL($page.url);
-	u.searchParams.set('range', key);
-	goto(u.toString(), { replaceState: true });
-}
 
 // Theme checks
 const isOriginal = $derived($mobileThemeName === 'nn-original');
@@ -38,8 +28,11 @@ const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark
 // Set status bar color based on theme
 $effect(() => {
 	if (isImproved) {
-		// Use darker purple for OS header to match the redesign
-		mobileStatusBarColor.set('#5b21b6');
+		// Light purple background for redesign (matches bg-violet-100)
+		mobileStatusBarColor.set('rgb(237, 233, 254)');
+	} else if (isOriginal) {
+		// Sand-50 for original theme
+		mobileStatusBarColor.set('rgb(250, 249, 248)');
 	} else {
 		mobileStatusBarColor.set(null);
 	}
@@ -85,81 +78,97 @@ function formatNextDate(daysUntil: number): string {
 }
 </script>
 
-<!-- Range selector buttons (outside purple header visual area) -->
-<div class="px-4 -mt-3 mb-2">
-	<div class="flex gap-2">
-		{#each [
-			{ key: 'this-period', label: 'This period' },
-			{ key: '2months', label: 'Last 2 months' },
-			{ key: 'year', label: 'Year' }
-		] as opt}
-			<button
-				type="button"
-				onclick={() => selectRange(opt.key)}
-				class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
-				class:selected={selectedRange === opt.key}
+{#if isRebrand}
+	<!-- Glassy purple header for rebrand -->
+	<section class="mb-2 w-full rounded-b-3xl card-glassy pb-4" style="background: rgba(237, 233, 254, 0.7);">
+		<!-- Header row -->
+		<header class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
+			<MobileLink
+				href="/mobile"
+				class="rounded-full p-2 hover:bg-black/5 active:bg-black/10"
 			>
-				{opt.label}
-			</button>
-		{/each}
+				<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
+			</MobileLink>
+			<h1 class="font-heading text-[20px] font-bold">Vooruit kijken</h1>
+			<div class="w-10"></div>
+		</header>
+		<!-- Chart -->
+		<div class="h-[160px] px-4">
+			<PeriodChart
+				data={data.graphData}
+				previousSalaryDate={data.previousSalaryDate}
+				nextSalaryDate={data.nextSalaryDate}
+				simulatedToday={data.simulatedToday}
+			/>
+		</div>
+	</section>
+	<!-- Period selector buttons (outside header) -->
+	<div class="flex justify-center gap-2 px-4 py-3">
+		<button class="rounded-full bg-mediumOrange-500 px-4 py-1.5 text-sm font-medium text-white">Deze periode</button>
+		<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Twee maanden</button>
+		<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Een jaar</button>
 	</div>
-</div>
+{:else if isImproved}
+	<!-- Light colored header for improved -->
+	<section class="mb-2 w-full rounded-b-3xl bg-violet-100 pb-4">
+		<!-- Header row -->
+		<header class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
+			<MobileLink
+				href="/mobile"
+				class="rounded-full p-2 hover:bg-black/5 active:bg-black/10"
+			>
+				<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
+			</MobileLink>
+			<h1 class="font-heading text-[20px] font-bold">Vooruit kijken</h1>
+			<div class="w-10"></div>
+		</header>
+		<!-- Chart -->
+		<div class="h-[160px] px-4">
+			<PeriodChart
+				data={data.graphData}
+				previousSalaryDate={data.previousSalaryDate}
+				nextSalaryDate={data.nextSalaryDate}
+				simulatedToday={data.simulatedToday}
+			/>
+		</div>
+	</section>
+	<!-- Period selector buttons (outside header) -->
+	<div class="flex justify-center gap-2 px-4 py-3">
+		<button class="rounded-full bg-mediumOrange-500 px-4 py-1.5 text-sm font-medium text-white">Deze periode</button>
+		<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Twee maanden</button>
+		<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Een jaar</button>
+	</div>
+{:else}
+	<!-- Original theme: simple header and chart -->
+	<header class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
+		<MobileLink
+			href="/mobile"
+			class="rounded-full p-2 hover:bg-black/5 active:bg-black/10"
+		>
+			<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
+		</MobileLink>
+		<h1 class="font-heading text-[20px] font-bold">Vooruit kijken</h1>
+		<div class="w-10"></div>
+	</header>
+	<section class="mb-2 w-full">
+		<div class="h-[160px] px-4">
+			<PeriodChart
+				data={data.graphData}
+				previousSalaryDate={data.previousSalaryDate}
+				nextSalaryDate={data.nextSalaryDate}
+				simulatedToday={data.simulatedToday}
+			/>
+		</div>
+		<!-- Period selector buttons -->
+		<div class="flex justify-center gap-2 px-4 pt-3">
+			<button class="rounded-full bg-mediumOrange-500 px-4 py-1.5 text-sm font-medium text-white">Deze periode</button>
+			<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Twee maanden</button>
+			<button class="rounded-full bg-gray-100 px-4 py-1.5 text-sm font-medium text-gray-700">Een jaar</button>
+		</div>
+	</section>
+{/if}
 
-<div class="space-y-6 px-4 {isImproved ? 'pt-6' : 'pt-4'} pb-24 font-nn">
-	{#if !isImproved}
-		<!-- Balance Graph for Original/Rebrand -->
-		<section class="mb-2 px-1">
-			<div class="h-48 w-full">
-				<!-- Render three charts (precomputed server-side); show only the selected one -->
-				<PeriodChart
-					data={data.graphDataByRange?.['this-period'] || data.graphData}
-					previousSalaryDate={data.previousSalaryDate}
-					nextSalaryDate={data.nextSalaryDate}
-					currentBalance={data.summary.balance}
-					class:selected={selectedRange === 'this-period'}
-				/>
-				<PeriodChart
-					data={data.graphDataByRange?.['2months'] || data.graphData}
-					previousSalaryDate={data.previousSalaryDate}
-					nextSalaryDate={data.nextSalaryDate}
-					currentBalance={data.summary.balance}
-					class:selected={selectedRange === '2months'}
-				/>
-				<PeriodChart
-					data={data.graphDataByRange?.['year'] || data.graphData}
-					previousSalaryDate={data.previousSalaryDate}
-					nextSalaryDate={data.nextSalaryDate}
-					currentBalance={data.summary.balance}
-					class:selected={selectedRange === 'year'}
-				/>
-			</div>
-
-			<!-- Range selector buttons (moved here for original layout) -->
-			<div class="mt-3 px-1">
-				<div class="flex gap-2">
-					{#each [
-						{ key: 'this-period', label: 'This period' },
-						{ key: '2months', label: 'Last 2 months' },
-						{ key: 'year', label: 'Year' }
-					] as opt}
-						<button
-							type="button"
-							onclick={async () => {
-								const u = new URL($page.url);
-								u.searchParams.set('range', opt.key);
-								await goto(u.toString());
-							}}
-							class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
-							class:selected={($page.url.searchParams.get('range') || 'this-period') === opt.key}
-						>
-							{opt.label}
-						</button>
-					{/each}
-				</div>
-			</div>
-		</section>
-	{/if}
-
+<div class="space-y-6 px-4 pt-4 pb-24 font-nn">
 	<!-- Info Block -->
 	{#if data.daysUntilSalary && data.daysUntilSalary > 0}
 		<Card
@@ -320,29 +329,7 @@ function formatNextDate(daysUntil: number): string {
 		Voeg zelf een betaling toe
 	</button>
 </div>
-<!-- Range selector buttons (outside purple header visual area) -->
-<div class="px-4 -mt-3 mb-2">
-	<div class="flex gap-2">
-		{#each [
-			{ key: 'this-period', label: 'This period' },
-			{ key: '2months', label: 'Last 2 months' },
-			{ key: 'year', label: 'Year' }
-		] as opt}
-			<button
-				type="button"
-				onclick={async () => {
-					const u = new URL($page.url);
-					u.searchParams.set('range', opt.key);
-					await goto(u.toString());
-				}}
-				class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
-				class:selected={($page.url.searchParams.get('range') || 'this-period') === opt.key}
-			>
-				{opt.label}
-			</button>
-		{/each}
-	</div>
-</div>
+<!-- bottom selector intentionally removed -->
 
 <!-- Expected Payment Bottom Sheet -->
 <BottomSheet bind:open={sheetOpen} onClose={closeSheet} title="Verwachte betaling">

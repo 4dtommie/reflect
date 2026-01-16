@@ -21,6 +21,8 @@
 		onEditName?: () => void;
 		/** Called when rearrange is clicked */
 		onRearrange?: () => void;
+		/** Called when menu open state changes */
+		onOpenChange?: (isOpen: boolean) => void;
 		/** Additional classes */
 		class?: string;
 	}
@@ -30,6 +32,7 @@
 		quickActions = [],
 		onEditName,
 		onRearrange,
+		onOpenChange,
 		class: className = ''
 	}: Props = $props();
 
@@ -40,10 +43,12 @@
 		e.preventDefault();
 		e.stopPropagation();
 		isOpen = !isOpen;
+		onOpenChange?.(isOpen);
 	}
 
 	function closeMenu() {
 		isOpen = false;
+		onOpenChange?.(false);
 	}
 
 	function handleAction(action: () => void | undefined) {
@@ -82,7 +87,7 @@
 	<!-- Dropdown Menu -->
 	{#if isOpen}
 		<div
-			class="absolute right-0 top-full z-50 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
+			class="absolute right-0 top-full z-[100] mt-1 min-w-[200px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
 		>
 			<!-- Quick Actions Section -->
 			{#if quickActions.length > 0}

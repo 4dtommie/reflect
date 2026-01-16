@@ -17,6 +17,7 @@ import { saveScrollPosition } from '$lib/stores/scrollPositions';
 
 	const mobileDepthMap: Record<string, number> = {
 		'/mobile': 0,
+		'/mobile/products': 0,
 		'/mobile/product-details': 1
 	};
 

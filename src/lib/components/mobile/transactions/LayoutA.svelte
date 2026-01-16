@@ -33,8 +33,7 @@
 	import { onMount } from 'svelte';
 	import { 
 		SavingsContent, 
-		TransactionsList,
-		ActionButtonGroup
+		TransactionsList 
 	} from '$lib/components/mobile/organisms';
 
 	interface Props {
@@ -45,7 +44,6 @@
 
 	// Theme check
 	const isRebrand = $derived($mobileThemeName === 'rebrand');
-	const isImproved = $derived($mobileThemeName === 'improved');
 
 	// For header shadow on scroll
 	const headerShadowOpacity = $derived(Math.min($mobileScrollY / 50, 1) * 0.1);
@@ -53,13 +51,13 @@
 	// Scroll progress for glassy transition (0 = solid, 1 = frosted glass)
 	const scrollProgress = $derived(Math.min($mobileScrollY / 60, 1));
 
-	// Original theme uses sand-50 header, rebrand uses transparent
-	const isOriginal = $derived($mobileThemeName === 'nn-original');
-	const blurAmount = 0;
-	const r = $derived(isOriginal ? 250 : 0);
-	const g = $derived(isOriginal ? 249 : 0);
-	const b = $derived(isOriginal ? 248 : 0);
-	const bgOpacity = $derived(isOriginal ? 1 : 0);
+	// Interpolate from sand-100 (#f3efed / rgb 243,239,237) to sand-50/70 (#faf9f8 at 70% opacity)
+	const blurAmount = $derived(isRebrand ? 0 : scrollProgress * 12); // 0 to 12px blur
+	// Interpolate RGB from sand-100 to sand-50 (or transparent for rebrand)
+	const r = $derived(isRebrand ? 0 : Math.round(243 + (250 - 243) * scrollProgress));
+	const g = $derived(isRebrand ? 0 : Math.round(239 + (249 - 239) * scrollProgress));
+	const b = $derived(isRebrand ? 0 : Math.round(237 + (248 - 237) * scrollProgress));
+	const bgOpacity = $derived(isRebrand ? 0 : 1 - scrollProgress * 0.3); // 1 to 0.7 opacity, 0 for rebrand
 
 	import { productsStore, type Product } from '$lib/mock/products';
 
@@ -110,19 +108,9 @@
 			// Restore scroll position
 			const savedPos = $scrollPositions[currentPath];
 			if (savedPos && savedPos > 0) {
+				// Use requestAnimationFrame to ensure DOM is ready
 				requestAnimationFrame(() => {
-					try {
-						const appContent = document.querySelector('.mobile-content') as HTMLElement | null;
-						if (appContent) {
-							console.debug('restoring scroll on .mobile-content to', savedPos);
-							appContent.scrollTop = savedPos;
-						} else {
-							console.debug('no .mobile-content, falling back to window.scrollTo', savedPos);
-							window.scrollTo(0, savedPos);
-						}
-					} catch (err) {
-						console.error('error restoring scroll position', err);
-					}
+					window.scrollTo(0, savedPos);
 				});
 			}
 		}
@@ -190,83 +178,37 @@
 	});
 </script>
 
-{#if isImproved}
-	<!-- Redesign: Colored header wrapping nav + carousel + buttons -->
-	<div class="product-colored-header rounded-b-3xl" style="background-color: rgb(200, 225, 235);">
-		<header class="sticky top-0 z-20 w-full" style="background-color: rgb(200, 225, 235);">
-			<div class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
-				<MobileLink
-					href={backLink}
-					class="rounded-full p-2 hover:bg-black/5 active:bg-black/10"
-				>
-					<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
-				</MobileLink>
-				<h1 class="font-heading text-[20px] font-bold">Rekeningen</h1>
-				<button class="rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-					<Search class="h-6 w-6" strokeWidth={1.5} />
-				</button>
-			</div>
-		</header>
-		
-		<!-- Carousel inside colored header -->
-		<div class="w-full pt-0 pb-0 landscape:hidden">
-			<HorizontalCarousel
-				bind:currentIndex={carouselIndex}
-				showIndicators={false}
-				itemCount={accounts.length}
-				cardWidth={310}
-				gap={12}
-			>
-				{#each accounts as account, i (account.id)}
-					<AccountCard name={account.name} balance={account.balance} type={account.type} isJoint={i === 0} variant="redesign-huge" />
-				{/each}
-			</HorizontalCarousel>
-		</div>
-		
-		<!-- Action buttons inside colored area -->
-		{#if accounts[carouselIndex]}
-			{@const pdpActions = [
-				{ label: accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen', icon: ArrowUp },
-				{ label: accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek', icon: ArrowDown },
-				{ label: 'Meer', icon: Menu, tertiary: true }
-			]}
-			<div class="px-4 pt-4 pb-4">
-				<ActionButtonGroup actions={pdpActions} variant="pdp" class="w-full" />
-			</div>
-		{/if}
-	</div>
-{:else}
-	<!-- Original/Rebrand: Standard header -->
-	<header
-		class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
-		style="
-			background-color: rgba({r}, {g}, {b}, {bgOpacity});
-			backdrop-filter: blur({blurAmount}px);
-			-webkit-backdrop-filter: blur({blurAmount}px);
-			box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
-			transform: translateZ(0);
-		"
+<!-- Header (Now at top level for full-width landscape) -->
+<header
+	class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
+	style="
+		background-color: rgba({r}, {g}, {b}, {bgOpacity});
+		backdrop-filter: blur({blurAmount}px);
+		-webkit-backdrop-filter: blur({blurAmount}px);
+		box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
+		transform: translateZ(0);
+	"
+>
+	<div
+		class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0"
 	>
-		<div
-			class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0"
+		<MobileLink
+			href={backLink}
+			class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
 		>
-			<MobileLink
-				href={backLink}
-				class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
-			>
-				<ArrowLeft class="h-6 w-6 text-black" />
-			</MobileLink>
-			<h1 class="header-title font-heading text-[20px] font-bold text-black">Rekeningen</h1>
-			<button class="header-btn-right rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-				<Search class="h-6 w-6 text-black" />
-			</button>
-		</div>
-	</header>
+			<ArrowLeft class="h-6 w-6 text-black" />
+		</MobileLink>
+		<h1 class="header-title font-heading text-[20px] font-bold text-black">Rekeningen</h1>
+		<button class="header-btn-right rounded-full p-2 hover:bg-black/5 active:bg-black/10">
+			<Search class="h-6 w-6 text-black" />
+		</button>
+	</div>
+</header>
 
-	<div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
-		<!-- Account Cards Carousel (Portrait Only) - with buttons inside cards -->
+<div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
+	<!-- Account Cards Carousel (Portrait Only) - with buttons inside cards -->
 		<div
-			class="w-full pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden bg-transparent {carouselIndex >=
+			class="w-full pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden {isRebrand ? 'bg-transparent' : 'bg-sand-100'} {carouselIndex >=
 			accounts.length - 1
 				? 'rounded-br-3xl'
 				: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
@@ -283,12 +225,66 @@
 				{/each}
 			</HorizontalCarousel>
 		</div>
+
+	<!-- Interactive Vermogen Card (Landscape Only) -->
+	<div class="sidebar-account-list hidden landscape:block">
+			<Card padding="p-0">
+				<!-- Accounts List (tighter spacing, horizontal dividers) -->
+				<div class="flex flex-col divide-y divide-gray-100">
+					{#each accounts as account, i}
+						<button
+							onclick={() => (carouselIndex = i)}
+							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {carouselIndex === i ? 'active-account-row bg-black/5 dark:bg-white/10' : ''}"
+						>
+							<div class="flex min-w-0 flex-1 items-center gap-2">
+								<div class="relative shrink-0">
+									{#if account.type === 'savings'}
+										<PiggyBank class="h-4 w-4 text-gray-800 dark:text-gray-200" strokeWidth={1.5} />
+									{:else}
+										<CreditCard class="h-4 w-4 text-gray-800 dark:text-gray-200" strokeWidth={1.5} />
+									{/if}
+								</div>
+								<div class="flex min-w-0 flex-1 flex-col overflow-hidden text-left">
+									<div class="truncate text-sm font-normal text-gray-800 dark:text-gray-400">
+										{account.name}
+									</div>
+									<div class="account-amount-landscape mt-0">
+										<Amount
+											amount={account.balance}
+											size="sm"
+											class="font-heading font-semibold !text-gray-900 dark:!text-gray-200"
+											showSign={false}
+											showSymbol={true}
+										/>
+									</div>
+								</div>
+							</div>
+						</button>
+					{/each}
+				</div>
+
+			<!-- Action Buttons Footer (landscape) - floating pills style -->
+			<div class="flex gap-2 p-4 pt-2">
+				<button class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-mediumOrange-600 px-4 text-white shadow-sm transition-all active:scale-95">
+					<ArrowUp class="h-4 w-4 text-white" strokeWidth={2.2} />
+					<span class="font-heading text-sm font-semibold">{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span>
+				</button>
+				<button class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-white px-4 shadow-sm transition-all active:scale-95">
+					<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.2} />
+					<span class="font-heading text-sm font-semibold text-gray-700">{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span>
+				</button>
+				<button class="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white px-3 shadow-sm transition-all active:scale-95">
+					<Menu class="h-4 w-4 text-gray-500" strokeWidth={2} />
+					<span class="font-heading text-sm font-semibold text-gray-500">Meer</span>
+				</button>
+			</div>
+		</Card>
 	</div>
-{/if}
+</div>
 
 <!-- Content: Transactions List -->
 <div
-	class="dashboard-main px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8 bg-transparent"
+	class="dashboard-main px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8 {isRebrand ? 'bg-transparent' : 'bg-sand-50'}"
 >
 	{#if accounts[carouselIndex]?.name === 'Internetsparen'}
 		<SavingsContent {isLoading} />
@@ -334,7 +330,7 @@
 						{#each data.upcomingTransactions as t}
 							<button
 								onclick={() => openExpectedSheet(t)}
-								class="block w-full {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 text-left first:rounded-t-2xl last:rounded-b-2xl"
+								class="block w-full bg-white p-4 text-left first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 							>
 								<TransactionItem
 									merchant={t.merchant}
@@ -372,11 +368,11 @@
 						{/if}
 					</div>
 					<Card padding="p-0">
-						<div class="{isRebrand ? 'divide-y divide-white/30' : 'divide-y divide-gray-100'}">
+						<div class="divide-y divide-gray-100">
 							{#each group.transactions as t}
 								<MobileLink
 									href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-									class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
+									class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 								>
 									<TransactionItem
 										merchant={t.merchant}

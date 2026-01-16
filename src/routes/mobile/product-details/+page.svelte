@@ -48,19 +48,15 @@
 	const isImproved = $derived($mobileThemeName === 'improved');
 	const isRebrand = $derived($mobileThemeName === 'rebrand');
 	
-	// Header background based on theme - all transparent now
-	const r = 0;
-	const g = 0;
-	const b = 0;
+	// Header background based on theme
+	const r = $derived(isOriginal ? 250 : 0);
+	const g = $derived(isOriginal ? 249 : 0);
+	const b = $derived(isOriginal ? 248 : 0);
 	const blurAmount = 0;
-	const bgOpacity = 0; // All themes get transparent header
+	const bgOpacity = $derived(isOriginal ? 1 : 0); // Original gets sand-50, others transparent
 
-	// Theme-aware dividers (original shows no dividers, rebrand uses white, improved uses gray)
-	const dividerClasses = $derived.by(() => {
-		if (isOriginal) return '';
-		if (isRebrand) return 'divide-y divide-white/30';
-		return 'divide-y divide-gray-100 dark:divide-gray-800';
-	});
+	// Theme-aware dividers (original shows no dividers, improved shows dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 
 	// Set status bar color for redesign
 	$effect(() => {
@@ -124,20 +120,9 @@
 			// Restore scroll position
 			const savedPos = $scrollPositions[currentPath];
 			if (savedPos && savedPos > 0) {
+				// Use requestAnimationFrame to ensure DOM is ready
 				requestAnimationFrame(() => {
-					try {
-						// Prefer scrolling the app's content container (works inside iframe)
-						const appContent = document.querySelector('.mobile-content') as HTMLElement | null;
-						if (appContent) {
-							console.debug('restoring scroll on .mobile-content to', savedPos);
-							appContent.scrollTop = savedPos;
-						} else {
-							console.debug('no .mobile-content, falling back to window.scrollTo', savedPos);
-							window.scrollTo(0, savedPos);
-						}
-					} catch (err) {
-						console.error('error restoring scroll position', err);
-					}
+					window.scrollTo(0, savedPos);
 				});
 			}
 		}
@@ -183,7 +168,7 @@
 		{#if isImproved}
 			<!-- Redesign: Colored header wrapping nav + carousel -->
 			<div class="product-colored-header rounded-b-3xl" style="background-color: rgb(200, 225, 235);">
-				<header class="sticky top-0 z-20 w-full" style="background-color: rgb(200, 225, 235);">
+				<header class="sticky top-0 z-20 w-full">
 					<div class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
 						<MobileLink
 							href={backLink}
@@ -256,7 +241,7 @@
 				{#if isOriginal}
 					<!-- Original Theme: Carousel of cards with buttons inside (matches homepage betaalsaldo) -->
 					<div
-						class="w-full pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden bg-transparent {carouselIndex >=
+						class="w-full pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden bg-sand-50 {carouselIndex >=
 						accounts.length - 1
 							? 'rounded-br-3xl'
 							: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
@@ -472,7 +457,7 @@
 						<Card padding="p-0">
 							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
-									<div class="block {isRebrand ? 'bg-transparent' : 'bg-white'} p-4 first:rounded-t-2xl last:rounded-b-2xl {isRebrand ? 'active:bg-white/20' : 'active:bg-gray-50'}">
+									<div class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50">
 										<TransactionItem
 											merchant={t.merchant}
 											subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
@@ -513,7 +498,7 @@
 									{#each group.transactions as t}
 										<MobileLink
 											href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
+											class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
 										>
 											<TransactionItem
 												merchant={t.merchant}

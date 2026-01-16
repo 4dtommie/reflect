@@ -4,6 +4,7 @@
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import Card from '$lib/components/mobile/Card.svelte';
 	import ProductCardMenu from '$lib/components/mobile/ProductCardMenu.svelte';
+	import Amount from '$lib/components/mobile/Amount.svelte';
 	import { productsStore, getCustomProductName, saveCustomProductName, type Product } from '$lib/mock/products';
 	import { mobileThemeName } from '$lib/stores/mobileTheme';
 	import {
@@ -30,6 +31,7 @@
 	let editingProductId = $state<number | null>(null);
 	let editingName = $state('');
 	let editInputRef: HTMLInputElement | undefined = $state();
+	let openMenuProductId = $state<number | null>(null);
 
 	// Get display name for product (custom or original)
 	function getDisplayName(product: Product): string {
@@ -174,9 +176,7 @@
 
 						<!-- Amount + Chevron (flat, same line) -->
 						<div class="flex shrink-0 items-center gap-1">
-							<span class="text-base font-bold text-gray-900 dark:text-white">
-								€ {product.balance.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-							</span>
+							<Amount amount={product.balance} size="sm" showSign={false} showSymbol={true} class="text-gray-900 dark:text-white" />
 							<ChevronRight class="h-5 w-5 text-gray-400" strokeWidth={2} />
 						</div>
 					</div>
@@ -186,7 +186,7 @@
 			<!-- Redesign/Rebrand theme: more button, huge amount, mini chart -->
 			<Card
 				padding="p-0"
-				class="dark:active:bg-gray-1100 relative overflow-visible rounded-2xl transition-all"
+				class="dark:active:bg-gray-1100 relative overflow-visible rounded-2xl transition-all {openMenuProductId === product.id ? 'z-50' : ''}"
 			>
 				<!-- More button in top right (hidden during edit) -->
 				{#if !isEditing}
@@ -196,6 +196,7 @@
 							{quickActions}
 							onEditName={() => startEditing(product)}
 							onRearrange={() => {}}
+							onOpenChange={(open) => openMenuProductId = open ? product.id : null}
 						/>
 					</div>
 				{/if}
@@ -209,6 +210,7 @@
 							bind:value={editingName}
 							type="text"
 							class="min-w-0 flex-1 rounded-xl border-2 border-mediumOrange-500 bg-white px-3 py-2 text-base text-gray-900 focus:outline-none dark:bg-gray-800 dark:text-white"
+							style="user-select: text !important; -webkit-user-select: text !important; -webkit-touch-callout: default !important;"
 							placeholder={product.name}
 							onkeydown={handleEditKeydown}
 						/>
@@ -249,8 +251,8 @@
 									{subtitle}
 							</div>
 						{/if}
-							<div class="mt-1 font-heading text-2xl font-bold text-gray-900 dark:text-white">
-								€ {product.balance.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+							<div class="mt-1">
+								<Amount amount={product.balance} size="lg" showSign={false} showSymbol={true} class="text-gray-900 dark:text-white" />
 							</div>
 						</div>
 

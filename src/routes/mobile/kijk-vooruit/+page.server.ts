@@ -211,7 +211,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         let projectionBalance = runningBalance;
         for (const item of aankomendRawMapped) {
             projectionBalance += (item.isDebit ? -item.amount : item.amount);
-            const projDate = applyDateOffset(new Date(item.date), baseOffset);
+            // item.date is already the displayed/offset date, don't apply offset again
+            const projDate = new Date(item.date);
             projDate.setHours(0, 0, 0, 0);
             graphDataLocal.push({
                 date: projDate.toISOString(),
@@ -261,6 +262,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         graphDataByRange,
         previousSalaryDate: previousSalary ? applyDateOffset(new Date(previousSalary.date), baseOffset).toISOString() : null,
         nextSalaryDate: salaryItem ? salaryItem.date.toISOString() : null,
+        simulatedToday: simulatedToday.toISOString(),
         confirmedPayments: currentPeriod,
         nextPeriodPayments: nextPeriod,
         nextPeriodStartDate,
