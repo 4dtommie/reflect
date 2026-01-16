@@ -7,9 +7,11 @@
 		categoryIcon?: string | null;
 		categoryColor?: string | null;
 		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+		/** Whether to show fallback (initials/icon) when no logo. Default true */
+		showFallback?: boolean;
 	}
 
-	let { merchantName, categoryIcon = null, categoryColor = null, size = 'md' }: Props = $props();
+	let { merchantName, categoryIcon = null, categoryColor = null, size = 'md', showFallback = true }: Props = $props();
 
 	// Size configurations
 	const sizeConfig = {
@@ -74,7 +76,7 @@
 
 {#if logoUrl && !logoError}
 	<div
-		class="flex-shrink-0 overflow-hidden rounded {config.container}"
+		class="flex-shrink-0 overflow-hidden rounded-xl {config.container}"
 	>
 		<img
 			src={logoUrl}
@@ -84,7 +86,7 @@
 			loading="lazy"
 		/>
 	</div>
-{:else}
+{:else if showFallback}
 	{@const Icon = CategoryIcon}
 	<Icon size={24} class="flex-shrink-0 text-gray-900" strokeWidth={1.0} />
 {/if}

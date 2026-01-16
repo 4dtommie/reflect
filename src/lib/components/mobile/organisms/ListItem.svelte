@@ -43,14 +43,18 @@
 		padding = 'px-4 py-3'
 	}: Props = $props();
 
-	// Simple theme check
+	// Theme checks
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
 
 	// Compute classes based on theme
 	const baseClasses = $derived.by(() => {
 		const classes = [padding];
 
-		if (!isOriginal) {
+		if (isRebrand) {
+			// Rebrand: transparent background for glassy card effect
+			classes.push('bg-transparent');
+		} else if (!isOriginal) {
 			// Improved: block variant with individual card styling
 			classes.push('bg-white dark:bg-gray-1200 rounded-xl mb-2 last:mb-0 shadow-sm');
 		} else {

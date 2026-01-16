@@ -8,6 +8,7 @@
 	import HorizontalCarousel from '../HorizontalCarousel.svelte';
 	import ActionButtonGroup from './ActionButtonGroup.svelte';
 	import WidgetHeader from '../WidgetHeader.svelte';
+	import { getProductDisplayName } from '$lib/mock/products';
 
 	// Use a permissive type for icons to support Lucide components
 	type IconComponent = Component<any> | (new (...args: any[]) => any) | ((...args: any[]) => any);
@@ -48,7 +49,7 @@
 	}
 
 	let {
-		title = 'Vermogen',
+		title = undefined,
 		products,
 		selectedIndex = $bindable(0),
 		onSelect,
@@ -60,6 +61,12 @@
 
 	// Theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
+
+	// Get display name (custom or original)
+	function getDisplayName(product: Product): string {
+		return getProductDisplayName(product as any);
+	}
 
 	// Get icon for product type
 	function getProductIcon(type: Product['type']) {
@@ -115,7 +122,7 @@
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 						<div class="text-base font-normal text-gray-1000 dark:text-white">
-							{product.name}
+							{getDisplayName(product)}
 						</div>
 						<div class="text-[14px] font-normal text-gray-800 dark:text-gray-400">
 							NL31 NNBA 1000 0006 45
@@ -139,7 +146,7 @@
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col gap-0.5">
 							<div class="text-base font-normal text-gray-1000 dark:text-white">
-								{product.name}
+								{getDisplayName(product)}
 							</div>
 							<div class="text-[14px] font-normal text-gray-800 dark:text-gray-400">
 								NL31 NNBA 1000 0006 45
@@ -158,7 +165,7 @@
 
 			<!-- Classic action bar with white background and dividers -->
 			{#if actions.length > 0}
-				<div class="flex items-stretch border-t border-gray-100 px-2 dark:border-gray-800 dark:bg-gray-900 !bg-white rounded-b-[4px]">
+				<div class="flex items-stretch border-t border-gray-100 px-2 dark:border-gray-800 dark:bg-gray-900 rounded-b-[4px]">
 					{#each actions as action, i}
 						{#if !action.tertiary}
 							{#if i > 0}
@@ -169,7 +176,7 @@
 							<button
 								type="button"
 								onclick={action.onclick}
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
+								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors active:bg-gray-100 dark:active:bg-gray-800"
 							>
 								{#if action.icon}
 									{@const ActionIcon = action.icon}
@@ -183,51 +190,36 @@
 			{/if}
 		</Card>
 	{:else}
-		<!-- Improved: integrated variant with products list + actions inside -->
+		<!-- Improved/Rebrand: integrated variant with products list + actions inside -->
 		<Card padding="p-0">
-			<!-- Products List -->
-			<div class="flex flex-col pt-2">
+			<!-- Products List (tighter spacing + horizontal dividers) -->
+			<div class="flex flex-col divide-y divide-gray-100">
 				{#each products as product, i}
 					{@const ProductIcon = getProductIcon(product.type)}
 					{#if linkBase}
 						<MobileLink
 							href={buildLink(i)}
-							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
+							class="flex items-center justify-between px-4 py-2.5 transition-all active:scale-[0.99] active:bg-gray-50 dark:active:bg-gray-800"
 						>
-							<div class="flex min-w-0 flex-1 items-center gap-3">
-								<div class="relative shrink-0">
+							<div class="flex items-center gap-3">
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {isRebrand ? 'bg-white/80' : 'bg-sand-100 dark:bg-gray-800'}">
 									<ProductIcon
-										class="h-5 w-5 text-gray-800 dark:text-gray-200"
+										class="h-4 w-4 text-gray-600 dark:text-gray-400"
 										strokeWidth={1.5}
 									/>
 								</div>
-								<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-								<div class="truncate text-base font-normal text-gray-800 dark:text-gray-400">
-										{product.name}
-									</div>
-									<!-- Amount shown below name in landscape -->
-									<div class="account-amount-landscape hidden">
-										<Amount
-											amount={product.balance}
-											size="sm"
-										class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
-											showSign={false}
-											showSymbol={true}
-										/>
-									</div>
-								</div>
+								<span class="truncate text-base font-normal text-gray-1000 dark:text-white">
+								{getDisplayName(product)}
+								</span>
 							</div>
 							<div class="flex shrink-0 items-center gap-1">
-								<!-- Amount shown on right in portrait -->
-								<div class="account-amount-portrait">
-									<Amount
-										amount={product.balance}
-										size="sm"
+								<Amount
+									amount={product.balance}
+									size="sm"
 									class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
-										showSign={false}
-										showSymbol={true}
-									/>
-								</div>
+									showSign={false}
+									showSymbol={true}
+								/>
 								<ChevronRight class="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
 							</div>
 						</MobileLink>
@@ -235,28 +227,26 @@
 						<button
 							type="button"
 							onclick={() => handleSelect(i)}
-							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {selectedIndex === i ? 'bg-black/5 dark:bg-white/10' : ''}"
+							class="flex items-center justify-between px-4 py-2.5 transition-all active:scale-[0.99] {selectedIndex === i ? 'bg-black/5 dark:bg-white/10' : ''}"
 						>
-							<div class="flex min-w-0 flex-1 items-center gap-3">
-								<div class="relative shrink-0">
+							<div class="flex items-center gap-3 text-left">
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {isRebrand ? 'bg-white/80' : 'bg-sand-100 dark:bg-gray-800'}">
 									<ProductIcon
-										class="h-5 w-5 text-gray-800 dark:text-gray-200"
+										class="h-4 w-4 text-gray-600 dark:text-gray-400"
 										strokeWidth={1.5}
 									/>
 								</div>
-								<div class="flex min-w-0 flex-1 flex-col overflow-hidden text-left">
-								<div class="truncate text-base font-normal text-gray-800 dark:text-gray-400">
-										{product.name}
-									</div>
-									<Amount
-										amount={product.balance}
-										size="sm"
-									class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
-										showSign={false}
-										showSymbol={true}
-									/>
-								</div>
+								<span class="truncate text-base font-normal text-gray-1000 dark:text-white">
+									{getDisplayName(product)}
+								</span>
 							</div>
+							<Amount
+								amount={product.balance}
+								size="sm"
+								class="font-heading font-semibold !text-gray-1000 dark:!text-gray-200"
+								showSign={false}
+								showSymbol={true}
+							/>
 						</button>
 					{/if}
 				{/each}
@@ -264,10 +254,22 @@
 
 			<!-- Integrated Actions -->
 			{#if actions.length > 0}
-				<div class="border-t border-gray-100 p-4 dark:border-gray-800">
-					<ActionButtonGroup {actions} />
-				</div>
+				{#if isOriginal}
+					<div class="border-t border-gray-100 p-4 dark:border-gray-800">
+						<ActionButtonGroup {actions} />
+					</div>
+				{/if}
 			{/if}
 		</Card>
+
+		<!-- For improved/redesign: render actions outside the card so they appear separated -->
+		{#if actions.length > 0 && !isOriginal}
+			<!-- Improved: actions rendered horizontally, each button fills equal width -->
+			<!-- Extra padding at bottom of card area for spacing, then buttons with top margin -->
+			{@const actionsWithIndex = actions.map((a, i) => ({ ...a, _homeIndex: i }))}
+			<div class="mt-4 pb-2">
+				<ActionButtonGroup actions={actionsWithIndex} class="w-full" variant="home" />
+			</div>
+		{/if}
 	{/if}
 </section>

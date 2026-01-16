@@ -1,94 +1,169 @@
 <script lang="ts">
-	import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
-	import Card from '$lib/components/mobile/Card.svelte';
-	import Amount from '$lib/components/mobile/Amount.svelte';
-	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
-	import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
-	import PeriodChart from '$lib/components/mobile/PeriodChart.svelte';
-	import BottomSheet from '$lib/components/mobile/BottomSheet.svelte';
-	import MerchantLogo from '$lib/components/MerchantLogo.svelte';
-	import { ArrowLeft, Menu, Plus, Calendar, Repeat, Tag, ChevronRight, Pause, Trash2 } from 'lucide-svelte';
-	import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
-	import { page } from '$app/stores';
-	import { mobileThemeName } from '$lib/stores/mobileTheme';
+import MobileHeader from '$lib/components/mobile/MobileHeader.svelte';
+import Card from '$lib/components/mobile/Card.svelte';
+import Amount from '$lib/components/mobile/Amount.svelte';
+import MobileLink from '$lib/components/mobile/MobileLink.svelte';
+import TransactionItem from '$lib/components/mobile/TransactionItem.svelte';
+import PeriodChart from '$lib/components/mobile/PeriodChart.svelte';
+import BottomSheet from '$lib/components/mobile/BottomSheet.svelte';
+import MerchantLogo from '$lib/components/MerchantLogo.svelte';
+import { ArrowLeft, Menu, Plus, Calendar, Repeat, Tag, ChevronRight, Pause, Trash2 } from 'lucide-svelte';
+import { formatRecurringSubtitle } from '$lib/utils/dateFormatting';
+import { page } from '$app/stores';
+import { goto } from '$app/navigation';
+import { mobileThemeName } from '$lib/stores/mobileTheme';
+import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
+import { onDestroy } from 'svelte';
 
-	let { data } = $props();
+let { data } = $props();
 
-	// Simple theme check
-	const isOriginal = $derived($mobileThemeName === 'nn-original');
+// Client selected range (default from URL)
+let selectedRange = ($page.url.searchParams.get('range') || 'this-period');
 
-	// Bottom sheet state
-	let sheetOpen = $state(false);
-	let selectedItem = $state<any>(null);
+function selectRange(key: string) {
+	selectedRange = key;
+	const u = new URL($page.url);
+	u.searchParams.set('range', key);
+	goto(u.toString(), { replaceState: true });
+}
 
-	function openSheet(item: any) {
-		selectedItem = item;
-		sheetOpen = true;
+// Theme checks
+const isOriginal = $derived($mobileThemeName === 'nn-original');
+const isImproved = $derived($mobileThemeName === 'improved');
+const isRebrand = $derived($mobileThemeName === 'rebrand');
+
+// Divider classes - only show dividers for improved/rebrand themes
+const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
+
+// Set status bar color based on theme
+$effect(() => {
+	if (isImproved) {
+		// Use darker purple for OS header to match the redesign
+		mobileStatusBarColor.set('#5b21b6');
+	} else {
+		mobileStatusBarColor.set(null);
 	}
+});
 
-	function closeSheet() {
-		sheetOpen = false;
-		selectedItem = null;
-	}
+onDestroy(() => {
+	mobileStatusBarColor.set(null);
+});
 
-	// Format interval for display
-	function formatInterval(interval: string): string {
-		const labels: Record<string, string> = {
-			monthly: 'Maandelijks',
-			weekly: 'Wekelijks',
-			yearly: 'Jaarlijks',
-			quarterly: 'Per kwartaal',
-			'4-weekly': '4-wekelijks'
-		};
-		return labels[interval] || interval;
-	}
+// Bottom sheet state
+let sheetOpen = $state(false);
+let selectedItem = $state<any>(null);
 
-	// Format next date for display
-	function formatNextDate(daysUntil: number): string {
-		const date = new Date();
-		date.setDate(date.getDate() + daysUntil);
-		const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-		const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
-		return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
-	}
+function openSheet(item: any) {
+	selectedItem = item;
+	sheetOpen = true;
+}
+
+function closeSheet() {
+	sheetOpen = false;
+	selectedItem = null;
+}
+
+// Format interval for display
+function formatInterval(interval: string): string {
+	const labels: Record<string, string> = {
+		monthly: 'Maandelijks',
+		weekly: 'Wekelijks',
+		yearly: 'Jaarlijks',
+		quarterly: 'Per kwartaal',
+		'4-weekly': '4-wekelijks'
+	};
+	return labels[interval] || interval;
+}
+
+// Format next date for display
+function formatNextDate(daysUntil: number): string {
+	const date = new Date();
+	date.setDate(date.getDate() + daysUntil);
+	const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+	const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+	return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]}`;
+}
 </script>
 
-<svelte:head>
-	<title>Kijk vooruit</title>
-</svelte:head>
+<!-- Range selector buttons (outside purple header visual area) -->
+<div class="px-4 -mt-3 mb-2">
+	<div class="flex gap-2">
+		{#each [
+			{ key: 'this-period', label: 'This period' },
+			{ key: '2months', label: 'Last 2 months' },
+			{ key: 'year', label: 'Year' }
+		] as opt}
+			<button
+				type="button"
+				onclick={() => selectRange(opt.key)}
+				class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
+				class:selected={selectedRange === opt.key}
+			>
+				{opt.label}
+			</button>
+		{/each}
+	</div>
+</div>
 
-<MobileHeader class="flex items-center justify-between px-4 pb-3">
-	<MobileLink
-		href={$page.url.searchParams.get('from') ?? '/mobile'}
-		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
-	>
-		<ArrowLeft class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
-	</MobileLink>
-	<h1 class="font-heading text-lg font-bold text-black dark:text-white">Kijk vooruit</h1>
-	<button
-		class="dark:hover:bg-gray-1200 flex h-10 w-10 items-center justify-center rounded-lg hover:bg-sand-100"
-	>
-		<Menu class="h-6 w-6 text-black dark:text-white" strokeWidth={1.5} />
-	</button>
-</MobileHeader>
+<div class="space-y-6 px-4 {isImproved ? 'pt-6' : 'pt-4'} pb-24 font-nn">
+	{#if !isImproved}
+		<!-- Balance Graph for Original/Rebrand -->
+		<section class="mb-2 px-1">
+			<div class="h-48 w-full">
+				<!-- Render three charts (precomputed server-side); show only the selected one -->
+				<PeriodChart
+					data={data.graphDataByRange?.['this-period'] || data.graphData}
+					previousSalaryDate={data.previousSalaryDate}
+					nextSalaryDate={data.nextSalaryDate}
+					currentBalance={data.summary.balance}
+					class:selected={selectedRange === 'this-period'}
+				/>
+				<PeriodChart
+					data={data.graphDataByRange?.['2months'] || data.graphData}
+					previousSalaryDate={data.previousSalaryDate}
+					nextSalaryDate={data.nextSalaryDate}
+					currentBalance={data.summary.balance}
+					class:selected={selectedRange === '2months'}
+				/>
+				<PeriodChart
+					data={data.graphDataByRange?.['year'] || data.graphData}
+					previousSalaryDate={data.previousSalaryDate}
+					nextSalaryDate={data.nextSalaryDate}
+					currentBalance={data.summary.balance}
+					class:selected={selectedRange === 'year'}
+				/>
+			</div>
 
-<div class="space-y-6 px-4 pt-4 pb-24 font-nn">
-	<!-- Balance Graph -->
-	<section class="mb-2 px-1">
-		<div class="h-48 w-full">
-			<PeriodChart
-				data={data.graphData}
-				previousSalaryDate={data.previousSalaryDate}
-				nextSalaryDate={data.nextSalaryDate}
-				currentBalance={data.summary.balance}
-			/>
-		</div>
-	</section>
+			<!-- Range selector buttons (moved here for original layout) -->
+			<div class="mt-3 px-1">
+				<div class="flex gap-2">
+					{#each [
+						{ key: 'this-period', label: 'This period' },
+						{ key: '2months', label: 'Last 2 months' },
+						{ key: 'year', label: 'Year' }
+					] as opt}
+						<button
+							type="button"
+							onclick={async () => {
+								const u = new URL($page.url);
+								u.searchParams.set('range', opt.key);
+								await goto(u.toString());
+							}}
+							class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
+							class:selected={($page.url.searchParams.get('range') || 'this-period') === opt.key}
+						>
+							{opt.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+		</section>
+	{/if}
 
 	<!-- Info Block -->
 	{#if data.daysUntilSalary && data.daysUntilSalary > 0}
 		<Card
-			class="to-lightOrange-50 dark:from-mediumOrange-1200 dark:to-lightOrange-1200 bg-gradient-to-r from-mediumOrange-50"
+			class="bg-blue-200"
 		>
 			<div class="flex items-start gap-3">
 				<div class="flex-1">
@@ -121,7 +196,7 @@
 				</h2>
 			</div>
 			<Card padding="p-0">
-				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				<div class={dividerClasses}>
 					{#each data.missedPayments as item}
 						<button class="w-full text-left" onclick={() => openSheet(item)}>
 							<TransactionItem
@@ -154,7 +229,7 @@
 			{/if}
 		</div>
 		<Card padding="p-0">
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class={dividerClasses}>
 				{#each data.confirmedPayments as item}
 					<button class="w-full text-left" onclick={() => openSheet(item)}>
 							<TransactionItem
@@ -167,8 +242,7 @@
 								showChevron={true}
 								class="dark:active:bg-gray-1200 px-4 py-3 active:bg-gray-50"
 								designVariant={isOriginal ? 'original' : 'redesign'}
-								date={item.date}
-								description={item.subtitle}
+								date={item.date.toISOString()}
 							/>
 					</button>
 				{:else}
@@ -189,7 +263,7 @@
 				</h2>
 			</div>
 			<Card padding="p-0">
-				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				<div class={dividerClasses}>
 					{#each data.nextPeriodPayments as item}
 						<button class="w-full text-left" onclick={() => openSheet(item)}>
 							<TransactionItem
@@ -218,7 +292,7 @@
 				</h2>
 			</div>
 			<Card padding="p-0">
-				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				<div class={dividerClasses}>
 					{#each data.predictedPayments as item}
 						<button class="w-full text-left" onclick={() => openSheet(item)}>
 							<TransactionItem
@@ -245,6 +319,29 @@
 		<Plus class="h-5 w-5 text-mediumOrange-500" strokeWidth={2.5} />
 		Voeg zelf een betaling toe
 	</button>
+</div>
+<!-- Range selector buttons (outside purple header visual area) -->
+<div class="px-4 -mt-3 mb-2">
+	<div class="flex gap-2">
+		{#each [
+			{ key: 'this-period', label: 'This period' },
+			{ key: '2months', label: 'Last 2 months' },
+			{ key: 'year', label: 'Year' }
+		] as opt}
+			<button
+				type="button"
+				onclick={async () => {
+					const u = new URL($page.url);
+					u.searchParams.set('range', opt.key);
+					await goto(u.toString());
+				}}
+				class="flex-1 rounded-lg py-2 text-sm font-medium shadow-sm border border-transparent"
+				class:selected={($page.url.searchParams.get('range') || 'this-period') === opt.key}
+			>
+				{opt.label}
+			</button>
+		{/each}
+	</div>
 </div>
 
 <!-- Expected Payment Bottom Sheet -->
@@ -273,7 +370,7 @@
 
 			<!-- Details -->
 			<Card padding="p-0">
-				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				<div class={dividerClasses}>
 					<div class="flex items-center gap-3 px-4 py-3">
 						<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
 							<Calendar class="h-4 w-4 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
@@ -314,7 +411,7 @@
 
 			<!-- Actions -->
 			<Card padding="p-0">
-				<div class="divide-y divide-gray-100 dark:divide-gray-800">
+				<div class={dividerClasses}>
 					<button class="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-gray-50 dark:active:bg-gray-800">
 						<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
 							<Pause class="h-4 w-4 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />

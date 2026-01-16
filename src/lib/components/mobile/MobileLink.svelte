@@ -4,6 +4,7 @@
 	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
+import { saveScrollPosition } from '$lib/stores/scrollPositions';
 
 	interface Props {
 		href: string;
@@ -36,6 +37,18 @@
 		const toDepth = getDepth(toPath);
 		const direction = toDepth < fromDepth ? 'back' : 'forward';
 		mobileNavDirection.set(direction);
+
+		// Save current scroll position for this path so back navigation can restore it
+		try {
+			const currentPath = $page.url.pathname + $page.url.search;
+			// Only save if there's a positive scroll value
+			if ($mobileScrollY > 0) {
+				saveScrollPosition(currentPath, $mobileScrollY);
+			}
+		} catch (err) {
+			// Non-fatal - log for debugging
+			console.error('failed to save scroll position', err);
+		}
 
 		// Reset scroll store BEFORE navigating so new page sees 0
 		mobileScrollY.set(0);

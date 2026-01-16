@@ -17,7 +17,11 @@
 		Plus
 	} from 'lucide-svelte';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
+	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
+	import { scrollPositions, saveScrollPosition } from '$lib/stores/scrollPositions';
 	import { mobileThemeName } from '$lib/stores/mobileTheme';
+	import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
+	import { onMount, onDestroy } from 'svelte';
 	import WidgetHeader from '$lib/components/mobile/WidgetHeader.svelte';
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import Amount from '$lib/components/mobile/Amount.svelte';
@@ -29,7 +33,7 @@
 	import LayoutA from '$lib/components/mobile/transactions/LayoutA.svelte';
 	import LayoutB from '$lib/components/mobile/transactions/LayoutB.svelte';
 	import LayoutC from '$lib/components/mobile/transactions/LayoutC.svelte';
-
+	import { ActionButtonGroup } from '$lib/components/mobile/organisms';
 	// Data from server
 	let { data } = $props();
 
@@ -39,17 +43,38 @@
 	// Scroll progress for glassy transition (0 = at top, 1 = scrolled down)
 	const scrollProgress = $derived(Math.min($mobileScrollY / 60, 1));
 
-	// Interpolate color from sand-100 to sand-50 on scroll
-	const r = $derived(Math.round(243 + (250 - 243) * scrollProgress));
-	const g = $derived(Math.round(239 + (249 - 239) * scrollProgress));
-	const b = $derived(Math.round(237 + (248 - 237) * scrollProgress));
-	const blurAmount = $derived(scrollProgress * 12);
-	const bgOpacity = $derived(1 - scrollProgress * 0.15);
-
-	// Simple theme check
+	// Theme checks
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
-	// Theme-aware dividers (original shows no dividers, improved shows dividers)
-	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
+	const isImproved = $derived($mobileThemeName === 'improved');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
+	
+	// Header background based on theme - all transparent now
+	const r = 0;
+	const g = 0;
+	const b = 0;
+	const blurAmount = 0;
+	const bgOpacity = 0; // All themes get transparent header
+
+	// Theme-aware dividers (original shows no dividers, rebrand uses white, improved uses gray)
+	const dividerClasses = $derived.by(() => {
+		if (isOriginal) return '';
+		if (isRebrand) return 'divide-y divide-white/30';
+		return 'divide-y divide-gray-100 dark:divide-gray-800';
+	});
+
+	// Set status bar color for redesign
+	$effect(() => {
+		if (isImproved) {
+			// Light blue/cyan for products header
+			mobileStatusBarColor.set('rgb(200, 225, 235)');
+		} else {
+			mobileStatusBarColor.set(null);
+		}
+	});
+
+	onDestroy(() => {
+		mobileStatusBarColor.set(null);
+	});
 
 	import { productsStore, type Product } from '$lib/mock/products';
 
@@ -72,22 +97,71 @@
 
 	const backLink = '/mobile';
 
-	// Loading state for skeleton
+	// Loading state for skeleton - skip on back navigation
 	let isLoading = $state(true);
 	let lastLoaded = $state<Record<number, number>>({});
+	let hasInitialized = $state(false);
+
+	// Save scroll position before navigation
+	$effect(() => {
+		const currentPath = $page.url.pathname + $page.url.search;
+		const scrollY = $mobileScrollY;
+		if (scrollY > 0) {
+			saveScrollPosition(currentPath, scrollY);
+		}
+	});
+
+	// Restore scroll position on back navigation
+	onMount(() => {
+		const navDir = $mobileNavDirection;
+		const currentPath = $page.url.pathname + $page.url.search;
+		
+		if (navDir === 'back') {
+			// Skip loading skeleton on back navigation
+			isLoading = false;
+			hasInitialized = true;
+			
+			// Restore scroll position
+			const savedPos = $scrollPositions[currentPath];
+			if (savedPos && savedPos > 0) {
+				requestAnimationFrame(() => {
+					try {
+						// Prefer scrolling the app's content container (works inside iframe)
+						const appContent = document.querySelector('.mobile-content') as HTMLElement | null;
+						if (appContent) {
+							console.debug('restoring scroll on .mobile-content to', savedPos);
+							appContent.scrollTop = savedPos;
+						} else {
+							console.debug('no .mobile-content, falling back to window.scrollTo', savedPos);
+							window.scrollTo(0, savedPos);
+						}
+					} catch (err) {
+						console.error('error restoring scroll position', err);
+					}
+				});
+			}
+		}
+	});
 
 	$effect(() => {
+		// Skip if already initialized (e.g., from back navigation)
+		if (hasInitialized && $mobileNavDirection === 'back') {
+			isLoading = false;
+			return;
+		}
+
 		const lastTime = lastLoaded[carouselIndex];
 		const now = Date.now();
 
 		if (lastTime && now - lastTime < 60000) {
 			isLoading = false;
-		} else {
+		} else if (!hasInitialized || $mobileNavDirection === 'forward') {
 			isLoading = true;
 			const delay = Math.floor(Math.random() * 700) + 300;
 			setTimeout(() => {
 				isLoading = false;
 				lastLoaded[carouselIndex] = Date.now();
+				hasInitialized = true;
 			}, delay);
 		}
 	});
@@ -106,61 +180,26 @@
 	{:else if currentLayout === 'C'}
 		<LayoutC {data} />
 	{:else}
-		<!-- Header -->
-		<header
-			class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
-			style="
-				background-color: rgba({r}, {g}, {b}, {bgOpacity});
-				backdrop-filter: blur({blurAmount}px);
-				-webkit-backdrop-filter: blur({blurAmount}px);
-				box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
-				transform: translateZ(0);
-			"
-		>
-			<div class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0">
-				<MobileLink
-					href={backLink}
-					class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
-				>
-					<ArrowLeft class="h-6 w-6 text-black" />
-				</MobileLink>
-				<h1 class="header-title font-heading text-[20px] font-bold text-black">Rekeningen</h1>
-				<button class="header-btn-right rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-					<Search class="h-6 w-6 text-black" />
-				</button>
-			</div>
-		</header>
-
-		<div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
-			<!-- Account Cards Section (Portrait Only) -->
-			{#if isOriginal}
-				<!-- Original Theme: Carousel of cards with buttons inside (matches homepage betaalsaldo) -->
-				<div
-					class="w-full bg-sand-100 pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
-					accounts.length - 1
-						? 'rounded-br-3xl'
-						: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
-				>
-					<HorizontalCarousel
-						bind:currentIndex={carouselIndex}
-						showIndicators={false}
-						itemCount={accounts.length}
-						cardWidth={310}
-						gap={12}
-					>
-						{#each accounts as account (account.id)}
-							<AccountCard name={account.name} balance={account.balance} type={account.type} variant="original" />
-						{/each}
-					</HorizontalCarousel>
-				</div>
-			{:else}
-				<!-- Improved Theme: Carousel of account cards with huge amount and buttons outside -->
-				<div
-					class="w-full bg-sand-100 pt-0 pb-0 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
-					accounts.length - 1
-						? 'rounded-br-3xl'
-						: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
-				>
+		{#if isImproved}
+			<!-- Redesign: Colored header wrapping nav + carousel -->
+			<div class="product-colored-header rounded-b-3xl" style="background-color: rgb(200, 225, 235);">
+				<header class="sticky top-0 z-20 w-full" style="background-color: rgb(200, 225, 235);">
+					<div class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
+						<MobileLink
+							href={backLink}
+							class="rounded-full p-2 hover:bg-black/5 active:bg-black/10"
+						>
+							<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
+						</MobileLink>
+						<h1 class="font-heading text-[20px] font-bold">Rekeningen</h1>
+						<button class="rounded-full p-2 hover:bg-black/5 active:bg-black/10">
+							<Search class="h-6 w-6" strokeWidth={1.5} />
+						</button>
+					</div>
+				</header>
+				
+				<!-- Carousel inside colored header -->
+				<div class="w-full pt-0 pb-0 landscape:hidden">
 					<HorizontalCarousel
 						bind:currentIndex={carouselIndex}
 						showIndicators={false}
@@ -174,41 +213,110 @@
 					</HorizontalCarousel>
 				</div>
 				
-				<!-- Action buttons outside the card for redesign -->
-				<div class="flex gap-2 px-4 pt-3 pb-5">
-					<button
-						class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-mediumOrange-600 px-4 text-white shadow-sm transition-all active:scale-95"
-						aria-label="Primary action"
+				<!-- Action buttons inside colored area -->
+				{#if accounts[carouselIndex]}
+					{@const pdpActions = [
+						{ label: accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen', icon: ArrowUp },
+						{ label: accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek', icon: ArrowDown },
+						{ label: 'Meer', icon: Menu, tertiary: true }
+					]}
+					<div class="px-4 pt-4 pb-4">
+						<ActionButtonGroup actions={pdpActions} variant="pdp" class="w-full" />
+					</div>
+				{/if}
+			</div>
+		{:else}
+			<!-- Original/Rebrand: Standard header -->
+			<header
+				class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
+				style="
+					background-color: rgba({r}, {g}, {b}, {bgOpacity});
+					backdrop-filter: blur({blurAmount}px);
+					-webkit-backdrop-filter: blur({blurAmount}px);
+					box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
+					transform: translateZ(0);
+				"
+			>
+				<div class="header-inner flex w-full items-center justify-between px-4 pt-[54px] pb-2 landscape:relative landscape:px-0 landscape:pt-0">
+					<MobileLink
+						href={backLink}
+						class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
 					>
-						<ArrowUp class="h-4 w-4 text-white" strokeWidth={2.2} />
-						<span class="font-heading text-sm font-semibold">{accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen'}</span>
-					</button>
-					<button
-						class="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-white px-4 shadow-sm transition-all active:scale-95"
-						aria-label="Secondary action"
-					>
-						<ArrowDown class="h-4 w-4 text-mediumOrange-600" strokeWidth={2.2} />
-						<span class="font-heading text-sm font-semibold text-gray-700">{accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek'}</span>
-					</button>
-					<button
-						class="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-white px-3 shadow-sm transition-all active:scale-95"
-						aria-label="More actions"
-					>
-						<Menu class="h-4 w-4 text-gray-500" strokeWidth={2} />
-						<span class="font-heading text-sm font-semibold text-gray-500">Meer</span>
+						<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
+					</MobileLink>
+					<h1 class="header-title font-heading text-[20px] font-bold">Rekeningen</h1>
+					<button class="header-btn-right rounded-full p-2 hover:bg-black/5 active:bg-black/10">
+						<Search class="h-6 w-6" strokeWidth={1.5} />
 					</button>
 				</div>
-			{/if}
+			</header>
 
-			<!-- Interactive Vermogen Card (Landscape Only) -->
-			<div class="sidebar-account-list hidden landscape:block">
-				<WidgetHeader title="Vermogen" class="mb-3" />
-				<Card padding="p-0">
-					<div class="flex flex-col">
-						{#each accounts as account, i}
-							<button
-								onclick={() => (carouselIndex = i)}
-								class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {carouselIndex === i ? 'active-account-row bg-black/5 dark:bg-white/10' : ''}"
+			<div class="dashboard-sidebar landscape:mt-0 landscape:px-0">
+				<!-- Account Cards Section (Portrait Only) -->
+				{#if isOriginal}
+					<!-- Original Theme: Carousel of cards with buttons inside (matches homepage betaalsaldo) -->
+					<div
+						class="w-full pt-0 pb-4 transition-[border-radius] duration-300 landscape:hidden bg-transparent {carouselIndex >=
+						accounts.length - 1
+							? 'rounded-br-3xl'
+							: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
+					>
+						<HorizontalCarousel
+							bind:currentIndex={carouselIndex}
+							showIndicators={false}
+							itemCount={accounts.length}
+							cardWidth={310}
+							gap={12}
+						>
+							{#each accounts as account (account.id)}
+								<AccountCard name={account.name} balance={account.balance} type={account.type} variant="original" />
+							{/each}
+						</HorizontalCarousel>
+					</div>
+				{:else}
+					<!-- Rebrand Theme: Carousel with transparent background -->
+					<div
+						class="w-full pt-0 pb-0 transition-[border-radius] duration-300 landscape:hidden bg-transparent {carouselIndex >=
+						accounts.length - 1
+							? 'rounded-br-3xl'
+							: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
+					>
+						<HorizontalCarousel
+							bind:currentIndex={carouselIndex}
+							showIndicators={false}
+							itemCount={accounts.length}
+							cardWidth={310}
+							gap={12}
+						>
+							{#each accounts as account (account.id)}
+								<AccountCard name={account.name} balance={account.balance} type={account.type} variant="redesign-huge" />
+							{/each}
+						</HorizontalCarousel>
+					</div>
+					
+					<!-- Action buttons outside the card for rebrand -->
+					{#if accounts[carouselIndex]}
+						{@const pdpActions = [
+							{ label: accounts[carouselIndex]?.type === 'savings' ? 'Opnemen' : 'Betalen', icon: ArrowUp },
+							{ label: accounts[carouselIndex]?.type === 'savings' ? 'Storten' : 'Verzoek', icon: ArrowDown },
+							{ label: 'Meer', icon: Menu, tertiary: true }
+						]}
+						<div class="px-4 pt-4 pb-3">
+							<ActionButtonGroup actions={pdpActions} variant="pdp" class="w-full" />
+						</div>
+					{/if}
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Interactive account card list (landscape only - shared) -->
+		<div class="sidebar-account-list hidden landscape:block">
+			<Card padding="p-0">
+				<div class="flex flex-col">
+					{#each accounts as account, i}
+						<button
+							onclick={() => (carouselIndex = i)}
+							class="flex items-center justify-between px-4 py-3 transition-all active:scale-[0.99] {carouselIndex === i ? 'active-account-row bg-black/5 dark:bg-white/10' : ''}"
 							>
 								<div class="flex min-w-0 flex-1 items-center gap-3">
 									<div class="relative shrink-0">
@@ -253,10 +361,9 @@
 					</div>
 				</Card>
 			</div>
-		</div>
 
 		<!-- Content: Transactions List -->
-		<div class="dashboard-main bg-sand-50 px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8">
+		<div class="dashboard-main px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8 {isRebrand ? 'bg-transparent' : 'bg-sand-50'}">
 			{#if accounts[carouselIndex]?.name === 'Internetsparen'}
 				{#if isLoading}
 					<div class="animate-pulse">
@@ -365,7 +472,7 @@
 						<Card padding="p-0">
 							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
-									<div class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50">
+									<div class="block {isRebrand ? 'bg-transparent' : 'bg-white'} p-4 first:rounded-t-2xl last:rounded-b-2xl {isRebrand ? 'active:bg-white/20' : 'active:bg-gray-50'}">
 										<TransactionItem
 											merchant={t.merchant}
 											subtitle={formatRecurringSubtitle(t.interval, t.daysUntil)}
@@ -406,7 +513,7 @@
 									{#each group.transactions as t}
 										<MobileLink
 											href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-											class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
+										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
 										>
 											<TransactionItem
 												merchant={t.merchant}

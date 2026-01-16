@@ -177,7 +177,7 @@
 			>
 				<span class="truncate font-normal text-gray-1000 dark:text-white">{merchant}</span>
 				{#if expectedBadge}
-					<span class="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">{expectedBadge}</span>
+					<span class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-orange-900/30 dark:text-orange-300">{expectedBadge}</span>
 				{/if}
 			</div>
 			{#if showSubtitle}

@@ -69,11 +69,7 @@
 					{currentInsight?.emoji}
 				</div>
 				<div class="flex-1">
-					<div class="mb-1 flex items-center gap-2">
-						<Sparkles class="h-3 w-3 text-secondary" />
-						<span class="text-xs font-bold tracking-wider text-secondary uppercase">Fun Fact</span>
-					</div>
-					<p class="text-lg leading-tight font-medium">
+					<p class="text-base leading-tight font-medium">
 						{#key currentInsight?.id}
 							<span in:fade={{ duration: 300 }}>{currentInsight?.message}</span>
 						{/key}

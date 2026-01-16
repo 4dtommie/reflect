@@ -64,7 +64,7 @@
 					amount={interestAmount}
 					showSign={false}
 					showSymbol={true}
-					size="md"
+					size="lg"
 					class="!text-gray-1000 dark:!text-white"
 				/>
 			</div>
@@ -89,7 +89,7 @@
 						amount={bonusAmount}
 						showSign={false}
 						showSymbol={true}
-						size="md"
+						size="lg"
 						class="font-black !text-amber-500"
 					/>
 				</div>

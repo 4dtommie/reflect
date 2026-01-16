@@ -357,18 +357,8 @@
 							<div
 								class="chat-bubble-assistant max-w-[90%] rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm"
 							>
-								{#if msg.insightCategory}
-									<span
-										class="mb-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase {getCategoryBadgeClass(
-											msg.insightCategory
-										)}"
-									>
-										{msg.insightCategory}
-									</span>
-								{/if}
-								<p class="pb-1 text-sm">
-									{getDisplayContent(msg)}{#if isTyping(msg)}<span class="animate-pulse">▊</span
-										>{/if}
+								<p class="pb-1 text-base">
+									{getDisplayContent(msg)}{#if isTyping(msg)}<span class="animate-pulse">▊</span>{/if}
 								</p>
 
 								{#if msg.data?.transactions && msg.data.transactions.length > 0 && !isTyping(msg)}

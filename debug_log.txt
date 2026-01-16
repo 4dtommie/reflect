@@ -26581,3 +26581,38 @@
 [2026-01-15T13:26:21.043Z] lastInsightMsg: spending_down
 [2026-01-15T13:26:21.048Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
 [2026-01-15T13:26:21.052Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-15T17:23:53.106Z] Load function started
+[2026-01-15T17:23:53.193Z] Promise.all completed - chatInsight: check_recurring
+[2026-01-15T17:23:53.195Z] Entering transition logic - currentInsight: check_recurring
+[2026-01-15T17:23:53.201Z] Conversation found: true, messages: 4
+[2026-01-15T17:23:53.204Z] lastInsightMsg: spending_down
+[2026-01-15T17:23:53.206Z] 🔍 DEBUG: lastInsightMsg ID: spending_down
+[2026-01-15T17:23:53.209Z] 🔍 DEBUG: currentInsight ID: check_recurring
+[2026-01-15T17:46:54.294Z] Load function started
+[2026-01-15T17:46:54.382Z] Promise.all completed - chatInsight: undefined
+[2026-01-15T17:46:54.383Z] Entering transition logic - currentInsight: undefined
+[2026-01-15T17:46:54.393Z] Conversation found: true, messages: 5
+[2026-01-15T17:46:54.397Z] lastInsightMsg: check_recurring
+[2026-01-15T17:46:54.399Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-15T17:46:54.402Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-15T17:48:13.132Z] Load function started
+[2026-01-15T17:48:13.171Z] Promise.all completed - chatInsight: undefined
+[2026-01-15T17:48:13.262Z] Entering transition logic - currentInsight: undefined
+[2026-01-15T17:48:13.276Z] Conversation found: true, messages: 5
+[2026-01-15T17:48:13.280Z] lastInsightMsg: check_recurring
+[2026-01-15T17:48:13.284Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-15T17:48:13.288Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-15T17:48:17.136Z] Load function started
+[2026-01-15T17:48:17.165Z] Promise.all completed - chatInsight: undefined
+[2026-01-15T17:48:17.180Z] Entering transition logic - currentInsight: undefined
+[2026-01-15T17:48:17.191Z] Conversation found: true, messages: 5
+[2026-01-15T17:48:17.199Z] lastInsightMsg: check_recurring
+[2026-01-15T17:48:17.207Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-15T17:48:17.214Z] 🔍 DEBUG: currentInsight ID: undefined
+[2026-01-15T18:09:13.691Z] Load function started
+[2026-01-15T18:09:13.710Z] Promise.all completed - chatInsight: undefined
+[2026-01-15T18:09:13.779Z] Entering transition logic - currentInsight: undefined
+[2026-01-15T18:09:13.829Z] Conversation found: true, messages: 5
+[2026-01-15T18:09:13.829Z] lastInsightMsg: check_recurring
+[2026-01-15T18:09:13.832Z] 🔍 DEBUG: lastInsightMsg ID: check_recurring
+[2026-01-15T18:09:13.834Z] 🔍 DEBUG: currentInsight ID: undefined

@@ -5,11 +5,13 @@
 	import './mobile.css';
 	import TouchSimulator from '$lib/components/mobile/TouchSimulator.svelte';
 	import BottomNav from '$lib/components/mobile/BottomNav.svelte';
+	import BlobBackground from '$lib/components/mobile/BlobBackground.svelte';
+	import ScrollDebugger from '$lib/components/dev/ScrollDebugger.svelte';
 	import { mobileScrollY } from '$lib/stores/mobileScroll';
 	import { mobileNavDirection } from '$lib/stores/mobileNavDirection';
 	import { shouldAnimateNavigation } from '$lib/stores/mobileNavAnimation';
 	import { mobileThemeName, type ThemeName } from '$lib/stores/mobileTheme';
-	import { mobileStatusBarColor } from '$lib/stores/mobileStatusBarColor';
+	import { mobileStatusBarColor, hideGlobalStatusBar } from '$lib/stores/mobileStatusBarColor';
 	import { Battery, Signal, Wifi } from 'lucide-svelte';
 	import { tick } from 'svelte';
 
@@ -19,13 +21,23 @@
 
 	const currentPath = $derived($page.url.pathname);
 
+	// Theme checks (needed early for status bar bg)
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
+
 	// Determine header background color based on route or store override
-	// Homepage uses sand-50 (lighter), other pages use sand-100 (darker)
+	// Homepage and product-details use sand-50 (lighter) for original theme
+	// Other pages use sand-100 (darker) for original theme
+	// Rebrand theme uses transparent for all pages
 	const isHomepage = $derived(currentPath === '/mobile' || currentPath === '/mobile/');
-	const defaultStatusBarBg = $derived(isHomepage 
-		? 'rgba(250, 249, 248, 0.85)' // sand-50
-		: 'rgba(243, 239, 237, 0.85)' // sand-100
-	);
+	const isProductDetails = $derived(currentPath.startsWith('/mobile/product-details'));
+	const defaultStatusBarBg = $derived.by(() => {
+		if (isRebrand) return 'transparent';
+		// Use sand-50 for homepage and product-details in original theme
+		return (isHomepage || (isOriginal && isProductDetails))
+			? 'rgba(250, 249, 248, 0.85)' // sand-50
+			: 'rgba(243, 239, 237, 0.85)'; // sand-100
+	});
 	// Use store override if set, otherwise use default
 	const statusBarBg = $derived($mobileStatusBarColor || defaultStatusBarBg);
 
@@ -57,9 +69,13 @@
 
 	// Reset animation flag after navigation completes
 	afterNavigate(async () => {
-		// Reset scroll position store immediately on navigation
-		$mobileScrollY = 0;
-		
+		// Only reset the scroll store for forward navigations. For back navigations
+		// we want to preserve the value (saved earlier) so the destination page
+		// can restore the scroll position from `scrollPositions`.
+		if ($mobileNavDirection !== 'back') {
+			$mobileScrollY = 0;
+		}
+
 		// Small delay to ensure transition has started
 		setTimeout(() => {
 			shouldAnimateNavigation.set(false);
@@ -85,9 +101,9 @@
 	// Sync design theme from URL to store
 	$effect(() => {
 		const designTheme = $page.url.searchParams.get('designTheme') as ThemeName | null;
-		if (designTheme === 'nn-original' || designTheme === 'improved') {
+		if (designTheme === 'nn-original' || designTheme === 'improved' || designTheme === 'rebrand') {
 			mobileThemeName.set(designTheme);
-			// Set DaisyUI theme based on design theme
+			// Set DaisyUI theme based on design theme (rebrand uses same base as improved)
 			const daisyTheme = designTheme === 'nn-original' ? 'nn-theme' : 'nn-improved';
 			document.documentElement.setAttribute('data-daisyui-theme', daisyTheme);
 		}
@@ -98,10 +114,17 @@
 		children;
 		tick().then(checkScroll);
 	});
+
+	// Enable dev scroll debugger when query param is present
+	const showScrollDebugger = $derived($page.url.searchParams.get('devScrollDebug') === 'true');
 </script>
 
 <TouchSimulator />
-<div class="mobile-viewport">
+<div class="mobile-viewport" class:rebrand-viewport={isRebrand}>
+	<!-- Animated rotating blobs background (rebrand theme only, all pages) -->
+	<BlobBackground />
+
+	{#if !$hideGlobalStatusBar}
 	<div class="mobile-status-bar {device}" style="background: {statusBarBg};">
 		{#if device === 'iphone'}
 			<div class="flex flex-1 justify-start pl-4 font-bold tracking-wide">9:41</div>
@@ -119,17 +142,23 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
 
 	<div class="mobile-content" onscroll={handleScroll} bind:this={contentEl}>
 		{#key currentPath}
 			<div
-				class="page-container dark:bg-gray-1300 bg-sand-50"
+				class="page-container dark:bg-gray-1300 {isRebrand ? 'bg-transparent' : 'bg-sand-50'}"
+				style="position: relative; z-index: 1;"
 				in:fly|global={{ x: shouldAnimate ? flyX : 0, duration: shouldAnimate ? 200 : 0 }}
 			>
 				{@render children()}
 			</div>
 		{/key}
 	</div>
+
+	{#if showScrollDebugger}
+		<ScrollDebugger />
+	{/if}
 
 	<div class="bottom-nav-wrapper">
 		<BottomNav {isAtBottom} />
@@ -160,5 +189,14 @@
 
 	.page-container {
 		min-height: 100%;
+	}
+
+	/* Make viewport transparent for rebrand theme so blobs show through */
+	.rebrand-viewport {
+		background-color: transparent !important;
+	}
+
+	.rebrand-viewport .mobile-content {
+		background-color: transparent !important;
 	}
 </style>

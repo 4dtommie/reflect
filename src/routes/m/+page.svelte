@@ -224,7 +224,7 @@
 					<div class="control-label">Design</div>
 					<div class="mt-1.5 flex rounded-lg bg-slate-800 p-1">
 						<button
-							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'nn-original'
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {designTheme === 'nn-original'
 								? 'bg-slate-600 text-white shadow-sm'
 								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 							onclick={() => {
@@ -233,10 +233,10 @@
 								updateIframeUrl();
 							}}
 						>
-							Original
+							Current
 						</button>
 						<button
-							class="flex flex-1 items-center justify-center rounded-md px-3 py-1.5 text-sm transition-colors {designTheme === 'improved'
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {designTheme === 'improved'
 								? 'bg-slate-600 text-white shadow-sm'
 								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 							onclick={() => {
@@ -247,6 +247,18 @@
 						>
 							Redesign
 						</button>
+						<button
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {designTheme === 'rebrand'
+								? 'bg-slate-600 text-white shadow-sm'
+								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
+							onclick={() => {
+								designTheme = 'rebrand';
+								localStorage.setItem('designTheme', designTheme);
+								updateIframeUrl();
+							}}
+						>
+							Rebrand
+						</button>
 					</div>
 				</div>
 
@@ -255,7 +267,7 @@
 					<div class="control-label">Product layout</div>
 					<div class="mt-1.5 flex rounded-lg bg-slate-800 p-1">
 						<button
-							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'A'
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {productLayout === 'A'
 								? 'bg-slate-600 text-white shadow-sm'
 								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 							onclick={() => {
@@ -267,7 +279,7 @@
 							Carousel
 						</button>
 						<button
-							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'B'
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {productLayout === 'B'
 								? 'bg-slate-600 text-white shadow-sm'
 								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 							onclick={() => {
@@ -276,10 +288,10 @@
 								updateIframeUrl();
 							}}
 						>
-							Individual PDP
+							Page
 						</button>
 						<button
-							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-xs transition-colors {productLayout === 'C'
+							class="flex flex-1 items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors {productLayout === 'C'
 								? 'bg-slate-600 text-white shadow-sm'
 								: 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}"
 							onclick={() => {
@@ -288,7 +300,7 @@
 								updateIframeUrl();
 							}}
 						>
-							Slidedown
+							Topsheet
 						</button>
 					</div>
 				</div>

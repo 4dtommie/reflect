@@ -4,8 +4,9 @@
 	import MobileLink from './MobileLink.svelte';
 	import { mobileThemeName } from '$lib/stores/mobileTheme';
 
-	// Theme check for tab labels
+	// Theme checks
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
 
 	let { isAtBottom = true } = $props();
 
@@ -23,7 +24,10 @@
 </script>
 
 <div
-	class="bottom-nav dark:bg-gray-1300 flex cursor-none flex-col bg-sand-50 font-nn backdrop-blur-md transition-shadow duration-300"
+	class="bottom-nav dark:bg-gray-1300 flex cursor-none flex-col font-nn transition-shadow duration-300"
+	class:bottom-nav-glassy={isRebrand}
+	class:bg-sand-50={!isRebrand}
+	class:backdrop-blur-md={!isRebrand}
 	class:shadow-[0_-4px_12px_rgba(0,0,0,0.08)]={!isAtBottom}
 	style="transform: translateZ(0);"
 >
@@ -151,3 +155,25 @@
 		<div class="home-indicator h-[5px] w-[134px] rounded-full bg-gray-900 dark:bg-white"></div>
 	</div>
 </div>
+
+<style>
+	.bottom-nav-glassy {
+		background: rgba(255, 255, 255, 0.55);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border-top: 1px solid rgba(255, 255, 255, 0.5);
+		box-shadow: 
+			0 -1px 2px rgba(0, 0, 0, 0.03),
+			0 -4px 12px rgba(0, 0, 0, 0.04),
+			inset 0 1px 0 rgba(255, 255, 255, 0.6);
+	}
+
+	:global(.dark) .bottom-nav-glassy {
+		background: rgba(30, 30, 30, 0.6);
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: 
+			0 -1px 2px rgba(0, 0, 0, 0.1),
+			0 -4px 12px rgba(0, 0, 0, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	}
+</style>

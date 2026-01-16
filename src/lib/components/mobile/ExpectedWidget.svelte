@@ -24,8 +24,8 @@
 
 	// Simple theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
-	// Theme-aware dividers (original shows no dividers, improved shows dividers)
-	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-1100');
+	// Theme-aware dividers (original shows no dividers, improved shows white dividers)
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-white dark:divide-gray-1100');
 
 	// Format daysUntil as badge text
 	function formatDaysBadge(days: number): string {

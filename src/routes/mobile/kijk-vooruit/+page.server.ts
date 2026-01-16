@@ -36,6 +36,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     simulatedToday.setHours(0, 0, 0, 0);
     simulatedToday.setDate(simulatedToday.getDate() + manualOffset);
 
+    // Range selector from URL: 'this-period' | '2months' | 'year'
+    const range = url.searchParams.get('range') || 'this-period';
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - baseOffset + manualOffset);
     cutoffDate.setHours(23, 59, 59, 999);
@@ -150,7 +153,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         }
     }
 
-    // 5. Graph Data Calculation
+    // 5. Graph Data Calculation for multiple ranges
     // Find the previous salary date to start the graph (amount >= 1000 to match salary filter)
     const previousSalary = await db.transactions.findFirst({
         where: {
@@ -164,54 +167,69 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         select: { date: true, amount: true }
     });
 
-    const graphStartDate = previousSalary ? new Date(previousSalary.date) : new Date(simulatedToday.getTime() - 30 * 24 * 60 * 60 * 1000);
-    // Start graph 3 days before salary for context
-    graphStartDate.setDate(graphStartDate.getDate() - 3);
-    graphStartDate.setHours(0, 0, 0, 0);
+    async function buildGraphFor(rangeKey: string) {
+        let graphStartDate: Date;
+        if (rangeKey === 'this-period') {
+            graphStartDate = previousSalary ? new Date(previousSalary.date) : new Date(simulatedToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+            graphStartDate.setDate(graphStartDate.getDate() - 3);
+        } else if (rangeKey === '2months') {
+            graphStartDate = new Date(cutoffDate.getTime() - 60 * 24 * 60 * 60 * 1000);
+        } else if (rangeKey === 'year') {
+            graphStartDate = new Date(cutoffDate.getTime() - 365 * 24 * 60 * 60 * 1000);
+        } else {
+            graphStartDate = new Date(simulatedToday.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+        graphStartDate.setHours(0, 0, 0, 0);
 
-    const periodTransactions = await db.transactions.findMany({
-        where: {
-            user_id: userId,
-            date: { gte: graphStartDate, lte: cutoffDate }
-        },
-        orderBy: { date: 'asc' }
-    });
+        const periodTransactions = await db.transactions.findMany({
+            where: {
+                user_id: userId,
+                date: { gte: graphStartDate, lte: cutoffDate }
+            },
+            orderBy: { date: 'asc' }
+        });
 
-    // We'll use 1200 as current balance at simulatedToday and work backwards
-    // Wait, it's easier to work forwards if we determine the start balance.
-    // StartBalance = 1200 - NetFlow(graphStartDate to cutoffDate)
-    const totalNetSinceStart = periodTransactions.reduce((sum, t) => sum + (t.is_debit ? -Number(t.amount) : Number(t.amount)), 0);
-    let runningBalance = 1200 - totalNetSinceStart;
+        const totalNetSinceStart = periodTransactions.reduce((sum, t) => sum + (t.is_debit ? -Number(t.amount) : Number(t.amount)), 0);
+        let runningBalance = 1200 - totalNetSinceStart;
 
-    const graphData: { date: string, balance: number, type: 'history' | 'projection' }[] = [];
-
-    // Add start point
-    graphData.push({
-        date: applyDateOffset(graphStartDate, baseOffset).toISOString(),
-        balance: runningBalance,
-        type: 'history'
-    });
-
-    // Add historic points
-    for (const t of periodTransactions) {
-        runningBalance += (t.is_debit ? -Number(t.amount) : Number(t.amount));
-        graphData.push({
-            date: applyDateOffset(new Date(t.date), baseOffset).toISOString(),
+        const graphDataLocal: { date: string, balance: number, type: 'history' | 'projection' }[] = [];
+        graphDataLocal.push({
+            date: applyDateOffset(graphStartDate, baseOffset).toISOString(),
             balance: runningBalance,
             type: 'history'
         });
+
+        for (const t of periodTransactions) {
+            runningBalance += (t.is_debit ? -Number(t.amount) : Number(t.amount));
+            graphDataLocal.push({
+                date: applyDateOffset(new Date(t.date), baseOffset).toISOString(),
+                balance: runningBalance,
+                type: 'history'
+            });
+        }
+
+        let projectionBalance = runningBalance;
+        for (const item of aankomendRawMapped) {
+            projectionBalance += (item.isDebit ? -item.amount : item.amount);
+            const projDate = applyDateOffset(new Date(item.date), baseOffset);
+            projDate.setHours(0, 0, 0, 0);
+            graphDataLocal.push({
+                date: projDate.toISOString(),
+                balance: projectionBalance,
+                type: 'projection'
+            });
+        }
+
+        return graphDataLocal;
     }
 
-    // Add projection points
-    let projectionBalance = runningBalance;
-    for (const item of aankomendRawMapped) {
-        projectionBalance += (item.isDebit ? -item.amount : item.amount);
-        graphData.push({
-            date: item.date.toISOString(),
-            balance: projectionBalance,
-            type: 'projection'
-        });
+    const ranges = ['this-period', '2months', 'year'];
+    const graphDataByRange: Record<string, typeof graphData> = {} as any;
+    for (const r of ranges) {
+        graphDataByRange[r] = await buildGraphFor(r);
     }
+    // Keep backward-compatible single graphData for requested range
+    const graphData = graphDataByRange[range] || graphDataByRange['this-period'];
 
     // 6. Summary calculation (Current period only, excluding salary)
     const currentPeriodExpenses = currentPeriod.reduce((sum, t) => sum + (t.isDebit ? t.amount : 0), 0);
@@ -240,6 +258,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         daysUntilSalary,
         projectedSurplus,
         graphData,
+        graphDataByRange,
         previousSalaryDate: previousSalary ? applyDateOffset(new Date(previousSalary.date), baseOffset).toISOString() : null,
         nextSalaryDate: salaryItem ? salaryItem.date.toISOString() : null,
         confirmedPayments: currentPeriod,

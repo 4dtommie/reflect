@@ -103,8 +103,6 @@
 	font-weight: 600;
 	color: #1a1a1a;
 	/* background set via inline style based on route */
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
 	z-index: 50; /* Above sticky headers (z-20) */
 	flex-shrink: 0;
 	pointer-events: none; /* Let clicks pass through to header if needed */

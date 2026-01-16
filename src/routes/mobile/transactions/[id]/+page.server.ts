@@ -80,6 +80,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 	const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
+	// Calculate start of current year
+	const yearStart = new Date(now.getFullYear(), 0, 1);
+
 	// Get similar transactions (same merchant, different dates)
 	const similarTransactions = await db.transactions.findMany({
 		where: {
@@ -94,8 +97,87 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		}
 	});
 
-	// Calculate average amount for this merchant (current month only)
-	const [merchantStats, lastMonthStats] = await Promise.all([
+	// Get all merchant transactions for loyalty streak calculation
+	const allMerchantTransactions = await db.transactions.findMany({
+		where: {
+			user_id: userId,
+			merchant_id: transaction.merchant_id
+		},
+		orderBy: { date: 'desc' },
+		select: { date: true }
+	});
+
+	// Calculate loyalty streak data
+	function calculateLoyaltyStreak(transactions: { date: Date }[]) {
+		if (transactions.length === 0) {
+			return { consecutiveWeeks: 0, thisMonth: 0, thisYear: 0, totalVisits: 0 };
+		}
+
+		const now = new Date();
+		const currentYear = now.getFullYear();
+		const currentMonth = now.getMonth();
+
+		// Count visits this month and this year
+		let thisMonth = 0;
+		let thisYear = 0;
+		for (const t of transactions) {
+			const date = new Date(t.date);
+			if (date.getFullYear() === currentYear) {
+				thisYear++;
+				if (date.getMonth() === currentMonth) {
+					thisMonth++;
+				}
+			}
+		}
+
+		// Calculate consecutive weeks streak
+		// Group transactions by week number (ISO week)
+		function getWeekNumber(date: Date): string {
+			const d = new Date(date);
+			d.setHours(0, 0, 0, 0);
+			d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+			const yearStart = new Date(d.getFullYear(), 0, 1);
+			const weekNum = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+			return `${d.getFullYear()}-W${weekNum}`;
+		}
+
+		const weeksWithVisits = new Set<string>();
+		for (const t of transactions) {
+			weeksWithVisits.add(getWeekNumber(new Date(t.date)));
+		}
+
+		// Count consecutive weeks from current week backwards
+		let consecutiveWeeks = 0;
+		const currentWeek = getWeekNumber(now);
+		
+		// Start from current week and go backwards
+		let checkDate = new Date(now);
+		for (let i = 0; i < 52; i++) { // Check up to a year back
+			const weekKey = getWeekNumber(checkDate);
+			if (weeksWithVisits.has(weekKey)) {
+				consecutiveWeeks++;
+				// Go back one week
+				checkDate.setDate(checkDate.getDate() - 7);
+			} else if (i === 0) {
+				// If current week has no visit, start from last week
+				checkDate.setDate(checkDate.getDate() - 7);
+			} else {
+				break;
+			}
+		}
+
+		return {
+			consecutiveWeeks,
+			thisMonth,
+			thisYear,
+			totalVisits: transactions.length
+		};
+	}
+
+	const loyaltyStreak = calculateLoyaltyStreak(allMerchantTransactions);
+
+	// Calculate average amount for this merchant (current month only) and yearly count
+	const [merchantStats, lastMonthStats, yearlyStats] = await Promise.all([
 		db.transactions.aggregate({
 			where: {
 				user_id: userId,
@@ -121,6 +203,16 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			_avg: { amount: true },
 			_count: true,
 			_sum: { amount: true }
+		}),
+		// Count transactions this year for the same merchant
+		db.transactions.count({
+			where: {
+				user_id: userId,
+				merchant_id: transaction.merchant_id,
+				date: {
+					gte: yearStart
+				}
+			}
 		})
 	]);
 
@@ -172,11 +264,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		merchantStats: {
 			totalTransactions: merchantStats._count,
 			totalSpent: Number(merchantStats._sum.amount || 0),
+			yearlyTransactionCount: yearlyStats,
 			lastMonthStats: lastMonthStats._count > 0 ? {
 				totalTransactions: lastMonthStats._count,
 				totalSpent: Number(lastMonthStats._sum.amount || 0)
 			} : null
 		},
+		loyaltyStreak,
 		baseOffset
 	};
 };

@@ -42,16 +42,21 @@
 	// Interpolate color from sand-100 (#f3efed / rgb 243,239,237) at top to sand-50 (#faf9f8 / rgb 250,249,248) on scroll
 	// At top (scrollProgress=0): rgb(243,239,237) = sand-100 (darker)
 	// Scrolled (scrollProgress=1): rgb(250,249,248) = sand-50 (lighter)
-	const r = $derived(Math.round(243 + (250 - 243) * scrollProgress));
-	const g = $derived(Math.round(239 + (249 - 239) * scrollProgress));
-	const b = $derived(Math.round(237 + (248 - 237) * scrollProgress));
-	const blurAmount = $derived(scrollProgress * 12); // 0 to 12px blur
-	const bgOpacity = $derived(1 - scrollProgress * 0.15); // 1 to 0.85 opacity for frosted effect
+	const r = 250;
+	const g = 249;
+	const b = 248;
+	const blurAmount = 0; // No blur - transparent header
+	const bgOpacity = 0; // Fully transparent
 
 	// Simple theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
-	// Theme-aware dividers (original shows no dividers, improved shows dividers)
-	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
+	// Theme-aware dividers (original shows no dividers, rebrand uses white, improved uses gray)
+	const dividerClasses = $derived.by(() => {
+		if (isOriginal) return '';
+		if (isRebrand) return 'divide-y divide-white/30';
+		return 'divide-y divide-gray-100 dark:divide-gray-800';
+	});
 
 	import { productsStore, type Product } from '$lib/mock/products';
 
@@ -117,7 +122,7 @@
 		<header
 			class="mobile-header-component flex items-center justify-between transition-[backdrop-filter] duration-200 landscape:col-span-full"
 			style="
-				background-color: rgba({r}, {g}, {b}, {bgOpacity});
+				background-color: {isRebrand ? 'rgb(200, 225, 235)' : `rgba(${r}, ${g}, ${b}, ${bgOpacity})`} ;
 				backdrop-filter: blur({blurAmount}px);
 				-webkit-backdrop-filter: blur({blurAmount}px);
 				box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
@@ -131,11 +136,11 @@
 					href={backLink}
 					class="header-btn-left rounded-full p-2 hover:bg-black/5 active:bg-black/10"
 				>
-					<ArrowLeft class="h-6 w-6 text-black" />
+					<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
 				</MobileLink>
-				<h1 class="header-title font-heading text-[20px] font-bold text-black">Rekeningen</h1>
+				<h1 class="header-title font-heading text-[20px] font-bold">Rekeningen</h1>
 				<button class="header-btn-right rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-					<Search class="h-6 w-6 text-black" />
+					<Search class="h-6 w-6" strokeWidth={1.5} />
 				</button>
 			</div>
 		</header>
@@ -145,7 +150,7 @@
 			{#if isOriginal}
 				<!-- Original Theme: Single product card with IBAN and action buttons -->
 				{@const currentAccount = accounts[carouselIndex]}
-				<div class="w-full rounded-b-3xl bg-sand-100 px-4 pt-0 pb-4 landscape:hidden">
+				<div class="w-full rounded-b-3xl px-4 pt-0 pb-4 landscape:hidden {isRebrand ? 'bg-transparent' : 'bg-sand-100'}">
 					<Card padding="p-0">
 						<!-- Account info row -->
 						<div class="flex items-center gap-3 px-4 py-4">
@@ -177,12 +182,12 @@
 						</div>
 
 						<!-- Action buttons bar -->
-						<div class="flex items-stretch border-t border-gray-100 px-2 dark:border-gray-800 !bg-white rounded-b-[4px]">
+						<div class="flex items-stretch border-t border-gray-100 px-2 dark:border-gray-800 rounded-b-[4px]">
 							<button
 								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
+								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors active:bg-gray-100 dark:active:bg-gray-800"
 							>
-								<ArrowUpRight class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
+								<ArrowUp class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
 								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Overmaken</span>
 							</button>
 							<div class="flex items-center py-3">
@@ -190,17 +195,17 @@
 							</div>
 							<button
 								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
+								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors active:bg-gray-100 dark:active:bg-gray-800"
 							>
-								<ArrowDownLeft class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
-								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Betaalverzoek</span>
+								<ArrowDown class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
+								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Verzoek</span>
 							</button>
 							<div class="flex items-center py-3">
 								<div class="h-full w-px bg-gray-100 dark:bg-gray-700"></div>
 							</div>
 							<button
 								type="button"
-								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 !bg-white transition-colors active:bg-gray-100 dark:active:bg-gray-800"
+								class="flex flex-1 flex-col items-center justify-center gap-1 py-3 transition-colors active:bg-gray-100 dark:active:bg-gray-800"
 							>
 								<Menu class="h-6 w-6 text-mediumOrange-500" strokeWidth={1.5} />
 								<span class="text-[14px] text-gray-1000 dark:text-white" style="font-weight: 500;">Meer</span>
@@ -211,7 +216,7 @@
 			{:else}
 				<!-- Improved Theme: Carousel of account cards -->
 				<div
-					class="w-full bg-sand-100 pt-0 pb-3 transition-[border-radius] duration-300 landscape:hidden {carouselIndex >=
+					class="w-full pt-0 pb-3 transition-[border-radius] duration-300 landscape:hidden {isRebrand ? 'bg-transparent' : 'bg-sand-100'} {carouselIndex >=
 					accounts.length - 1
 						? 'rounded-br-3xl'
 						: 'rounded-br-none'} {carouselIndex === 0 ? 'rounded-bl-3xl' : 'rounded-bl-none'}"
@@ -230,9 +235,8 @@
 				</div>
 			{/if}
 
-			<!-- Interactive Vermogen Card (Landscape Only) -->
+			<!-- Interactive account card list (landscape only) -->
 			<div class="sidebar-account-list hidden landscape:block">
-				<WidgetHeader title="Vermogen" class="mb-3" />
 				<Card padding="p-0">
 					<!-- Accounts List -->
 					<div class="flex flex-col">
@@ -309,7 +313,7 @@
 
 		<!-- Content: Transactions List -->
 		<div
-			class="dashboard-main bg-sand-50 px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8"
+			class="dashboard-main px-4 pt-4 pb-24 landscape:bg-transparent landscape:px-0 landscape:pt-0 landscape:pb-8 {isRebrand ? 'bg-transparent' : 'bg-sand-50'}"
 		>
 			{#if accounts[carouselIndex]?.name === 'Internetsparen'}
 				{#if isLoading}
@@ -443,7 +447,7 @@
 							<div class={dividerClasses}>
 								{#each data.upcomingTransactions as t}
 									<div
-										class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
+										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
 									>
 										<TransactionItem
 											merchant={t.merchant}
@@ -488,7 +492,7 @@
 									{#each group.transactions as t}
 										<MobileLink
 											href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-											class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50"
+										class="block {isRebrand ? 'bg-transparent active:bg-white/20' : 'bg-white active:bg-gray-50'} p-4 first:rounded-t-2xl last:rounded-b-2xl"
 										>
 											<TransactionItem
 												merchant={t.merchant}

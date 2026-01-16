@@ -20,6 +20,8 @@
 		categoryColor?: string;
 		nextDate?: string;
 		daysLabel?: string;
+		date?: string;
+		subtitle?: string;
 	}
 
 	interface GroupedTransaction {
@@ -29,6 +31,10 @@
 		isDebit: boolean;
 		categoryIcon?: string;
 		category?: string;
+		date?: string;
+		nextDate?: string;
+		description?: string;
+		note?: string;
 	}
 
 	interface TransactionGroupData {
@@ -69,8 +75,16 @@
 
 	// Simple theme check
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
-	// Theme-aware dividers (original shows no dividers, improved shows dividers)
-	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
+	const isRebrand = $derived($mobileThemeName === 'rebrand');
+	// Theme-aware dividers (original shows no dividers, rebrand uses white, improved uses gray)
+	const dividerClasses = $derived.by(() => {
+		if (isOriginal) return '';
+		if (isRebrand) return 'divide-y divide-white/30';
+		return 'divide-y divide-gray-100 dark:divide-gray-800';
+	});
+	// Background class for transaction buttons - transparent for rebrand
+	const buttonBgClass = $derived(isRebrand ? 'bg-transparent' : 'bg-white dark:bg-gray-900');
+	const buttonActiveBgClass = $derived(isRebrand ? 'active:bg-white/20' : 'active:bg-gray-50 dark:active:bg-gray-800');
 </script>
 
 <div class={className}>
@@ -91,7 +105,7 @@
 							{#if onUpcomingClick}
 								<button
 									onclick={() => onUpcomingClick(t)}
-									class="block w-full bg-white p-4 text-left first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50 dark:bg-gray-900 dark:active:bg-gray-800"
+								class="block w-full {buttonBgClass} p-4 text-left first:rounded-t-2xl last:rounded-b-2xl {buttonActiveBgClass}"
 								>
 									<TransactionItem
 										merchant={t.merchant}
@@ -99,7 +113,7 @@
 										amount={t.isDebit ? -t.amount : t.amount}
 										isDebit={t.isDebit}
 										categoryIcon={t.categoryIcon ?? null}
-										size="md"
+										size="lg"
 										fontHeading={true}
 										useLogo={true}
 										showChevron={showUpcomingChevron}
@@ -137,7 +151,7 @@
 					{#each group.transactions as t}
 						<MobileLink
 							href={`/mobile/transactions/${t.id}?from=${encodeURIComponent($page.url.pathname + $page.url.search)}`}
-							class="block bg-white p-4 first:rounded-t-2xl last:rounded-b-2xl active:bg-gray-50 dark:bg-gray-900 dark:active:bg-gray-800"
+							class="block {buttonBgClass} p-4 first:rounded-t-2xl last:rounded-b-2xl {buttonActiveBgClass}"
 						>
 							<TransactionItem
 								merchant={t.merchant}
@@ -145,7 +159,7 @@
 								amount={t.isDebit ? -t.amount : t.amount}
 								isDebit={t.isDebit}
 								categoryIcon={t.categoryIcon ?? null}
-								size="md"
+							size="md"
 								showChevron={true}
 								designVariant={isOriginal ? 'original' : 'redesign'}
 								date={t.nextDate ?? t.date}

@@ -37,7 +37,13 @@
 
 <div class="inline-flex items-baseline font-bold {colorClass} {className}">
 	{#if showSymbol}
-		<span class="mr-1">€</span>
+		{#if size === 'sm' || size === 'md'}
+			<span class="mr-1" style="font-size:16px; line-height:1">€</span>
+		{:else if size === 'lg'}
+			<span class="mr-1" style="font-size:20px; line-height:1">€</span>
+		{:else}
+			<span class="mr-1" style="font-size:32px; line-height:1">€</span>
+		{/if}
 	{/if}
 	{#if showSign}
 		<span class="mr-0.5">{isDebit ? '-' : '+'}</span>

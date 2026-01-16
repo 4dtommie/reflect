@@ -62,7 +62,7 @@
 	{:else}
 		<!-- Improved: card wrapper with dividers -->
 		<Card {padding} class={contentClass}>
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class="divide-y divide-white dark:divide-gray-800">
 				{@render children()}
 			</div>
 		</Card>

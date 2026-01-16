@@ -6,3 +6,9 @@ import { writable } from 'svelte/store';
  * Set to a CSS color string to override.
  */
 export const mobileStatusBarColor = writable<string | null>(null);
+
+/**
+ * Store to hide the global status bar (for pages that render their own).
+ * When true, the layout's status bar will be hidden.
+ */
+export const hideGlobalStatusBar = writable<boolean>(false);

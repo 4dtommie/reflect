@@ -5,6 +5,10 @@
 	import WidgetAction from '$lib/components/mobile/WidgetAction.svelte';
 	import MobileLink from '$lib/components/mobile/MobileLink.svelte';
 	import { ArrowRight } from 'lucide-svelte';
+	import { mobileThemeName } from '$lib/stores/mobileTheme';
+
+	// Theme check - for redesign/rebrand we hide titles and use 16px text
+	const isOriginal = $derived($mobileThemeName === 'nn-original');
 </script>
 
 <section>
@@ -26,16 +30,18 @@
 					</span>
 					<div class="flex h-full gap-4">
 						<div class="flex flex-1 flex-col">
-							<h3 class="mb-1 font-heading leading-tight font-bold dark:text-white">
-								Wat is NN Inzicht?
-							</h3>
+							{#if isOriginal}
+								<h3 class="mb-1 font-heading leading-tight font-bold dark:text-white">
+									Wat is NN Inzicht?
+								</h3>
+							{/if}
 							<p
-								class="mb-3 line-clamp-2 overflow-hidden text-sm leading-relaxed text-gray-1000 dark:text-gray-300"
+								class="mb-3 line-clamp-2 overflow-hidden leading-relaxed text-gray-1000 dark:text-gray-300 {isOriginal ? 'text-sm' : 'text-base'}"
 							>
-								Meer uit je geld halen met je nieuwe NN betaalrekening
+								{isOriginal ? 'Meer uit je geld halen met je nieuwe NN betaalrekening' : 'Wat is NN Inzicht? Meer uit je geld halen met je nieuwe NN betaalrekening'}
 							</p>
-							<div class="mt-auto flex items-center text-sm font-medium text-mediumOrange-600">
-								Let's go <ArrowRight class="ml-2 h-4 w-4" strokeWidth={1.5} />
+							<div class="mt-auto flex items-center font-medium text-gray-1000 dark:text-gray-200 {isOriginal ? 'text-sm' : 'text-base'}">
+								Begin met Inzicht <ArrowRight class="ml-2 h-4 w-4 text-mediumOrange-600" strokeWidth={1.5} />
 							</div>
 						</div>
 						<div class="w-12 shrink-0 self-end pb-2">
@@ -77,11 +83,13 @@
 						10%
 					</span>
 					<div class="flex h-full flex-col">
-						<h3 class="mb-1 font-heading font-bold dark:text-white">Normaal</h3>
-						<p class="mb-3 text-sm text-gray-1000 dark:text-gray-300">€ 75 spaarrente</p>
-						<div class="mt-auto flex items-center text-sm font-medium text-mediumOrange-600">
-							Lees meer <ArrowRight class="ml-2 h-4 w-4" strokeWidth={1.5} />
-						</div>
+						{#if isOriginal}
+							<h3 class="mb-1 font-heading font-bold dark:text-white">Normaal</h3>
+						{/if}
+						<p class="mb-3 text-gray-1000 dark:text-gray-300 {isOriginal ? 'text-sm' : 'text-base'}">{isOriginal ? '€ 75 spaarrente' : 'Normaal - € 75 spaarrente'}</p>
+							<div class="mt-auto flex items-center font-medium text-gray-1000 dark:text-gray-200 {isOriginal ? 'text-sm' : 'text-base'}">
+								Lees meer <ArrowRight class="ml-2 h-4 w-4 text-mediumOrange-600" strokeWidth={1.5} />
+							</div>
 					</div>
 				</MobileLink>
 			</Card>

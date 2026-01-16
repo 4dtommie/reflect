@@ -58,11 +58,17 @@
 		Wallet,
 		HeartHandshake,
 		Sparkles,
+		Trophy,
+		Award,
+		Star,
 		Bike,
+		Signal,
+		Battery,
 		type Icon
 	} from 'lucide-svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { mobileThemeName } from '$lib/stores/mobileTheme';
+	import { hideGlobalStatusBar } from '$lib/stores/mobileStatusBarColor';
 
 	let { data } = $props();
 
@@ -71,17 +77,20 @@
 
 	// Theme check for conditional styling
 	const isOriginal = $derived($mobileThemeName === 'nn-original');
+	
+	// Divider classes - only show dividers for improved/rebrand themes
+	const dividerClasses = $derived(isOriginal ? '' : 'divide-y divide-gray-100 dark:divide-gray-800');
 
 	// Helper for icon wrapper classes - no circle in original theme
 	const iconWrapperClass = $derived(
 		isOriginal 
 			? '' 
-			: 'flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800'
+			: 'flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800'
 	);
 	const iconWrapperClassLg = $derived(
 		isOriginal 
 			? '' 
-			: 'flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800'
+			: 'flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-gray-800'
 	);
 
 	// Icon mapping for category icons
@@ -154,16 +163,15 @@
 		// Force scroll to top on mount to ensure colored header shows
 		window.scrollTo(0, 0);
 		hasMounted = true;
+		// Hide the global status bar - we render our own unified header
+		hideGlobalStatusBar.set(true);
 	});
 
-	// Set status bar color to match the header category color
-	$effect(() => {
-		const { r, g, b } = categoryHeaderColor;
-		mobileStatusBarColor.set(`rgba(${r}, ${g}, ${b}, 0.85)`);
-	});
+	// (status bar color handled below to allow switching when scrolled)
 
-	// Reset status bar color on unmount
+	// Reset status bar visibility and color on unmount
 	onDestroy(() => {
+		hideGlobalStatusBar.set(false);
 		mobileStatusBarColor.set(null);
 	});
 
@@ -172,12 +180,23 @@
 	const effectiveScrollY = $derived(hasMounted ? Math.max($mobileScrollY, 0) : 0);
 	const headerShadowOpacity = $derived(Math.min(effectiveScrollY / 50, 1) * 0.1);
 	const scrollProgress = $derived(Math.min(effectiveScrollY / 60, 1));
-	const blurAmount = $derived(scrollProgress * 12);
-	// Keep category color throughout scroll (no transition to sand)
-	const r = $derived(categoryHeaderColor.r);
-	const g = $derived(categoryHeaderColor.g);
-	const b = $derived(categoryHeaderColor.b);
-	const bgOpacity = $derived(1 - scrollProgress * 0.1);
+	// Original theme: transparent header, others: glassy with category color
+	const blurAmount = $derived(isOriginal ? 0 : 20);
+	// Original: transparent (0,0,0 with opacity 0), others: category color
+	const r = $derived(isOriginal ? 0 : categoryHeaderColor.r);
+	const g = $derived(isOriginal ? 0 : categoryHeaderColor.g);
+	const b = $derived(isOriginal ? 0 : categoryHeaderColor.b);
+	// Original: fully transparent, others: semi-transparent for glassy effect
+	const bgOpacity = $derived(isOriginal ? 0 : 0.6);
+
+	// Meta theme color for browser chrome - always category color
+	const metaThemeColor = $derived(tx.categoryColor || 'rgb(243, 239, 237)');
+
+	// Set status bar color to category color always
+	$effect(() => {
+		const { r, g, b } = categoryHeaderColor;
+		mobileStatusBarColor.set(`rgba(${r}, ${g}, ${b}, 0.85)`);
+	});
 
 	// Build back link from `from` query param when present
 	const rawFrom = $page.url.searchParams.get('from');
@@ -227,8 +246,9 @@
 			});
 		}
 
-		// Category insight - only show if not recurring (recurring has its own card now)
-		if (!tx.isRecurring) {
+		// Category insight - only show if not recurring AND has more than 1 transaction this year
+		// If merchant only appeared once this year and it's not recurring, don't show the "eenmalig" card
+		if (!tx.isRecurring && data.merchantStats.yearlyTransactionCount > 1) {
 			cards.push({
 				id: 'category',
 				title: tx.category,
@@ -246,105 +266,109 @@
 
 <svelte:head>
 	<title>{tx.merchant} - Transactie</title>
-	<meta name="theme-color" content="{tx.categoryColor || 'rgb(243, 239, 237)'}" />
+	<meta name="theme-color" content={metaThemeColor} />
 </svelte:head>
 
-<!-- Header with back/share -->
+<!-- Unified glassy header with status bar + navigation + hero card -->
 <header
-	class="mobile-header-component sticky top-0 z-20 flex flex-col transition-[backdrop-filter] duration-200"
+	class="mobile-header-component flex flex-col transition-all duration-200 {isOriginal ? '' : 'rounded-b-3xl'}"
 	style="
 		background-color: rgba({r}, {g}, {b}, {bgOpacity});
-		backdrop-filter: blur({blurAmount}px);
-		-webkit-backdrop-filter: blur({blurAmount}px);
+		backdrop-filter: blur({blurAmount}px) saturate(1.8);
+		-webkit-backdrop-filter: blur({blurAmount}px) saturate(1.8);
 		box-shadow: 0 12px 32px -4px rgba(0, 0, 0, {headerShadowOpacity});
 		transform: translateZ(0);
 	"
 >
-	<div class="flex w-full items-center justify-between px-4 pt-[54px] pb-2">
+	<!-- Status bar (part of unified header) -->
+	<div class="flex h-[54px] w-full items-center justify-between px-6 text-[15px] font-semibold">
+		<div class="flex flex-1 justify-start font-bold tracking-wide">9:41</div>
+		<div class="flex items-center gap-1.5">
+			<Signal class="h-4 w-4 fill-current" strokeWidth={0} />
+			<Wifi class="h-4 w-4" strokeWidth={2.5} />
+			<Battery class="h-5 w-5 fill-current" strokeWidth={1} />
+		</div>
+	</div>
+	
+	<!-- Navigation row -->
+	<div class="flex w-full items-center justify-between px-4 pb-2">
 		<MobileLink href={backLink} class="rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-			<ArrowLeft class="h-6 w-6 text-black dark:text-white" />
+			<ArrowLeft class="h-6 w-6" strokeWidth={1.5} />
 		</MobileLink>
 
 		<!-- Title always visible -->
-		<h1 
-			class="absolute left-1/2 -translate-x-1/2 font-heading text-lg font-bold text-gray-900"
-		>
+		<h1 class="absolute left-1/2 -translate-x-1/2 font-heading text-lg font-bold">
 			Transactie
 		</h1>
 
 		<div class="flex-1"></div>
 
 		<button class="rounded-full p-2 hover:bg-black/5 active:bg-black/10">
-			<Share2 class="h-6 w-6 text-black dark:text-white" />
+			<Share2 class="h-6 w-6" strokeWidth={1.5} />
 		</button>
 	</div>
-</header>
 
-<!-- Hero section - transaction card with logo inside -->
-<div
-	class="px-4 pb-4"
-	style="background-color: rgb({categoryHeaderColor.r}, {categoryHeaderColor.g}, {categoryHeaderColor.b})"
->
-	<Card padding="p-0" class="overflow-hidden">
-		<!-- Transaction row with logo inside -->
-		<div class="flex items-center gap-3 px-4 py-3">
-			<div class="flex-shrink-0 overflow-hidden rounded-xl shadow-sm">
-				<MerchantLogo merchantName={tx.merchant} categoryIcon={tx.categoryIcon} size="lg" />
-			</div>
-			<div class="min-w-0 flex-1">
-				<h1 class="truncate font-heading text-lg font-bold text-gray-900 dark:text-white">{tx.merchant}</h1>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					{tx.dayName} • {tx.time || tx.date}
-				</p>
-			</div>
-			<div class="flex items-center gap-1">
-				{#if !tx.isDebit}
-					<div class="rounded-[10px] bg-green-100 px-2 py-1 dark:bg-green-900/30">
+	<!-- Hero section - transaction card (inside unified header) -->
+	<div class="px-4 pb-4">
+		<Card padding="p-0" class="overflow-hidden">
+			<!-- Transaction row with optional merchant logo -->
+			<div class="flex items-center gap-3 px-4 py-3">
+				<MerchantLogo 
+					merchantName={tx.merchant} 
+					size="md"
+					showFallback={false}
+				/>
+				<div class="min-w-0 flex-1">
+					<h1 class="truncate font-heading text-lg font-bold text-gray-900 dark:text-white">{tx.merchant}</h1>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						{tx.dayName} • {tx.time || tx.date}
+					</p>
+				</div>
+				<div class="flex items-center gap-1">
+					{#if !tx.isDebit}
 						<Amount
 							amount={tx.amount}
 							size="lg"
-							showSign={false}
-							class="font-heading !text-green-800 dark:!text-green-400"
+							showSign={true}
+							class="font-heading !text-green-700 dark:!text-green-400"
 						/>
-					</div>
-				{:else}
-					<Amount
-						amount={-tx.amount}
-						size="lg"
-						class="font-heading !text-gray-900 dark:!text-white"
-					/>
-				{/if}
-				<ChevronRight class="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
-			</div>
-		</div>
-
-		<!-- Category row - now with icon in badge -->
-		<div class="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 dark:border-gray-800">
-			<div class="flex items-center gap-2">
-				<div
-					class="flex h-7 items-center gap-1.5 rounded-full px-2.5"
-					style="background-color: {tx.categoryColor
-						? tx.categoryColor + '20'
-						: 'rgb(243, 239, 237)'}"
-				>
-					<CategoryIconComponent 
-						class="h-3.5 w-3.5"
-						style="color: {tx.categoryColor || 'rgb(107, 114, 128)'}"
-						strokeWidth={2}
-					/>
-					<span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{tx.category}</span>
+					{:else}
+						<Amount
+							amount={-tx.amount}
+							size="lg"
+							showSign={true}
+							class="font-heading !text-gray-900 dark:!text-white"
+						/>
+					{/if}
+					<ChevronRight class="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
 				</div>
 			</div>
-			<button class="flex items-center gap-1 text-xs font-medium hover:underline {isOriginal ? 'text-gray-900' : 'text-mediumOrange-600'}">
-				Wijzig categorie
-				<ChevronRight class="h-3.5 w-3.5 text-mediumOrange-600" strokeWidth={2} />
-			</button>
-		</div>
-	</Card>
-</div>
+
+			<!-- Category row - now with icon in badge -->
+			<div class="flex items-center justify-between border-t border-gray-100 px-4 py-3 dark:border-gray-800">
+				<div class="flex items-center gap-2">
+					<div
+						class="flex h-8 items-center gap-1.5 rounded-full px-3"
+						style="background-color: {tx.categoryColor || 'rgb(243, 239, 237)'}"
+					>
+						<CategoryIconComponent 
+							class="h-4 w-4 text-white"
+							strokeWidth={2}
+						/>
+						<span class="text-sm font-semibold text-white">{tx.category}</span>
+					</div>
+				</div>
+				<button class="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-gray-300 hover:underline">
+					Wijzig categorie
+					<ChevronRight class="h-4 w-4 text-mediumOrange-600" strokeWidth={2} />
+				</button>
+			</div>
+		</Card>
+	</div>
+</header>
 
 <!-- Insights Carousel Section -->
-{#if insightCards.length > 0 || tx.isRecurring || (data.merchantStats.totalTransactions >= 3 && data.merchantStats.lastMonthStats)}
+{#if insightCards.length > 0 || tx.isRecurring || (data.merchantStats.totalTransactions >= 3 && data.merchantStats.lastMonthStats) || data.loyaltyStreak}
 	{@const fakeCities = ['Amsterdam', 'Den Haag', 'Rotterdam', 'Utrecht', 'Eindhoven']}
 	{@const fakeCity = fakeCities[tx.id % fakeCities.length]}
 	{@const isPaymentType = tx.description?.toLowerCase().includes('betaling') || tx.description?.toLowerCase().includes('pin') || (!tx.description?.toLowerCase().includes('overboeking') && !tx.description?.toLowerCase().includes('storting') && !tx.description?.toLowerCase().includes('salaris'))}
@@ -352,6 +376,130 @@
 	{@const currentSpent = data.merchantStats.totalSpent}
 	{@const lastSpent = lastMonthStats?.totalSpent || 0}
 	{@const spendingDiff = lastSpent > 0 ? Math.round(((currentSpent - lastSpent) / lastSpent) * 100) : 0}
+	{@const loyalty = data.loyaltyStreak}
+	{@const loyaltyInsight = (() => {
+		if (!loyalty) return null;
+		
+		// Define special milestone numbers for celebration
+		const specialYearMilestones = [10, 25, 50, 100, 150, 200];
+		const specialTotalMilestones = [10, 25, 50, 100, 150, 200, 250, 500];
+		const isSpecialYear = specialYearMilestones.includes(loyalty.thisYear);
+		const isSpecialTotal = specialTotalMilestones.includes(loyalty.totalVisits);
+		const hasWeekStreak = loyalty.consecutiveWeeks >= 3;
+		const hasMonthStreak = loyalty.thisMonth >= 3;
+		
+		// First time visitor
+		if (loyalty.totalVisits === 1) {
+			return {
+				title: 'Nieuwe winkel!',
+				subtitle: 'Eerste keer hier',
+				icon: 'star',
+				iconBg: 'bg-yellow-100',
+				iconColor: 'text-yellow-600',
+				celebrate: false
+			};
+		}
+		
+		// Second time visitor
+		if (loyalty.totalVisits === 2) {
+			return {
+				title: 'Terug van weggeweest',
+				subtitle: 'Tweede bezoek hier',
+				icon: 'star',
+				iconBg: 'bg-yellow-100',
+				iconColor: 'text-yellow-600',
+				celebrate: false
+			};
+		}
+		
+		// Special year milestone - celebrate with trophy!
+		if (isSpecialYear) {
+			return {
+				title: `${loyalty.thisYear}e bezoek! 🎉`,
+				subtitle: 'Dit jaar',
+				icon: 'trophy',
+				iconBg: 'bg-amber-100',
+				iconColor: 'text-amber-600',
+				celebrate: true
+			};
+		}
+		
+		// Special total milestone - celebrate with award!
+		if (isSpecialTotal) {
+			return {
+				title: `${loyalty.totalVisits} bezoeken! 🎉`,
+				subtitle: 'Vaste klant',
+				icon: 'award',
+				iconBg: 'bg-purple-100',
+				iconColor: 'text-purple-600',
+				celebrate: true
+			};
+		}
+		
+		// Week streak (3+ weeks in a row) - prioritize if notable
+		if (hasWeekStreak && loyalty.consecutiveWeeks >= 5) {
+			return {
+				title: `${loyalty.consecutiveWeeks} weken op rij!`,
+				subtitle: 'Vaste prik',
+				icon: 'trophy',
+				iconBg: 'bg-orange-100',
+				iconColor: 'text-orange-600',
+				celebrate: true
+			};
+		}
+		
+		// Show visit count for all other cases (3+ visits)
+		// Use different styling based on frequency
+		if (loyalty.totalVisits >= 3) {
+			// High frequency this month (3+)
+			if (hasMonthStreak) {
+				return {
+					title: `${loyalty.thisMonth}x deze maand`,
+					subtitle: `${loyalty.totalVisits} bezoeken totaal`,
+					icon: 'star',
+					iconBg: 'bg-blue-100',
+					iconColor: 'text-blue-600',
+					celebrate: false
+				};
+			}
+			
+			// Week streak (3-4 weeks)
+			if (hasWeekStreak) {
+				return {
+					title: `${loyalty.consecutiveWeeks} weken op rij`,
+					subtitle: `${loyalty.totalVisits} bezoeken totaal`,
+					icon: 'star',
+					iconBg: 'bg-orange-100',
+					iconColor: 'text-orange-600',
+					celebrate: false
+				};
+			}
+			
+			// Show yearly count if notable (5+)
+			if (loyalty.thisYear >= 5) {
+				return {
+					title: `${loyalty.thisYear}x dit jaar`,
+					subtitle: `${loyalty.totalVisits} bezoeken totaal`,
+					icon: 'star',
+					iconBg: 'bg-green-100',
+					iconColor: 'text-green-600',
+					celebrate: false
+				};
+			}
+			
+			// Default: just show total visits
+			return {
+				title: `${loyalty.totalVisits}x geweest`,
+				subtitle: loyalty.thisYear > 1 ? `${loyalty.thisYear}x dit jaar` : 'Dit jaar',
+				icon: 'star',
+				iconBg: 'bg-gray-100',
+				iconColor: 'text-gray-600',
+				celebrate: false
+			};
+		}
+		
+		return null;
+	})()}
 	<div class="mt-4">
 		<WidgetHeader title="Inzichten" class="mb-3 px-4" />
 		<div class="-mx-0">
@@ -359,30 +507,24 @@
 				<!-- Location map card - only show for payment type transactions -->
 				{#if isPaymentType}
 					<Card padding="p-0" class="min-w-[150px] flex-shrink-0 overflow-hidden">
-						<button 
-							class="relative block h-full w-full active:opacity-90" 
+						<button
+							class="relative block h-full w-full active:opacity-90"
 							onclick={() => window.open(`https://maps.google.com/?q=${mapLat},${mapLon}`, '_blank')}
+							style="background-image: url('https://static.vecteezy.com/system/resources/thumbnails/010/801/642/small/aerial-clean-top-view-of-the-night-time-city-map-with-street-and-river-001-vector.jpg'); background-size: cover; background-position: center;"
 						>
-							<!-- Static map background -->
-							<div class="absolute inset-0">
-								<img 
-									src="https://static.vecteezy.com/system/resources/thumbnails/010/801/642/small/aerial-clean-top-view-of-the-night-time-city-map-with-street-and-river-001-vector.jpg"
-									alt="Map"
-									class="h-full w-full object-cover opacity-60"
-								/>
+							<!-- dimming/gradient overlay to ensure readability (light theme: white gradient) -->
+							<div class="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent"></div>
+							<div class="relative p-3 text-left z-10">
+								<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-100">
+									<MapPin class="h-4 w-4 text-red-700 opacity-95" strokeWidth={2} />
+								</div>
+								<h3 class="font-heading text-base font-bold text-gray-900 text-left">
+									{fakeCity}
+								</h3>
+								<p class="text-sm text-gray-500 text-left">
+									Locatie
+								</p>
 							</div>
-							<!-- Content overlay at bottom left -->
-									<div class="p-3 text-left">
-										<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-red-100">
-											<MapPin class="h-4 w-4 text-red-700 opacity-95" strokeWidth={2} />
-										</div>
-										<h3 class="font-heading text-base font-bold text-gray-900 text-left">
-											{fakeCity}
-										</h3>
-										<p class="text-sm text-gray-500 text-left">
-											Locatie
-										</p>
-									</div>
 						</button>
 					</Card>
 				{/if}
@@ -434,7 +576,30 @@
 								{intervalLabel}
 							</h3>
 							<p class="text-sm text-gray-500 dark:text-gray-400">
-								Jaarlijks € {yearlyAmount}
+								Per jaar: € {yearlyAmount}
+							</p>
+						</div>
+					</Card>
+				{/if}
+
+				<!-- Loyalty streak card - only show for non-recurring transactions -->
+				{#if loyaltyInsight && !tx.isRecurring}
+					<Card padding="p-0" class="min-w-[150px] flex-shrink-0">
+						<div class="p-3">
+							<div class="mb-2 flex h-9 w-9 items-center justify-center rounded-full {loyaltyInsight.iconBg}">
+								{#if loyaltyInsight.icon === 'trophy'}
+									<Trophy class="h-4 w-4 {loyaltyInsight.iconColor}" strokeWidth={2} />
+								{:else if loyaltyInsight.icon === 'award'}
+									<Award class="h-4 w-4 {loyaltyInsight.iconColor}" strokeWidth={2} />
+								{:else if loyaltyInsight.icon === 'star'}
+									<Star class="h-4 w-4 {loyaltyInsight.iconColor}" strokeWidth={2} />
+								{/if}
+							</div>
+							<h3 class="font-heading text-base font-bold text-gray-900 dark:text-white">
+								{loyaltyInsight.title}
+							</h3>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								{loyaltyInsight.subtitle}
 							</p>
 						</div>
 					</Card>
@@ -487,7 +652,7 @@
 <div class="mt-4 px-4">
 	<WidgetHeader title="Acties" class="mb-3" />
 	<Card padding="p-0">
-		<div class="divide-y divide-gray-100 dark:divide-gray-800">
+		<div class={dividerClasses}>
 			<button
 				onclick={() => (detailsSheetOpen = true)}
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
@@ -495,8 +660,8 @@
 				{#if isOriginal}
 					<FileText class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<FileText class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<FileText class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bekijk pasbetaling details</span>
@@ -508,8 +673,8 @@
 				{#if isOriginal}
 					<Search class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<Search class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<Search class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Zoek vergelijkbare transacties</span>
@@ -521,8 +686,8 @@
 				{#if isOriginal}
 					<Users class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<Users class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<Users class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Deel kosten met betaalverzoek</span>
@@ -536,15 +701,15 @@
 <div class="mt-6 px-4 pb-24">
 	<WidgetHeader title="Over {tx.merchant}" class="mb-3" />
 	<Card padding="p-0">
-		<div class="divide-y divide-gray-100 dark:divide-gray-800">
+		<div class={dividerClasses}>
 			<button
 				class="flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors active:bg-gray-50 dark:active:bg-gray-800"
 			>
 				{#if isOriginal}
 					<Phone class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<Phone class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<Phone class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bel de klantenservice</span>
@@ -556,8 +721,8 @@
 				{#if isOriginal}
 					<Globe class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<Globe class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<Globe class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Bezoek website</span>
@@ -569,8 +734,8 @@
 				{#if isOriginal}
 					<MessageSquare class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
 				{:else}
-					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-						<MessageSquare class="h-5 w-5 text-gray-600 dark:text-gray-400" strokeWidth={1.5} />
+					<div class="flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-gray-800">
+						<MessageSquare class="h-5 w-5 text-gray-700 dark:text-gray-400" strokeWidth={1.5} />
 					</div>
 				{/if}
 				<span class="flex-1 text-base text-gray-900 dark:text-white">Overige contactinformatie</span>
